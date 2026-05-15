@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowState Pro • Deriv Matches Signal Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #030912;
+    --bg2: #060f1e;
+    --panel: #0a1628;
+    --border: #1a3a5c;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --gold: #ffd700;
+    --muted: #3a5a7a;
+    --text: #c8e0f4;
+    --text2: #6a90b0;
+    --danger: #ff2d55;
+    --success: #39ff14;
+    --warning: #ffba08;
+    --glow: 0 0 20px rgba(0,229,255,0.3);
+    --glow2: 0 0 30px rgba(57,255,20,0.2);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px
+    );
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .logo-wrap { display: flex; align-items: center; gap: 14px; }
+  .logo-icon {
+    width: 44px; height: 44px;
+    border: 2px solid var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--glow);
+    background: rgba(0,229,255,0.05);
+  }
+  .logo-icon svg { width: 24px; height: 24px; }
+  .logo-text {
+    font-family: 'Orbitron', monospace;
+    font-size: 18px; font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-shadow: 0 0 20px rgba(0,229,255,0.5);
+  }
+  .logo-sub {
+    font-size: 11px; color: var(--text2);
+    letter-spacing: 3px; text-transform: uppercase; margin-top: 2px;
+  }
+
+  .status-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(57,255,20,0.07);
+    border: 1px solid rgba(57,255,20,0.3);
+    border-radius: 20px; padding: 6px 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; color: var(--success); letter-spacing: 2px;
+  }
+  .status-badge.error {
+    border-color: rgba(255,45,85,0.3);
+    background: rgba(255,45,85,0.07);
+    color: var(--danger);
+  }
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    animation: pulse 1.5s infinite;
+    box-shadow: 0 0 8px var(--success);
+  }
+  .live-dot.green { background: var(--success); }
+  .live-dot.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .section-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; letter-spacing: 4px;
+    color: var(--text2); text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .market-grid {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  .market-btn {
+    flex: 1; min-width: 100px; padding: 12px 8px;
+    border: 1px solid var(--border);
+    background: var(--panel); color: var(--text2);
+    border-radius: 10px; cursor: pointer;
+    transition: all 0.25s ease;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    text-align: center; position: relative; overflow: hidden;
+  }
+  .market-btn:hover {
+    border-color: var(--accent); color: var(--accent);
+    box-shadow: var(--glow); transform: translateY(-2px);
+  }
+  .market-btn.active {
+    border-color: var(--accent); color: var(--accent);
+    background: rgba(0,229,255,0.08); box-shadow: var(--glow);
+  }
+  .market-vol {
+    font-size: 9px; color: var(--text2); letter-spacing: 1px; margin-top: 3px;
+  }
+  .market-btn.active .market-vol { color: rgba(0,229,255,0.6); }
+
+  .main-grid {
+    display: grid; grid-template-columns: 1fr 340px; gap: 18px;
+  }
+  @media(max-width:900px) { .main-grid { grid-template-columns: 1fr; } }
+
+  .signal-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+  }
+  .signal-card-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(0,229,255,0.03);
+  }
+  .signal-card-title {
+    font-family: 'Orbitron', monospace; font-size: 12px;
+    letter-spacing: 3px; color: var(--accent); text-transform: uppercase;
+  }
+  .strategy-tag {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    color: var(--gold); background: rgba(255,215,0,0.08);
+    border: 1px solid rgba(255,215,0,0.25);
+    padding: 3px 10px; border-radius: 4px; letter-spacing: 2px;
+  }
+
+  .signal-body {
+    padding: 24px; position: relative;
+    min-height: 350px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+
+  .loading-overlay {
+    position: absolute; inset: 0;
+    background: rgba(3,9,18,0.92);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px; z-index: 10;
+    border-radius: 0 0 16px 16px;
+  }
+  .loading-overlay.hidden { display: none; }
+
+  .radar-ring {
+    position: relative; width: 100px; height: 100px;
+  }
+  .radar-ring::before, .radar-ring::after {
+    content: ''; position: absolute; border-radius: 50%;
+    border: 2px solid var(--accent);
+  }
+  .radar-ring::before {
+    inset: 0; animation: radarPing 1.5s ease-out infinite; opacity: 0.8;
+  }
+  .radar-ring::after {
+    inset: 15px; animation: radarPing 1.5s ease-out infinite 0.5s; opacity: 0.5;
+  }
+  .radar-center {
+    position: absolute; inset: 35px;
+    background: var(--accent); border-radius: 50%;
+    box-shadow: 0 0 20px var(--accent);
+    animation: radarCenter 1.5s ease-in-out infinite;
+  }
+  @keyframes radarPing {
+    0% { transform: scale(0.3); opacity: 0.8; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+  @keyframes radarCenter {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+  }
+
+  .loading-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; color: var(--text2);
+    letter-spacing: 3px; text-transform: uppercase;
+  }
+  .loading-countdown {
+    font-family: 'Orbitron', monospace;
+    font-size: 42px; font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,229,255,0.7);
+  }
+
+  .signal-display { text-align: center; width: 100%; }
+  .signal-active { animation: signalAppear 0.5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes signalAppear {
+    0% { opacity: 0; transform: scale(0.85); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+  .market-name {
+    font-family: 'Orbitron', monospace; font-size: 13px;
+    letter-spacing: 4px; color: var(--text2);
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .signal-type-label {
+    font-size: 12px; letter-spacing: 3px;
+    color: var(--text2); text-transform: uppercase; margin-bottom: 16px;
+  }
+
+  .digit-display {
+    display: flex; align-items: center;
+    justify-content: center; gap: 16px; margin-bottom: 20px;
+  }
+  .digit-box {
+    width: 90px; height: 90px;
+    border: 2px solid var(--accent);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 52px; font-weight: 900;
+    color: var(--accent);
+    background: rgba(0,229,255,0.07);
+    box-shadow: var(--glow), inset 0 0 30px rgba(0,229,255,0.05);
+    animation: digitGlow 2s ease-in-out infinite;
+  }
+  .digit-box.prep {
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: 0 0 30px rgba(255,215,0,0.4), inset 0 0 30px rgba(255,215,0,0.05);
+  }
+  .digit-box.live {
+    border-color: var(--accent3);
+    color: var(--accent3);
+    box-shadow: 0 0 30px rgba(57,255,20,0.4), inset 0 0 30px rgba(57,255,20,0.05);
+  }
+  @keyframes digitGlow {
+    0%,100% { box-shadow: 0 0 20px rgba(0,229,255,0.3); }
+    50% { box-shadow: 0 0 40px rgba(0,229,255,0.5); }
+  }
+
+  .signal-meta {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin-top: 8px;
+  }
+  .meta-box {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 6px; text-align: center;
+  }
+  .meta-val {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 16px; font-weight: 700; line-height: 1; margin-bottom: 3px;
+  }
+  .meta-key {
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--text2); text-transform: uppercase;
+  }
+  .meta-val.green { color: var(--success); }
+  .meta-val.orange { color: var(--accent2); }
+  .meta-val.gold { color: var(--gold); }
+  .meta-val.cyan { color: var(--accent); }
+
+  .confidence-bar-wrap {
+    margin-top: 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px;
+  }
+  .conf-label-row {
+    display: flex; justify-content: space-between; margin-bottom: 6px;
+  }
+  .conf-label {
+    font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--text2);
+  }
+  .conf-pct {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px; color: var(--success);
+  }
+  .conf-track {
+    height: 6px; background: var(--border);
+    border-radius: 3px; overflow: hidden;
+  }
+  .conf-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--success), var(--accent));
+    box-shadow: 0 0 10px rgba(57,255,20,0.4);
+    transition: width 0.6s ease;
+  }
+
+  .countdown-display {
+    margin-top: 14px;
+    font-family: 'Orbitron', monospace;
+    font-size: 28px; font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,229,255,0.5);
+    text-align: center;
+  }
+  .countdown-display.urgent {
+    color: var(--danger);
+    animation: pulse 0.5s infinite;
+  }
+
+  .tick-progress {
+    display: flex; justify-content: center; gap: 8px;
+    margin-top: 12px;
+  }
+  .tick-dot {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    color: var(--text2); transition: all 0.3s;
+  }
+  .tick-dot.filled {
+    border-color: var(--accent3);
+    background: rgba(57,255,20,0.2);
+    color: var(--accent3);
+  }
+
+  .right-panel { display: flex; flex-direction: column; gap: 14px; }
+
+  .panel-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .panel-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    font-family: 'Orbitron', monospace; font-size: 9px;
+    letter-spacing: 3px; color: var(--accent);
+    text-transform: uppercase; background: rgba(0,229,255,0.03);
+  }
+  .panel-body { padding: 12px 14px; }
+
+  .digit-history {
+    display: flex; flex-wrap: wrap; gap: 5px;
+  }
+  .hist-digit {
+    width: 30px; height: 30px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    border: 1px solid transparent; transition: all 0.2s;
+  }
+  .hist-digit.hot {
+    background: rgba(255,107,53,0.15);
+    border-color: rgba(255,107,53,0.4); color: var(--accent2);
+  }
+  .hist-digit.cold {
+    background: rgba(0,229,255,0.08);
+    border-color: rgba(0,229,255,0.2); color: var(--accent);
+  }
+  .hist-digit.neutral {
+    background: rgba(255,255,255,0.04);
+    border-color: var(--border); color: var(--text2);
+  }
+  .hist-digit.new-entry {
+    animation: flashIn 0.5s ease;
+  }
+  @keyframes flashIn {
+    0% { transform: scale(1.4); background: rgba(0,229,255,0.3); }
+    100% { transform: scale(1); }
+  }
+
+  .log-list {
+    display: flex; flex-direction: column; gap: 6px;
+    max-height: 200px; overflow-y: auto;
+  }
+  .log-list::-webkit-scrollbar { width: 4px; }
+  .log-list::-webkit-scrollbar-track { background: transparent; }
+  .log-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .log-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 8px;
+    animation: slideIn 0.4s ease;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .log-digit-badge {
+    width: 26px; height: 26px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Orbitron', monospace;
+    font-size: 13px; font-weight: 900;
+    background: rgba(0,229,255,0.1);
+    border: 1px solid rgba(0,229,255,0.3);
+    color: var(--accent); flex-shrink: 0;
+  }
+  .log-digit-badge.won {
+    background: rgba(57,255,20,0.1); border-color: rgba(57,255,20,0.3); color: var(--success);
+  }
+  .log-digit-badge.lost {
+    background: rgba(255,45,85,0.1); border-color: rgba(255,45,85,0.3); color: var(--danger);
+  }
+  .log-info { flex: 1; min-width: 0; }
+  .log-market {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: var(--text2);
+  }
+  .log-conf {
+    font-size: 11px; color: var(--success); font-weight: 600;
+  }
+  .log-time {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; color: var(--muted); flex-shrink: 0;
+  }
+
+  .stats-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px; margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 10px; text-align: center;
+  }
+  .stat-val {
+    font-family: 'Orbitron', monospace;
+    font-size: 20px; font-weight: 900; line-height: 1; margin-bottom: 4px;
+  }
+  .stat-lbl {
+    font-size: 10px; letter-spacing: 2px;
+    color: var(--text2); text-transform: uppercase;
+  }
+
+  .btn {
+    padding: 14px 20px; border-radius: 10px;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: 3px;
+    cursor: pointer; text-transform: uppercase;
+    transition: all 0.25s ease; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text2);
+    width: 100%; text-align: center;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.accent {
+    border-color: var(--accent); color: var(--accent);
+    box-shadow: var(--glow);
+    background: rgba(0,229,255,0.08);
+  }
+  .btn.accent:hover { box-shadow: 0 0 40px rgba(0,229,255,0.4); }
+  .btn.danger {
+    border-color: var(--danger); color: var(--danger);
+    background: rgba(255,45,85,0.05);
+  }
+
+  .empty-signal { text-align: center; padding: 30px 0; }
+  .empty-icon {
+    width: 60px; height: 60px; margin: 0 auto 14px;
+    border: 2px dashed var(--border); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+  }
+  .empty-text {
+    font-size: 14px; color: var(--text2);
+    letter-spacing: 2px; text-transform: uppercase;
+  }
+  .empty-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; color: var(--muted); margin-top: 6px;
+  }
+
+  .help-note {
+    background: rgba(0,229,255,0.03);
+    border: 1px solid rgba(0,229,255,0.1);
+    border-radius: 8px;
+    padding: 12px; margin-top: 14px;
+    font-size: 11px; color: var(--text2);
+    line-height: 1.5;
+  }
+  .help-note strong { color: var(--accent); }
+
+  @media(max-width:520px) {
+    .signal-meta { grid-template-columns: 1fr 1fr; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-wrap">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">FLOWSTATE</div>
+        <div class="logo-sub">Matches Signal Engine</div>
+      </div>
+    </div>
+    <div class="status-badge" id="status-badge">
+      <div class="live-dot" id="status-dot"></div>
+      <span id="status-text">INITIALIZING</span>
+    </div>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--success)" id="stat-signals">0</div>
+      <div class="stat-lbl">Signals Generated</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--gold)" id="stat-acc">--</div>
+      <div class="stat-lbl">Win Rate</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--accent)" id="stat-hot">--</div>
+      <div class="stat-lbl">Current Digit</div>
+    </div>
+  </div>
+
+  <!-- MARKET SELECTOR -->
+  <div class="section-label">Select Market</div>
+  <div class="market-grid" id="market-grid"></div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+
+    <!-- SIGNAL CARD -->
+    <div class="signal-card">
+      <div class="signal-card-header">
+        <span class="signal-card-title">Signal Output</span>
+        <span class="strategy-tag">MATCHES ONLY</span>
+      </div>
+      <div class="signal-body" id="signal-body">
+        <!-- Content rendered by JS -->
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <!-- Digit History -->
+      <div class="panel-card">
+        <div class="panel-header">Last Digits Stream</div>
+        <div class="panel-body">
+          <div class="digit-history" id="digit-history"></div>
+        </div>
+      </div>
+
+      <!-- Signal Log -->
+      <div class="panel-card">
+        <div class="panel-header">Signal History</div>
+        <div class="panel-body">
+          <div class="log-list" id="log-list">
+            <div class="empty-signal">
+              <div class="empty-text" style="font-size:11px;">No signals yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Control -->
+      <button class="btn accent" id="control-btn" onclick="toggleEngine()">
+        START ENGINE
+      </button>
+      
+      <div class="help-note">
+        <strong>How it works:</strong> The engine monitors live ticks from Deriv's WebSocket API. When a digit appears 6+ times in the last 25 ticks AND appears in the last 5 ticks, a signal is generated with a <strong>15-second countdown</strong>. Place a <strong>MATCHES</strong> trade on Deriv when the timer hits zero for <strong>5-tick duration</strong>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== FLOWSTATE PRO ENGINE ====================
+const DERIV_APP_ID = '1089';
+const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`;
+
+// All markets including 1s
+const MARKETS = {
+  'R_10':   { name: 'Volatility 10',  decimals: 3, type: 'standard' },
+  'R_25':   { name: 'Volatility 25',  decimals: 3, type: 'standard' },
+  'R_50':   { name: 'Volatility 50',  decimals: 4, type: 'standard' },
+  'R_75':   { name: 'Volatility 75',  decimals: 4, type: 'standard' },
+  'R_100':  { name: 'Volatility 100', decimals: 2, type: 'standard' },
+  '1HZ10V': { name: 'Vol 10 (1s)',    decimals: 2, type: '1s' },
+  '1HZ25V': { name: 'Vol 25 (1s)',    decimals: 2, type: '1s' },
+  '1HZ50V': { name: 'Vol 50 (1s)',    decimals: 2, type: '1s' },
+  '1HZ75V': { name: 'Vol 75 (1s)',    decimals: 2, type: '1s' },
+  '1HZ100V':{ name: 'Vol 100 (1s)',   decimals: 2, type: '1s' },
+};
+
+// ==================== STATE ====================
+let engineRunning = false;
+let currentMarket = 'R_100';
+let ws = null;
+let tickHistory = [];
+let activeSignal = null;
+let prepInterval = null;
+let stats = { total: 0, won: 0 };
+let signalLog = [];
+let lastDigits = [];
+let currentPrice = null;
+
+// ==================== AUDIO ====================
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+function beep(freq = 880, dur = 0.25, vol = 0.2) {
+  if (!audioCtx) return;
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  } catch(e) {}
+}
+
+// ==================== UI HELPERS ====================
+function $(id) { return document.getElementById(id); }
+
+function updateStatus(connected) {
+  const badge = $('status-badge');
+  const dot = $('status-dot');
+  const text = $('status-text');
+  
+  badge.classList.remove('error');
+  dot.classList.remove('green', 'red');
+  
+  if (connected) {
+    dot.classList.add('green');
+    text.textContent = 'CONNECTED';
+  } else {
+    dot.classList.add('red');
+    text.textContent = 'DISCONNECTED';
+    badge.classList.add('error');
+  }
+}
+
+function renderMarketButtons() {
+  const grid = $('market-grid');
+  grid.innerHTML = Object.entries(MARKETS).map(([sym, cfg]) => `
+    <button class="market-btn ${sym === currentMarket ? 'active' : ''}" 
+            onclick="switchMarket('${sym}')">
+      ${cfg.name}
+      <div class="market-vol">${sym}</div>
+    </button>
+  `).join('');
+}
+
+function renderSignalBody() {
+  const body = $('signal-body');
+  
+  if (!engineRunning) {
+    body.innerHTML = `
+      <div class="empty-signal">
+        <div class="empty-icon">⚡</div>
+        <div class="empty-text">Engine Offline</div>
+        <div class="empty-sub">Press START ENGINE to begin</div>
+      </div>`;
+    return;
+  }
+  
+  if (!activeSignal) {
+    body.innerHTML = `
+      <div class="loading-overlay">
+        <div class="radar-ring"><div class="radar-center"></div></div>
+        <div class="loading-text">Scanning for patterns...</div>
+        ${currentPrice ? `
+          <div style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--accent);">
+            ${currentPrice.base}.<strong style="font-size:24px;">${currentPrice.digit}</strong>
+          </div>` : ''}
+      </div>`;
+    return;
+  }
+  
+  const sig = activeSignal;
+  const isPrep = sig.status === 'PREP';
+  const isLive = sig.status === 'LIVE';
+  const isSettled = sig.status === 'WON' || sig.status === 'LOST';
+  
+  const phaseClass = isPrep ? 'prep' : (isLive ? 'live' : '');
+  const phaseColor = isPrep ? 'var(--gold)' : (isLive ? 'var(--accent3)' : 'var(--accent)');
+  
+  let content = '';
+  
+  if (isSettled) {
+    const won = sig.status === 'WON';
+    content = `
+      <div class="signal-display signal-active" style="text-align:center;">
+        <div style="font-size:60px;margin-bottom:10px;">${won ? '✅' : '❌'}</div>
+        <div style="font-size:24px;font-weight:900;color:${won ? 'var(--success)' : 'var(--danger)'};margin-bottom:10px;">
+          MATCH ${won ? 'WON' : 'LOST'}
+        </div>
+        <div style="color:var(--text2);">Digit: <strong style="color:var(--accent);font-size:20px;">${sig.digit}</strong></div>
+        <div style="color:var(--text2);margin-top:4px;">Confidence: ${sig.confidence}%</div>
+      </div>`;
+  } else {
+    content = `
+      <div class="signal-display signal-active" style="text-align:center;">
+        <div class="market-name">${MARKETS[currentMarket].name}</div>
+        <div class="signal-type-label" style="color:${isPrep ? 'var(--gold)' : 'var(--accent3)'};">
+          ${isPrep ? '⚡ SIGNAL DETECTED - PREPARE' : '🔵 TRADE WINDOW OPEN'}
+        </div>
+        
+        <div class="digit-display">
+          <div class="digit-box ${phaseClass}">${sig.digit}</div>
+        </div>
+        
+        <div class="signal-meta">
+          <div class="meta-box">
+            <div class="meta-val ${sig.confidence >= 90 ? 'gold' : 'green'}">${sig.confidence}%</div>
+            <div class="meta-key">Confidence</div>
+          </div>
+          <div class="meta-box">
+            <div class="meta-val cyan">${sig.reason || 'Pattern'}</div>
+            <div class="meta-key">Detection</div>
+          </div>
+          <div class="meta-box">
+            <div class="meta-val orange">${isPrep ? sig.prepTime + 's' : sig.elapsed + '/5'}</div>
+            <div class="meta-key">${isPrep ? 'Countdown' : 'Ticks'}</div>
+          </div>
+        </div>
+        
+        ${isPrep ? `
+          <div class="countdown-display ${sig.prepTime <= 5 ? 'urgent' : ''}">
+            ⏱ ${sig.prepTime}
+          </div>
+          <div style="color:var(--text2);font-size:11px;margin-top:4px;">
+            seconds until trade window
+          </div>
+          ${sig.prepTime <= 5 ? '<div style="color:var(--danger);font-weight:700;margin-top:8px;">⚡ GET READY!</div>' : ''}
+        ` : ''}
+        
+        ${isLive ? `
+          <div class="tick-progress">
+            ${[1,2,3,4,5].map(i => `
+              <div class="tick-dot ${i <= sig.elapsed ? 'filled' : ''}">
+                ${i <= sig.elapsed ? '✓' : i}
+              </div>
+            `).join('')}
+          </div>
+          <div style="color:var(--accent3);font-weight:700;margin-top:8px;">
+            Place MATCHES trade NOW for digit ${sig.digit}
+          </div>
+        ` : ''}
+        
+        <div class="confidence-bar-wrap">
+          <div class="conf-label-row">
+            <span class="conf-label">Signal Strength</span>
+            <span class="conf-pct">${sig.confidence}%</span>
+          </div>
+          <div class="conf-track">
+            <div class="conf-fill" style="width:${sig.confidence}%;"></div>
+          </div>
+        </div>
+      </div>`;
+  }
+  
+  body.innerHTML = content;
+}
+
+function renderDigitHistory() {
+  const container = $('digit-history');
+  if (lastDigits.length === 0) {
+    container.innerHTML = '<div style="color:var(--text2);font-size:11px;text-align:center;">Waiting for ticks...</div>';
+    return;
+  }
+  
+  // Count frequencies for coloring
+  const freq = {};
+  lastDigits.forEach(d => freq[d] = (freq[d] || 0) + 1);
+  const maxFreq = Math.max(...Object.values(freq));
+  
+  container.innerHTML = lastDigits.slice(-20).map((d, i) => {
+    const count = freq[d] || 0;
+    let cls = 'neutral';
+    if (count >= 4) cls = 'hot';
+    else if (count >= 2) cls = 'cold';
+    const isNew = i === lastDigits.slice(-20).length - 1;
+    return `<div class="hist-digit ${cls} ${isNew ? 'new-entry' : ''}">${d}</div>`;
+  }).join('');
+}
+
+function renderLog() {
+  const container = $('log-list');
+  if (signalLog.length === 0) {
+    container.innerHTML = '<div class="empty-signal"><div class="empty-text" style="font-size:11px;">No signals yet</div></div>';
+    return;
+  }
+  
+  container.innerHTML = signalLog.slice(0, 15).map(s => {
+    const isWon = s.status === 'WON';
+    const isLost = s.status === 'LOST';
+    return `
+      <div class="log-item">
+        <div class="log-digit-badge ${isWon ? 'won' : ''} ${isLost ? 'lost' : ''}">${s.digit}</div>
+        <div class="log-info">
+          <div class="log-market">${s.market}</div>
+          <div class="log-conf">${s.confidence}% ${isWon ? '✅' : ''} ${isLost ? '❌' : ''}</div>
+        </div>
+        <div class="log-time">${s.time}</div>
+      </div>`;
+  }).join('');
+}
+
+function updateStats() {
+  $('stat-signals').textContent = stats.total;
+  const rate = stats.total > 0 ? Math.round((stats.won / stats.total) * 100) + '%' : '--';
+  $('stat-acc').textContent = rate;
+  $('stat-hot').textContent = currentPrice ? currentPrice.digit : '--';
+}
+
+// ==================== WEBSOCKET ====================
+function connectWebSocket() {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    // Already connected, just subscribe
+    subscribeMarket();
+    return;
+  }
+  
+  console.log('Connecting to Deriv WebSocket...');
+  ws = new WebSocket(WS_URL);
+  
+  ws.onopen = () => {
+    console.log('WebSocket connected');
+    updateStatus(true);
+    subscribeMarket();
+  };
+  
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.tick) {
+      processTick(data.tick);
+    }
+    if (data.error) {
+      console.warn('Deriv error:', data.error);
+    }
+  };
+  
+  ws.onclose = () => {
+    console.log('WebSocket closed');
+    updateStatus(false);
+    if (engineRunning) {
+      setTimeout(connectWebSocket, 3000);
+    }
+  };
+  
+  ws.onerror = () => {
+    updateStatus(false);
+  };
+}
+
+function subscribeMarket() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ forget_all: 'ticks' }));
+  ws.send(JSON.stringify({ ticks: currentMarket, subscribe: 1 }));
+  console.log('Subscribed to:', currentMarket);
+}
+
+function switchMarket(sym) {
+  currentMarket = sym;
+  tickHistory = [];
+  activeSignal = null;
+  if (prepInterval) clearInterval(prepInterval);
+  prepInterval = null;
+  
+  renderMarketButtons();
+  renderSignalBody();
+  subscribeMarket();
+}
+
+// ==================== TICK PROCESSING ====================
+function processTick(tick) {
+  if (!tick || tick.symbol !== currentMarket) return;
+  
+  const cfg = MARKETS[currentMarket];
+  const quote = tick.quote;
+  const priceStr = typeof quote === 'number' ? quote.toFixed(cfg.decimals) : quote;
+  const lastDigit = parseInt(priceStr.slice(-1));
+  const basePrice = priceStr.slice(0, -1);
+  
+  currentPrice = { base: basePrice, digit: lastDigit };
+  
+  // Update digit history
+  lastDigits.push(lastDigit);
+  if (lastDigits.length > 50) lastDigits.shift();
+  
+  // Update tick history for analysis
+  tickHistory.push(lastDigit);
+  if (tickHistory.length > 30) tickHistory.shift();
+  
+  // Check active signal
+  if (activeSignal && activeSignal.status === 'LIVE') {
+    activeSignal.elapsed++;
+    
+    if (activeSignal.elapsed >= 5) {
+      const won = lastDigit === activeSignal.digit;
+      activeSignal.status = won ? 'WON' : 'LOST';
+      
+      stats.total++;
+      if (won) stats.won++;
+      
+      signalLog.unshift({
+        digit: activeSignal.digit,
+        confidence: activeSignal.confidence,
+        market: MARKETS[currentMarket].name,
+        status: activeSignal.status,
+        time: new Date().toLocaleTimeString()
+      });
+      
+      if (won) beep(1200, 0.2, 0.3);
+      else beep(300, 0.5, 0.2);
+      
+      renderSignalBody();
+      renderLog();
+      updateStats();
+      
+      // Clear after 5 seconds
+      setTimeout(() => {
+        activeSignal = null;
+        renderSignalBody();
+      }, 5000);
+      
+      return;
+    }
+    
+    renderSignalBody();
+    return;
+  }
+  
+  if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
+  
+  // Analyze for new signal
+  if (tickHistory.length >= 20 && engineRunning) {
+    const result = analyzePatterns(tickHistory);
+    if (result) {
+      activeSignal = {
+        digit: result.digit,
+        confidence: result.confidence,
+        status: 'PREP',
+        prepTime: 15,
+        elapsed: 0,
+        reason: result.reason
+      };
+      
+      beep(880, 0.25, 0.2);
+      beep(1100, 0.15, 0.2);
+      
+      // Start prep countdown
+      if (prepInterval) clearInterval(prepInterval);
+      prepInterval = setInterval(() => {
+        if (!activeSignal || activeSignal.status !== 'PREP') {
+          clearInterval(prepInterval);
+          prepInterval = null;
+          return;
+        }
+        
+        activeSignal.prepTime--;
+        renderSignalBody();
+        
+        if (activeSignal.prepTime <= 0) {
+          activeSignal.status = 'LIVE';
+          activeSignal.elapsed = 0;
+          clearInterval(prepInterval);
+          prepInterval = null;
+          beep(1500, 0.1, 0.3);
+          renderSignalBody();
+        }
+      }, 1000);
+      
+      renderSignalBody();
+      
+      // Clear history to prevent duplicate signals
+      tickHistory = [];
+    }
+  }
+  
+  // Update UI
+  renderDigitHistory();
+  updateStats();
+}
+
+function analyzePatterns(history) {
+  const recent = history.slice(-25);
+  
+  // Count frequencies
+  const freq = {};
+  recent.forEach(d => freq[d] = (freq[d] || 0) + 1);
+  
+  // Find most frequent digit
+  let bestDigit = null, bestCount = 0;
+  for (const [d, c] of Object.entries(freq)) {
+    if (c > bestCount) {
+      bestCount = c;
+      bestDigit = parseInt(d);
+    }
+  }
+  
+  // Need 6+ occurrences AND must appear in last 5 ticks
+  const last5 = recent.slice(-5);
+  if (bestCount >= 6 && last5.includes(bestDigit)) {
+    let confidence = 75 + (bestCount * 2.5);
+    confidence = Math.min(98, Math.round(confidence));
+    
+    return {
+      digit: bestDigit,
+      confidence,
+      reason: `${bestCount}x in 25 ticks`
+    };
+  }
+  
+  return null;
+}
+
+// ==================== ENGINE CONTROL ====================
+function toggleEngine() {
+  engineRunning = !engineRunning;
+  const btn = $('control-btn');
+  
+  if (engineRunning) {
+    initAudio();
+    btn.textContent = 'STOP ENGINE';
+    btn.classList.remove('accent');
+    btn.classList.add('danger');
+    connectWebSocket();
+  } else {
+    btn.textContent = 'START ENGINE';
+    btn.classList.remove('danger');
+    btn.classList.add('accent');
+    
+    if (ws) ws.close();
+    ws = null;
+    activeSignal = null;
+    if (prepInterval) clearInterval(prepInterval);
+    prepInterval = null;
+    
+    updateStatus(false);
+  }
+  
+  renderSignalBody();
+}
+
+// ==================== INIT ====================
+function init() {
+  renderMarketButtons();
+  renderSignalBody();
+  updateStats();
+  renderDigitHistory();
+  renderLog();
+  updateStatus(false);
+}
+
+// Make functions global
+window.toggleEngine = toggleEngine;
+window.switchMarket = switchMarket;
+
+init();
+console.log('🚀 FlowState Pro Matches Engine Ready');
+console.log('📊 Tracking 10 volatility markets including 1s');
+console.log('🎯 Press START ENGINE to begin');
+</script>
+</body>
+</html>
