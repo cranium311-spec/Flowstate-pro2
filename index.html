@@ -84,7 +84,7 @@
     border: 1px solid var(--accent);
     border-radius: 24px;
     padding: 3rem 2.5rem;
-    max-width: 500px;
+    max-width: 520px;
     width: 90%;
     text-align: center;
     box-shadow: 0 0 80px rgba(0,229,255,0.25);
@@ -109,6 +109,16 @@
   .auth-card .deriv-logo {
     font-size: 3rem;
     margin-bottom: 1rem;
+  }
+  .auth-card .callback-url {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    background: rgba(255,255,255,0.03);
+    padding: 6px 12px;
+    border-radius: 6px;
+    word-break: break-all;
+    margin: 1rem 0;
   }
 
   .header {
@@ -584,14 +594,17 @@
 </head>
 <body>
 
-<!-- AUTH OVERLAY - Shows immediately -->
+<!-- AUTH OVERLAY -->
 <div class="auth-overlay" id="auth-overlay">
   <div class="auth-card">
     <div class="deriv-logo">🔐</div>
     <h2>Connect to Deriv</h2>
     <p>You'll be redirected to <strong>Deriv's secure login</strong> to authorize this app. Your credentials stay with Deriv — we never see your password.</p>
-    <p style="font-size:0.85rem;color:var(--text2);">
-      After authorization, you'll be <strong>automatically redirected back</strong> to start receiving signals.
+    <div class="callback-url">
+      Callback URL: https://cranium311-spec.github.io/Flowstate-pro2/
+    </div>
+    <p style="font-size:0.85rem;color:var(--accent3);">
+      ✅ After authorization, you'll be <strong>automatically redirected back</strong> here to start receiving signals.
     </p>
     <button class="btn accent" onclick="startOAuthFlow()" style="margin-bottom:0.8rem;">
       🔐 LOGIN WITH DERIV
@@ -599,6 +612,9 @@
     <button class="btn" onclick="skipAuthDemo()" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text2);">
       Continue in Demo Mode
     </button>
+    <p style="font-size:0.7rem;color:var(--muted);margin-top:1rem;">
+      Make sure your Deriv App has this callback URL registered
+    </p>
   </div>
 </div>
 
@@ -684,22 +700,30 @@
       
       <div class="help-note">
         <strong>How it works:</strong><br>
-        • Signals only appear at <strong>95%+ confidence</strong><br>
-        • Each signal includes a <strong>recovery digit</strong> as backup<br>
+        • Signals only at <strong>95%+ confidence</strong><br>
+        • Each signal has a <strong>recovery digit</strong><br>
         • <strong>15-second countdown</strong> then <strong>5-tick window</strong><br>
-        • Place MATCHES trade on Deriv for the target digit
+        • Place MATCHES trade on Deriv
       </div>
     </div>
   </div>
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v3.0 ====================
+// ==================== FLOWSTATE PRO v3.1 ====================
+// Your Deriv App ID
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
-const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`;
-const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&l=en&brand=deriv&redirect_uri=${encodeURIComponent(window.location.href)}`;
 
-// All markets including 1s
+// YOUR GITHUB PAGES URL - This is where Deriv will redirect back to
+const CALLBACK_URL = 'https://cranium311-spec.github.io/Flowstate-pro2/';
+
+const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`;
+const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&l=en&brand=deriv&redirect_uri=${encodeURIComponent(CALLBACK_URL)}`;
+
+console.log('🔗 OAuth URL:', OAUTH_URL);
+console.log('📍 Callback URL:', CALLBACK_URL);
+
+// All markets
 const MARKETS = {
   'R_10':   { name: 'Volatility 10',  decimals: 3 },
   'R_25':   { name: 'Volatility 25',  decimals: 3 },
@@ -750,9 +774,13 @@ function beep(freq = 880, dur = 0.25, vol = 0.2) {
 
 // ==================== AUTH ====================
 function startOAuthFlow() {
-  // Save current URL to return to
-  localStorage.setItem('flowstate_return', window.location.href);
-  // Redirect to Deriv OAuth
+  console.log('🔐 Redirecting to Deriv OAuth...');
+  console.log('📍 Will return to:', CALLBACK_URL);
+  
+  // Save state
+  localStorage.setItem('flowstate_oauth_pending', 'true');
+  
+  // Redirect to Deriv
   window.location.href = OAUTH_URL;
 }
 
@@ -762,7 +790,7 @@ function skipAuthDemo() {
   document.getElementById('logout-btn').style.display = 'inline-block';
   updateStatus('warning', 'DEMO MODE');
   initAudio();
-  console.log('🚀 Demo mode - limited functionality');
+  console.log('🚀 Demo mode activated');
 }
 
 function checkOAuthCallback() {
@@ -770,20 +798,31 @@ function checkOAuthCallback() {
   const token = params.get('token');
   const error = params.get('error');
   
+  // Check if we're returning from OAuth
+  const wasPending = localStorage.getItem('flowstate_oauth_pending');
+  
   if (error) {
-    console.error('OAuth error:', error);
-    window.history.replaceState({}, document.title, window.location.pathname);
+    console.error('❌ OAuth error:', error);
+    localStorage.removeItem('flowstate_oauth_pending');
+    window.history.replaceState({}, document.title, CALLBACK_URL);
+    alert('OAuth failed: ' + error + '. Please try again or use Demo Mode.');
     return false;
   }
   
   if (token) {
-    console.log('✅ OAuth token received');
-    window.history.replaceState({}, document.title, window.location.pathname);
+    console.log('✅ OAuth token received!');
+    console.log('🔑 Token:', token.substring(0, 20) + '...');
     
+    // Clean URL immediately
+    window.history.replaceState({}, document.title, CALLBACK_URL);
+    
+    // Store token
     derivToken = token;
     localStorage.setItem('deriv_token', token);
+    localStorage.removeItem('flowstate_oauth_pending');
     isAuthenticated = true;
     
+    // Hide auth overlay
     document.getElementById('auth-overlay').classList.add('hidden');
     document.getElementById('logout-btn').style.display = 'inline-block';
     
@@ -800,9 +839,17 @@ function checkOAuthCallback() {
     return true;
   }
   
+  // Check if we were expecting a return but no token
+  if (wasPending) {
+    console.warn('⚠️ Returned from OAuth but no token found in URL');
+    localStorage.removeItem('flowstate_oauth_pending');
+    window.history.replaceState({}, document.title, CALLBACK_URL);
+  }
+  
   // Check saved token
   const saved = localStorage.getItem('deriv_token');
   if (saved) {
+    console.log('🔑 Found saved token');
     derivToken = saved;
     isAuthenticated = true;
     document.getElementById('auth-overlay').classList.add('hidden');
@@ -818,6 +865,7 @@ function logoutAndReset() {
   isAuthenticated = false;
   derivToken = null;
   localStorage.removeItem('deriv_token');
+  localStorage.removeItem('flowstate_oauth_pending');
   
   if (ws) ws.close();
   ws = null;
@@ -925,8 +973,6 @@ function renderSignalBody() {
         <div style="color:var(--text2);">Primary: <strong style="color:var(--accent);font-size:20px;">${sig.digit}</strong></div>
         <div style="color:var(--text2);">Recovery: <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong></div>
         <div style="color:var(--text2);margin-top:4px;">Confidence: ${sig.confidence}%</div>
-        ${won ? '<div style="color:var(--success);margin-top:8px;">🎯 Signal successful!</div>' : 
-        `<div style="color:var(--accent2);margin-top:8px;">💡 Recovery digit (${sig.recoveryDigit}) could have worked</div>`}
       </div>`;
     return;
   }
@@ -952,7 +998,7 @@ function renderSignalBody() {
       <div class="recovery-section">
         <div class="recovery-label">Backup Strategy</div>
         <div style="color:var(--text2);font-size:10px;">
-          If primary digit <strong style="color:var(--accent);">${sig.digit}</strong> fails, recovery digit <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong> has ${sig.recoveryConfidence}% secondary probability
+          If primary <strong style="color:var(--accent);">${sig.digit}</strong> fails, recovery <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong> has ${sig.recoveryConfidence}% probability
         </div>
       </div>
       
@@ -976,7 +1022,7 @@ function renderSignalBody() {
           ⏱ 00:${String(sig.prepTime).padStart(2, '0')}
         </div>
         <div style="color:var(--text2);font-size:11px;margin-top:4px;">
-          seconds until trade window
+          seconds until trade window opens
         </div>
         ${sig.prepTime <= 5 ? '<div style="color:var(--danger);font-weight:700;margin-top:8px;font-size:14px;">⚡ PREPARE TO EXECUTE!</div>' : ''}
       ` : ''}
@@ -990,7 +1036,7 @@ function renderSignalBody() {
           `).join('')}
         </div>
         <div style="color:var(--accent3);font-weight:700;margin-top:8px;">
-          Trade digit <strong>${sig.digit}</strong> • Recovery: <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong>
+          Trade <strong>${sig.digit}</strong> • Recovery: <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong>
         </div>
       ` : ''}
       
@@ -1041,7 +1087,7 @@ function renderLog() {
         <div class="log-digit-badge ${isWon ? 'won' : ''} ${isLost ? 'lost' : ''}">${s.digit}</div>
         <div class="log-info">
           <div class="log-market">${s.market} • ${s.confidence}%</div>
-          <div class="log-conf ${isWon ? '' : ''}" style="color:${isWon ? 'var(--success)' : 'var(--danger)'};">
+          <div class="log-conf" style="color:${isWon ? 'var(--success)' : 'var(--danger)'};">
             ${isWon ? '✅ WON' : '❌ LOST'}
           </div>
           <div class="log-recovery">Recovery: ${s.recoveryDigit} (${s.recoveryConf}%)</div>
@@ -1065,14 +1111,15 @@ function connectWebSocket() {
     return;
   }
   
-  console.log('🔌 Connecting to Deriv...');
+  console.log('🔌 Connecting to Deriv WebSocket...');
   updateStatus('warning', 'CONNECTING...');
   ws = new WebSocket(WS_URL);
   
   ws.onopen = () => {
-    console.log('✅ Connected');
+    console.log('✅ WebSocket connected');
     
     if (derivToken) {
+      console.log('🔑 Authorizing with token...');
       ws.send(JSON.stringify({ authorize: derivToken }));
     }
     
@@ -1084,7 +1131,7 @@ function connectWebSocket() {
     const data = JSON.parse(e.data);
     
     if (data.authorize) {
-      console.log('✅ Authorized');
+      console.log('✅ Authorized successfully');
       updateStatus('connected', 'AUTHORIZED');
     }
     
@@ -1093,7 +1140,7 @@ function connectWebSocket() {
     }
     
     if (data.error) {
-      console.warn('Error:', data.error);
+      console.warn('Deriv error:', data.error);
       if (data.error.code === 'InvalidToken') {
         logoutAndReset();
       }
@@ -1101,6 +1148,7 @@ function connectWebSocket() {
   };
   
   ws.onclose = () => {
+    console.log('WebSocket closed');
     updateStatus('error', 'RECONNECTING...');
     if (engineRunning) setTimeout(connectWebSocket, 3000);
   };
@@ -1112,6 +1160,7 @@ function subscribeMarket() {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ forget_all: 'ticks' }));
   ws.send(JSON.stringify({ ticks: currentMarket, subscribe: 1 }));
+  console.log('📊 Subscribed to:', currentMarket);
 }
 
 function switchMarket(sym) {
@@ -1142,7 +1191,6 @@ function processTick(tick) {
   tickHistory.push(lastDigit);
   if (tickHistory.length > 40) tickHistory.shift();
   
-  // Check active signal
   if (activeSignal && activeSignal.status === 'LIVE') {
     activeSignal.elapsed++;
     
@@ -1189,7 +1237,6 @@ function processTick(tick) {
   
   if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
   
-  // Analyze for signal - REQUIRES 95%+ confidence
   if (tickHistory.length >= 30 && engineRunning) {
     const result = analyzePatternsAdvanced(tickHistory);
     if (result) {
@@ -1218,9 +1265,7 @@ function processTick(tick) {
         activeSignal.prepTime--;
         renderSignalBody();
         
-        if (activeSignal.prepTime <= 5) {
-          beep(600, 0.1, 0.15);
-        }
+        if (activeSignal.prepTime <= 5) beep(600, 0.1, 0.15);
         
         if (activeSignal.prepTime <= 0) {
           activeSignal.status = 'LIVE';
@@ -1243,12 +1288,9 @@ function processTick(tick) {
 
 function analyzePatternsAdvanced(history) {
   const recent = history.slice(-35);
-  
-  // Count frequencies
   const freq = {};
   recent.forEach(d => freq[d] = (freq[d] || 0) + 1);
   
-  // Sort by frequency
   const sorted = Object.entries(freq)
     .map(([d, c]) => ({ digit: parseInt(d), count: c }))
     .sort((a, b) => b.count - a.count);
@@ -1257,28 +1299,18 @@ function analyzePatternsAdvanced(history) {
   
   const primary = sorted[0];
   const secondary = sorted[1];
-  
-  // Calculate confidence based on frequency ratio
   const total = recent.length;
   const primaryRatio = primary.count / total;
-  const secondaryRatio = secondary.count / total;
   const dominance = primary.count - secondary.count;
-  
-  // STRICT: Only signal if primary appears 8+ times AND has clear dominance
-  // AND must appear in last 5 ticks
   const last5 = recent.slice(-5);
-  const last10 = recent.slice(-10);
   
   if (primary.count >= 8 && dominance >= 2 && last5.includes(primary.digit)) {
-    // Calculate confidence
     let confidence = 85 + (primaryRatio * 40) + (dominance * 3);
     confidence = Math.min(99, Math.round(confidence));
     
-    // REQUIRED: 95% minimum confidence
     if (confidence < 95) return null;
     
-    // Recovery confidence
-    let recoveryConf = 60 + (secondaryRatio * 30);
+    let recoveryConf = 60 + ((secondary.count / total) * 30);
     recoveryConf = Math.min(89, Math.round(recoveryConf));
     
     return {
@@ -1296,7 +1328,7 @@ function analyzePatternsAdvanced(history) {
 // ==================== ENGINE CONTROL ====================
 function toggleEngine() {
   if (!isAuthenticated) {
-    alert('Please authenticate with Deriv first.');
+    alert('Please authenticate with Deriv first. Click "LOGIN WITH DERIV" or use "Continue in Demo Mode".');
     return;
   }
   
@@ -1326,15 +1358,15 @@ function init() {
   renderDigitHistory();
   renderLog();
   
-  // Check for OAuth callback first
+  // CHECK FOR OAUTH CALLBACK FIRST
   const hasAuth = checkOAuthCallback();
   
   if (hasAuth) {
+    console.log('✅ Authenticated - ready to start');
     updateStatus('warning', 'READY');
-    // User came back from OAuth - they can press START ENGINE
   } else {
+    console.log('🔒 Authentication required');
     updateStatus('error', 'AUTH REQUIRED');
-    // Show auth overlay (it's visible by default)
   }
 }
 
@@ -1346,10 +1378,9 @@ window.skipAuthDemo = skipAuthDemo;
 window.logoutAndReset = logoutAndReset;
 
 init();
-console.log('🚀 FlowState Pro v3.0 Ready');
-console.log('🔐 Auto OAuth with Deriv App ID:', DERIV_APP_ID);
-console.log('🎯 Minimum 95% confidence required for signals');
-console.log('💡 Recovery digit included with every signal');
+console.log('🚀 FlowState Pro v3.1 Ready');
+console.log('📍 Callback URL:', CALLBACK_URL);
+console.log('🔑 App ID:', DERIV_APP_ID);
 </script>
 </body>
 </html>
