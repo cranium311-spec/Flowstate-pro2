@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FlowState Pro • Deriv Matches Signal Engine</title>
+<title>FlowState Pro • Deriv Matches & Even/Odd Signals</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -15,6 +15,7 @@
     --accent2: #ff6b35;
     --accent3: #39ff14;
     --gold: #ffd700;
+    --purple: #a855f7;
     --muted: #3a5a7a;
     --text: #c8e0f4;
     --text2: #6a90b0;
@@ -23,6 +24,7 @@
     --warning: #ffba08;
     --glow: 0 0 20px rgba(0,229,255,0.3);
     --glow2: 0 0 30px rgba(57,255,20,0.2);
+    --glow-purple: 0 0 20px rgba(168,85,247,0.3);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   
@@ -61,96 +63,50 @@
   .container {
     position: relative;
     z-index: 2;
-    max-width: 1300px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 20px 16px 40px;
+    padding: 16px 16px 40px;
   }
 
-  /* AUTH OVERLAY */
-  .auth-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(3,9,18,0.97);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
-  }
-  .auth-overlay.hidden { display: none; }
-
-  .auth-card {
-    background: var(--panel);
-    border: 1px solid var(--accent);
-    border-radius: 24px;
-    padding: 3rem 2.5rem;
-    max-width: 520px;
-    width: 90%;
-    text-align: center;
-    box-shadow: 0 0 80px rgba(0,229,255,0.25);
-    animation: modalIn 0.4s ease;
-  }
-  @keyframes modalIn {
-    from { opacity: 0; transform: scale(0.9); }
-    to { opacity: 1; transform: scale(1); }
-  }
-  .auth-card h2 {
-    font-family: 'Orbitron', monospace;
-    color: var(--accent);
-    font-size: 1.5rem;
-    letter-spacing: 3px;
-    margin-bottom: 1rem;
-  }
-  .auth-card p {
-    color: var(--text2);
-    margin-bottom: 1.5rem;
-    line-height: 1.6;
-  }
-  .auth-card .deriv-logo {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-  }
-  .auth-card .callback-url {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    background: rgba(255,255,255,0.03);
-    padding: 6px 12px;
-    border-radius: 6px;
-    word-break: break-all;
-    margin: 1rem 0;
-  }
-
+  /* HEADER */
   .header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--border);
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
   }
-  .logo-wrap { display: flex; align-items: center; gap: 14px; }
+  .logo-wrap { display: flex; align-items: center; gap: 12px; }
   .logo-icon {
-    width: 44px; height: 44px;
+    width: 40px; height: 40px;
     border: 2px solid var(--accent);
     border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     box-shadow: var(--glow);
     background: rgba(0,229,255,0.05);
   }
-  .logo-icon svg { width: 24px; height: 24px; }
+  .logo-icon svg { width: 22px; height: 22px; }
   .logo-text {
     font-family: 'Orbitron', monospace;
-    font-size: 18px; font-weight: 900;
+    font-size: 16px; font-weight: 900;
     color: var(--accent);
     letter-spacing: 2px;
     text-shadow: 0 0 20px rgba(0,229,255,0.5);
   }
   .logo-sub {
-    font-size: 11px; color: var(--text2);
+    font-size: 10px; color: var(--text2);
     letter-spacing: 3px; text-transform: uppercase; margin-top: 2px;
+  }
+
+  /* TOP RIGHT BUTTONS */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
   .status-badge {
@@ -159,7 +115,7 @@
     border: 1px solid rgba(57,255,20,0.3);
     border-radius: 20px; padding: 6px 14px;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 13px; color: var(--success); letter-spacing: 2px;
+    font-size: 11px; color: var(--success); letter-spacing: 2px;
   }
   .status-badge.error {
     border-color: rgba(255,45,85,0.3);
@@ -171,93 +127,152 @@
     background: rgba(255,186,8,0.07);
     color: var(--warning);
   }
+  .status-badge.idle {
+    border-color: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.03);
+    color: var(--text2);
+  }
   .live-dot {
     width: 8px; height: 8px; border-radius: 50%;
     animation: pulse 1.5s infinite;
-    box-shadow: 0 0 8px var(--success);
   }
-  .live-dot.green { background: var(--success); }
+  .live-dot.green { background: var(--success); box-shadow: 0 0 8px var(--success); }
   .live-dot.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
   .live-dot.yellow { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+  .live-dot.gray { background: #555; }
   @keyframes pulse {
     0%,100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.5; transform: scale(0.8); }
   }
 
+  .btn {
+    padding: 8px 18px; border-radius: 20px;
+    font-family: 'Orbitron', monospace;
+    font-size: 9px; font-weight: 700; letter-spacing: 2px;
+    cursor: pointer; text-transform: uppercase;
+    transition: all 0.3s ease;
+    border: 1px solid var(--border);
+    background: var(--panel); color: var(--text2);
+    white-space: nowrap;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-connect {
+    background: linear-gradient(135deg, #00c4e0, #0097b2);
+    color: #030912;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,229,255,0.3);
+    font-size: 10px;
+    padding: 10px 22px;
+  }
+  .btn-connect:hover { box-shadow: 0 6px 30px rgba(0,229,255,0.5); }
+  .btn-connect.connected {
+    background: linear-gradient(135deg, #16a34a, #15803d);
+    box-shadow: 0 4px 20px rgba(57,255,20,0.3);
+  }
+
+  .btn-disconnect {
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    background: rgba(255,45,85,0.05);
+    font-size: 8px;
+    padding: 6px 12px;
+  }
+
+  .btn-oauth {
+    border: 1px solid rgba(255,215,0,0.4);
+    color: var(--gold);
+    background: rgba(255,215,0,0.05);
+    font-size: 8px;
+    padding: 6px 12px;
+  }
+  .btn-oauth:hover {
+    background: rgba(255,215,0,0.12);
+    border-color: var(--gold);
+  }
+
+  /* STRATEGY TABS */
+  .strategy-tabs {
+    display: flex; gap: 8px; margin-bottom: 16px;
+  }
+  .strategy-tab {
+    flex: 1; padding: 12px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text2);
+    border-radius: 12px; cursor: pointer;
+    text-align: center; transition: all 0.25s ease;
+    font-family: 'Orbitron', monospace;
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+  }
+  .strategy-tab:hover { border-color: var(--accent); color: var(--accent); }
+  .strategy-tab.active-matches {
+    border-color: var(--gold); color: var(--gold);
+    background: rgba(255,215,0,0.08);
+    box-shadow: 0 0 20px rgba(255,215,0,0.2);
+  }
+  .strategy-tab.active-evenodd {
+    border-color: var(--purple); color: var(--purple);
+    background: rgba(168,85,247,0.08);
+    box-shadow: 0 0 20px rgba(168,85,247,0.2);
+  }
+
   .section-label {
     font-family: 'Orbitron', monospace;
-    font-size: 10px; letter-spacing: 4px;
+    font-size: 9px; letter-spacing: 4px;
     color: var(--text2); text-transform: uppercase;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 
   .market-grid {
-    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
   }
   .market-btn {
-    flex: 1; min-width: 100px; padding: 12px 8px;
+    flex: 1; min-width: 85px; padding: 10px 6px;
     border: 1px solid var(--border);
     background: var(--panel); color: var(--text2);
-    border-radius: 10px; cursor: pointer;
+    border-radius: 8px; cursor: pointer;
     transition: all 0.25s ease;
     font-family: 'Orbitron', monospace;
-    font-size: 10px; font-weight: 700; letter-spacing: 1px;
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
     text-align: center;
   }
-  .market-btn:hover {
-    border-color: var(--accent); color: var(--accent);
-    box-shadow: var(--glow); transform: translateY(-2px);
-  }
+  .market-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: var(--glow); }
   .market-btn.active {
     border-color: var(--accent); color: var(--accent);
     background: rgba(0,229,255,0.08); box-shadow: var(--glow);
   }
-  .market-vol { font-size: 9px; color: var(--text2); letter-spacing: 1px; margin-top: 3px; }
-  .market-btn.active .market-vol { color: rgba(0,229,255,0.6); }
+  .market-vol { font-size: 8px; color: var(--text2); letter-spacing: 1px; margin-top: 2px; }
 
   .main-grid {
-    display: grid; grid-template-columns: 1fr 360px; gap: 18px;
+    display: grid; grid-template-columns: 1fr 380px; gap: 16px;
   }
-  @media(max-width:900px) { .main-grid { grid-template-columns: 1fr; } }
+  @media(max-width:1000px) { .main-grid { grid-template-columns: 1fr; } }
 
   .signal-card {
     background: var(--panel); border: 1px solid var(--border);
     border-radius: 16px; overflow: hidden;
   }
   .signal-card-header {
-    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
     background: rgba(0,229,255,0.03);
   }
   .signal-card-title {
-    font-family: 'Orbitron', monospace; font-size: 12px;
+    font-family: 'Orbitron', monospace; font-size: 11px;
     letter-spacing: 3px; color: var(--accent); text-transform: uppercase;
-  }
-  .strategy-tag {
-    font-family: 'Share Tech Mono', monospace; font-size: 10px;
-    color: var(--gold); background: rgba(255,215,0,0.08);
-    border: 1px solid rgba(255,215,0,0.25);
-    padding: 3px 10px; border-radius: 4px; letter-spacing: 2px;
   }
 
   .signal-body {
-    padding: 24px; position: relative;
-    min-height: 380px;
+    padding: 20px; position: relative;
+    min-height: 340px;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-  }
-
-  .loading-overlay {
-    position: absolute; inset: 0;
-    background: rgba(3,9,18,0.92);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 20px; z-index: 10;
-    border-radius: 0 0 16px 16px;
   }
 
   .radar-ring {
-    position: relative; width: 100px; height: 100px;
+    position: relative; width: 80px; height: 80px;
   }
   .radar-ring::before, .radar-ring::after {
     content: ''; position: absolute; border-radius: 50%;
@@ -267,10 +282,10 @@
     inset: 0; animation: radarPing 1.5s ease-out infinite; opacity: 0.8;
   }
   .radar-ring::after {
-    inset: 15px; animation: radarPing 1.5s ease-out infinite 0.5s; opacity: 0.5;
+    inset: 12px; animation: radarPing 1.5s ease-out infinite 0.5s; opacity: 0.5;
   }
   .radar-center {
-    position: absolute; inset: 35px;
+    position: absolute; inset: 28px;
     background: var(--accent); border-radius: 50%;
     box-shadow: 0 0 20px var(--accent);
     animation: radarCenter 1.5s ease-in-out infinite;
@@ -284,12 +299,6 @@
     50% { transform: scale(1.3); }
   }
 
-  .loading-text {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 13px; color: var(--text2);
-    letter-spacing: 3px; text-transform: uppercase;
-  }
-
   .signal-display { text-align: center; width: 100%; }
   .signal-active { animation: signalAppear 0.5s cubic-bezier(.34,1.56,.64,1); }
   @keyframes signalAppear {
@@ -297,63 +306,82 @@
     100% { opacity: 1; transform: scale(1); }
   }
 
-  .market-name {
-    font-family: 'Orbitron', monospace; font-size: 13px;
-    letter-spacing: 4px; color: var(--text2);
-    text-transform: uppercase; margin-bottom: 4px;
+  .strategy-badge {
+    display: inline-block;
+    padding: 4px 12px; border-radius: 20px;
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    margin-bottom: 12px;
   }
-  .signal-type-label {
-    font-size: 14px; letter-spacing: 3px;
-    color: var(--gold); text-transform: uppercase; margin-bottom: 16px;
-    font-weight: 700;
+  .strategy-badge.matches {
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.3);
+    color: var(--gold);
+  }
+  .strategy-badge.evenodd {
+    background: rgba(168,85,247,0.1);
+    border: 1px solid rgba(168,85,247,0.3);
+    color: var(--purple);
   }
 
   .digit-display {
     display: flex; align-items: center;
-    justify-content: center; gap: 20px; margin-bottom: 20px;
+    justify-content: center; gap: 16px; margin-bottom: 16px;
   }
   .digit-box {
-    width: 100px; height: 100px;
+    width: 90px; height: 90px;
     border: 2px solid var(--accent);
     border-radius: 20px;
     display: flex; align-items: center; justify-content: center;
     font-family: 'Orbitron', monospace;
-    font-size: 56px; font-weight: 900;
+    font-size: 50px; font-weight: 900;
     color: var(--accent);
     background: rgba(0,229,255,0.07);
     box-shadow: var(--glow), inset 0 0 30px rgba(0,229,255,0.05);
   }
-  .digit-box.prep {
+  .digit-box.prep-matches {
     border-color: var(--gold); color: var(--gold);
-    box-shadow: 0 0 40px rgba(255,215,0,0.5), inset 0 0 30px rgba(255,215,0,0.05);
+    box-shadow: 0 0 40px rgba(255,215,0,0.5);
+  }
+  .digit-box.prep-evenodd {
+    border-color: var(--purple); color: var(--purple);
+    box-shadow: 0 0 40px rgba(168,85,247,0.5);
   }
   .digit-box.live {
     border-color: var(--accent3); color: var(--accent3);
-    box-shadow: 0 0 40px rgba(57,255,20,0.5), inset 0 0 30px rgba(57,255,20,0.05);
+    box-shadow: 0 0 40px rgba(57,255,20,0.5);
+  }
+
+  .evenodd-display {
+    font-family: 'Orbitron', monospace;
+    font-size: 28px; font-weight: 900;
+    padding: 12px 24px; border-radius: 12px;
+  }
+  .evenodd-display.even {
+    background: rgba(0,229,255,0.1);
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    box-shadow: var(--glow);
+  }
+  .evenodd-display.odd {
+    background: rgba(168,85,247,0.1);
+    border: 2px solid var(--purple);
+    color: var(--purple);
+    box-shadow: var(--glow-purple);
   }
 
   .recovery-section {
     background: rgba(255,107,53,0.05);
     border: 1px solid rgba(255,107,53,0.3);
     border-radius: 12px;
-    padding: 12px 16px;
-    margin-top: 12px;
+    padding: 10px 14px;
+    margin-top: 10px;
     text-align: center;
-  }
-  .recovery-label {
-    font-size: 10px; letter-spacing: 3px;
-    color: var(--accent2); text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-  .recovery-digit {
-    font-family: 'Orbitron', monospace;
-    font-size: 24px; font-weight: 900;
-    color: var(--accent2);
   }
 
   .signal-meta {
     display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px; margin-top: 8px;
+    gap: 8px; margin-top: 8px;
   }
   .meta-box {
     background: rgba(255,255,255,0.03);
@@ -362,34 +390,35 @@
   }
   .meta-val {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 16px; font-weight: 700; line-height: 1; margin-bottom: 3px;
+    font-size: 15px; font-weight: 700; line-height: 1; margin-bottom: 3px;
   }
   .meta-key {
-    font-size: 10px; letter-spacing: 2px;
+    font-size: 9px; letter-spacing: 2px;
     color: var(--text2); text-transform: uppercase;
   }
   .meta-val.green { color: var(--success); }
   .meta-val.orange { color: var(--accent2); }
   .meta-val.gold { color: var(--gold); }
+  .meta-val.purple { color: var(--purple); }
   .meta-val.cyan { color: var(--accent); }
 
   .confidence-bar-wrap {
-    margin-top: 16px;
+    margin-top: 14px;
     background: rgba(255,255,255,0.04);
     border: 1px solid var(--border);
-    border-radius: 10px; padding: 12px 14px;
+    border-radius: 10px; padding: 10px 12px;
     width: 100%;
   }
   .conf-label-row {
     display: flex; justify-content: space-between; margin-bottom: 6px;
   }
   .conf-label {
-    font-size: 11px; letter-spacing: 2px;
+    font-size: 10px; letter-spacing: 2px;
     text-transform: uppercase; color: var(--text2);
   }
   .conf-pct {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 16px; color: var(--success); font-weight: 700;
+    font-size: 15px; font-weight: 700;
   }
   .conf-track {
     height: 8px; background: var(--border);
@@ -397,15 +426,21 @@
   }
   .conf-fill {
     height: 100%; border-radius: 4px;
-    background: linear-gradient(90deg, var(--accent3), var(--accent), var(--gold));
-    box-shadow: 0 0 15px rgba(57,255,20,0.5);
     transition: width 0.6s ease;
+  }
+  .conf-fill.matches {
+    background: linear-gradient(90deg, var(--accent3), var(--accent), var(--gold));
+    box-shadow: 0 0 15px rgba(255,215,0,0.5);
+  }
+  .conf-fill.evenodd {
+    background: linear-gradient(90deg, var(--accent3), var(--accent), var(--purple));
+    box-shadow: 0 0 15px rgba(168,85,247,0.5);
   }
 
   .countdown-display {
-    margin-top: 14px;
+    margin-top: 12px;
     font-family: 'Orbitron', monospace;
-    font-size: 36px; font-weight: 900;
+    font-size: 32px; font-weight: 900;
     color: var(--accent);
     text-shadow: 0 0 20px rgba(0,229,255,0.5);
     text-align: center;
@@ -417,14 +452,14 @@
 
   .tick-progress {
     display: flex; justify-content: center; gap: 8px;
-    margin-top: 12px;
+    margin-top: 10px;
   }
   .tick-dot {
-    width: 35px; height: 35px; border-radius: 8px;
+    width: 32px; height: 32px; border-radius: 8px;
     border: 2px solid var(--border);
     display: flex; align-items: center; justify-content: center;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 14px; font-weight: 700;
+    font-size: 13px; font-weight: 700;
     color: var(--text2); transition: all 0.3s;
   }
   .tick-dot.filled {
@@ -434,42 +469,35 @@
     box-shadow: 0 0 10px rgba(57,255,20,0.3);
   }
 
-  .right-panel { display: flex; flex-direction: column; gap: 14px; }
+  .right-panel { display: flex; flex-direction: column; gap: 12px; }
 
   .panel-card {
     background: var(--panel); border: 1px solid var(--border);
     border-radius: 14px; overflow: hidden;
   }
   .panel-header {
-    padding: 12px 16px; border-bottom: 1px solid var(--border);
-    font-family: 'Orbitron', monospace; font-size: 9px;
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    font-family: 'Orbitron', monospace; font-size: 8px;
     letter-spacing: 3px; color: var(--accent);
     text-transform: uppercase; background: rgba(0,229,255,0.03);
   }
-  .panel-body { padding: 12px 14px; }
+  .panel-body { padding: 10px 12px; }
 
   .digit-history {
-    display: flex; flex-wrap: wrap; gap: 5px;
+    display: flex; flex-wrap: wrap; gap: 4px;
   }
   .hist-digit {
-    width: 30px; height: 30px; border-radius: 7px;
+    width: 28px; height: 28px; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 13px; font-weight: 700;
+    font-size: 12px; font-weight: 700;
     border: 1px solid transparent; transition: all 0.2s;
   }
-  .hist-digit.hot {
-    background: rgba(255,107,53,0.2);
-    border-color: rgba(255,107,53,0.5); color: var(--accent2);
-  }
-  .hist-digit.cold {
-    background: rgba(0,229,255,0.1);
-    border-color: rgba(0,229,255,0.3); color: var(--accent);
-  }
-  .hist-digit.neutral {
-    background: rgba(255,255,255,0.04);
-    border-color: var(--border); color: var(--text2);
-  }
+  .hist-digit.hot { background: rgba(255,107,53,0.2); border-color: rgba(255,107,53,0.5); color: var(--accent2); }
+  .hist-digit.cold { background: rgba(0,229,255,0.1); border-color: rgba(0,229,255,0.3); color: var(--accent); }
+  .hist-digit.neutral { background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--text2); }
+  .hist-digit.even-digit { background: rgba(0,229,255,0.12); border-color: rgba(0,229,255,0.3); }
+  .hist-digit.odd-digit { background: rgba(168,85,247,0.12); border-color: rgba(168,85,247,0.3); }
   .hist-digit.new-entry { animation: flashIn 0.5s ease; }
   @keyframes flashIn {
     0% { transform: scale(1.5); background: rgba(0,229,255,0.4); }
@@ -477,8 +505,8 @@
   }
 
   .log-list {
-    display: flex; flex-direction: column; gap: 6px;
-    max-height: 220px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 5px;
+    max-height: 200px; overflow-y: auto;
   }
   .log-list::-webkit-scrollbar { width: 4px; }
   .log-list::-webkit-scrollbar-track { background: transparent; }
@@ -486,7 +514,7 @@
 
   .log-item {
     display: flex; align-items: center; gap: 8px;
-    padding: 8px 10px;
+    padding: 7px 9px;
     background: rgba(255,255,255,0.02);
     border: 1px solid rgba(255,255,255,0.04);
     border-radius: 8px;
@@ -496,127 +524,57 @@
     from { opacity: 0; transform: translateX(-10px); }
     to { opacity: 1; transform: translateX(0); }
   }
-  .log-digit-badge {
-    width: 28px; height: 28px; border-radius: 6px;
+  .log-badge {
+    width: 26px; height: 26px; border-radius: 6px;
     display: flex; align-items: center; justify-content: center;
     font-family: 'Orbitron', monospace;
-    font-size: 14px; font-weight: 900;
-    background: rgba(0,229,255,0.1);
-    border: 1px solid rgba(0,229,255,0.3);
-    color: var(--accent); flex-shrink: 0;
+    font-size: 12px; font-weight: 900;
+    flex-shrink: 0;
   }
-  .log-digit-badge.won {
-    background: rgba(57,255,20,0.15); border-color: rgba(57,255,20,0.4); color: var(--success);
-  }
-  .log-digit-badge.lost {
-    background: rgba(255,45,85,0.15); border-color: rgba(255,45,85,0.4); color: var(--danger);
-  }
+  .log-badge.matches { background: rgba(255,215,0,0.12); border: 1px solid rgba(255,215,0,0.3); color: var(--gold); }
+  .log-badge.evenodd { background: rgba(168,85,247,0.12); border: 1px solid rgba(168,85,247,0.3); color: var(--purple); }
+  .log-badge.won { background: rgba(57,255,20,0.15); border-color: rgba(57,255,20,0.4); color: var(--success); }
+  .log-badge.lost { background: rgba(255,45,85,0.15); border-color: rgba(255,45,85,0.4); color: var(--danger); }
   .log-info { flex: 1; min-width: 0; }
-  .log-market { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: var(--text2); }
-  .log-conf { font-size: 11px; font-weight: 600; }
-  .log-time { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--muted); flex-shrink: 0; }
-  .log-recovery { font-size: 9px; color: var(--accent2); }
+  .log-type { font-family: 'Share Tech Mono', monospace; font-size: 9px; color: var(--text2); text-transform: uppercase; }
+  .log-detail { font-size: 10px; font-weight: 600; }
+  .log-time { font-family: 'Share Tech Mono', monospace; font-size: 8px; color: var(--muted); flex-shrink: 0; }
 
   .stats-row {
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 10px; margin-bottom: 16px;
+    display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px; margin-bottom: 14px;
   }
   .stat-box {
     background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 12px 10px; text-align: center;
+    border-radius: 10px; padding: 10px 8px; text-align: center;
   }
   .stat-val {
     font-family: 'Orbitron', monospace;
-    font-size: 22px; font-weight: 900; line-height: 1; margin-bottom: 4px;
+    font-size: 18px; font-weight: 900; line-height: 1; margin-bottom: 3px;
   }
   .stat-lbl {
-    font-size: 10px; letter-spacing: 2px;
+    font-size: 8px; letter-spacing: 2px;
     color: var(--text2); text-transform: uppercase;
-  }
-
-  .btn {
-    padding: 14px 20px; border-radius: 10px;
-    font-family: 'Orbitron', monospace;
-    font-size: 11px; font-weight: 700; letter-spacing: 3px;
-    cursor: pointer; text-transform: uppercase;
-    transition: all 0.25s ease;
-    width: 100%; text-align: center;
-  }
-  .btn:hover { transform: translateY(-1px); }
-  .btn.accent {
-    border: 1px solid var(--accent); color: var(--accent);
-    box-shadow: var(--glow);
-    background: rgba(0,229,255,0.08);
-  }
-  .btn.accent:hover { box-shadow: 0 0 40px rgba(0,229,255,0.4); }
-  .btn.danger {
-    border: 1px solid var(--danger); color: var(--danger);
-    background: rgba(255,45,85,0.05);
-  }
-  .btn.green {
-    border: 1px solid var(--success); color: var(--success);
-    background: rgba(57,255,20,0.08);
-    box-shadow: var(--glow2);
-  }
-
-  .empty-signal { text-align: center; padding: 30px 0; }
-  .empty-icon {
-    width: 60px; height: 60px; margin: 0 auto 14px;
-    border: 2px dashed var(--border); border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px;
-  }
-  .empty-text {
-    font-size: 14px; color: var(--text2);
-    letter-spacing: 2px; text-transform: uppercase;
-  }
-  .empty-sub {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px; color: var(--muted); margin-top: 6px;
   }
 
   .help-note {
     background: rgba(0,229,255,0.03);
     border: 1px solid rgba(0,229,255,0.1);
     border-radius: 8px;
-    padding: 12px; margin-top: 10px;
-    font-size: 11px; color: var(--text2);
-    line-height: 1.5;
+    padding: 10px; margin-top: 8px;
+    font-size: 10px; color: var(--text2);
+    line-height: 1.4;
   }
   .help-note strong { color: var(--accent); }
 
-  @media(max-width:520px) {
-    .signal-meta { grid-template-columns: 1fr 1fr; }
+  @media(max-width:600px) {
     .stats-row { grid-template-columns: 1fr 1fr; }
-    .digit-box { width: 80px; height: 80px; font-size: 44px; }
+    .signal-meta { grid-template-columns: 1fr 1fr; }
+    .digit-box { width: 70px; height: 70px; font-size: 40px; }
   }
 </style>
 </head>
 <body>
-
-<!-- AUTH OVERLAY -->
-<div class="auth-overlay" id="auth-overlay">
-  <div class="auth-card">
-    <div class="deriv-logo">🔐</div>
-    <h2>Connect to Deriv</h2>
-    <p>You'll be redirected to <strong>Deriv's secure login</strong> to authorize this app. Your credentials stay with Deriv — we never see your password.</p>
-    <div class="callback-url">
-      Callback URL: https://cranium311-spec.github.io/Flowstate-pro2/
-    </div>
-    <p style="font-size:0.85rem;color:var(--accent3);">
-      ✅ After authorization, you'll be <strong>automatically redirected back</strong> here to start receiving signals.
-    </p>
-    <button class="btn accent" onclick="startOAuthFlow()" style="margin-bottom:0.8rem;">
-      🔐 LOGIN WITH DERIV
-    </button>
-    <button class="btn" onclick="skipAuthDemo()" style="background:rgba(255,255,255,0.03);border:1px solid var(--border);color:var(--text2);">
-      Continue in Demo Mode
-    </button>
-    <p style="font-size:0.7rem;color:var(--muted);margin-top:1rem;">
-      Make sure your Deriv App has this callback URL registered
-    </p>
-  </div>
-</div>
 
 <div class="container">
 
@@ -630,18 +588,33 @@
       </div>
       <div>
         <div class="logo-text">FLOWSTATE</div>
-        <div class="logo-sub">Matches Signal Engine</div>
+        <div class="logo-sub">Matches & Even/Odd Engine</div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <div class="status-badge" id="status-badge">
-        <div class="live-dot" id="status-dot"></div>
-        <span id="status-text">AUTH REQUIRED</span>
+    
+    <!-- TOP RIGHT BUTTONS -->
+    <div class="header-actions">
+      <div class="status-badge idle" id="status-badge">
+        <div class="live-dot gray" id="status-dot"></div>
+        <span id="status-text">OFFLINE</span>
       </div>
-      <button class="btn" onclick="logoutAndReset()" id="logout-btn" style="width:auto;padding:6px 14px;font-size:9px;display:none;background:rgba(255,45,85,0.05);border:1px solid var(--danger);color:var(--danger);">
-        DISCONNECT
+      <button class="btn btn-connect" id="btn-connect" onclick="toggleConnection()">
+        ⚡ CONNECT
+      </button>
+      <button class="btn btn-oauth" onclick="startOAuth()" title="Login with Deriv OAuth">
+        🔑 DERIV LOGIN
       </button>
     </div>
+  </div>
+
+  <!-- STRATEGY TABS -->
+  <div class="strategy-tabs">
+    <button class="strategy-tab active-matches" id="tab-matches" onclick="switchStrategy('matches')">
+      🎯 MATCHES STRATEGY
+    </button>
+    <button class="strategy-tab" id="tab-evenodd" onclick="switchStrategy('evenodd')">
+      🟣 EVEN/ODD STRATEGY
+    </button>
   </div>
 
   <!-- STATS ROW -->
@@ -655,8 +628,12 @@
       <div class="stat-lbl">Win Rate</div>
     </div>
     <div class="stat-box">
-      <div class="stat-val" style="color:var(--accent)" id="stat-hot">--</div>
-      <div class="stat-lbl">Current Digit</div>
+      <div class="stat-val" style="color:var(--accent)" id="stat-digit">--</div>
+      <div class="stat-lbl">Last Digit</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--purple)" id="stat-evenodd">--</div>
+      <div class="stat-lbl">Even/Odd</div>
     </div>
   </div>
 
@@ -670,8 +647,8 @@
     <!-- SIGNAL CARD -->
     <div class="signal-card">
       <div class="signal-card-header">
-        <span class="signal-card-title">Signal Output</span>
-        <span class="strategy-tag">MATCHES 95%+</span>
+        <span class="signal-card-title" id="signal-card-title">SIGNAL OUTPUT</span>
+        <span id="strategy-tag" style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);padding:3px 10px;border-radius:4px;">MATCHES</span>
       </div>
       <div class="signal-body" id="signal-body"></div>
     </div>
@@ -679,7 +656,7 @@
     <!-- RIGHT PANEL -->
     <div class="right-panel">
       <div class="panel-card">
-        <div class="panel-header">Last Digits Stream</div>
+        <div class="panel-header">Digit Stream</div>
         <div class="panel-body">
           <div class="digit-history" id="digit-history"></div>
         </div>
@@ -689,41 +666,31 @@
         <div class="panel-header">Signal History</div>
         <div class="panel-body">
           <div class="log-list" id="log-list">
-            <div class="empty-signal"><div class="empty-text" style="font-size:11px;">No signals yet</div></div>
+            <div style="text-align:center;color:var(--text2);font-size:10px;padding:10px;">No signals yet</div>
           </div>
         </div>
       </div>
 
-      <button class="btn green" id="control-btn" onclick="toggleEngine()">
-        START ENGINE
-      </button>
-      
       <div class="help-note">
         <strong>How it works:</strong><br>
-        • Signals only at <strong>95%+ confidence</strong><br>
-        • Each signal has a <strong>recovery digit</strong><br>
-        • <strong>15-second countdown</strong> then <strong>5-tick window</strong><br>
-        • Place MATCHES trade on Deriv
+        • <strong>Matches:</strong> Predicts exact digit (0-9)<br>
+        • <strong>Even/Odd:</strong> Predicts even or odd<br>
+        • Both at <strong>95%+ confidence</strong><br>
+        • 15s countdown → 5-tick window
       </div>
     </div>
   </div>
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v3.1 ====================
-// Your Deriv App ID
+// ==================== FLOWSTATE PRO v5.1 ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
-
-// YOUR GITHUB PAGES URL - This is where Deriv will redirect back to
-const CALLBACK_URL = 'https://cranium311-spec.github.io/Flowstate-pro2/';
-
 const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`;
-const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&l=en&brand=deriv&redirect_uri=${encodeURIComponent(CALLBACK_URL)}`;
+const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&l=en&brand=deriv&redirect_uri=${encodeURIComponent(window.location.href)}`;
 
-console.log('🔗 OAuth URL:', OAUTH_URL);
-console.log('📍 Callback URL:', CALLBACK_URL);
+console.log('🚀 FlowState Pro v5.1');
+console.log('🔑 App ID:', DERIV_APP_ID);
 
-// All markets
 const MARKETS = {
   'R_10':   { name: 'Volatility 10',  decimals: 3 },
   'R_25':   { name: 'Volatility 25',  decimals: 3 },
@@ -738,8 +705,8 @@ const MARKETS = {
 };
 
 // ==================== STATE ====================
-let engineRunning = false;
-let isAuthenticated = false;
+let isConnected = false;
+let currentStrategy = 'matches';
 let currentMarket = 'R_100';
 let ws = null;
 let tickHistory = [];
@@ -749,7 +716,6 @@ let stats = { total: 0, won: 0 };
 let signalLog = [];
 let lastDigits = [];
 let currentPrice = null;
-let derivToken = null;
 
 // ==================== AUDIO ====================
 let audioCtx = null;
@@ -772,114 +738,6 @@ function beep(freq = 880, dur = 0.25, vol = 0.2) {
   } catch(e) {}
 }
 
-// ==================== AUTH ====================
-function startOAuthFlow() {
-  console.log('🔐 Redirecting to Deriv OAuth...');
-  console.log('📍 Will return to:', CALLBACK_URL);
-  
-  // Save state
-  localStorage.setItem('flowstate_oauth_pending', 'true');
-  
-  // Redirect to Deriv
-  window.location.href = OAUTH_URL;
-}
-
-function skipAuthDemo() {
-  isAuthenticated = true;
-  document.getElementById('auth-overlay').classList.add('hidden');
-  document.getElementById('logout-btn').style.display = 'inline-block';
-  updateStatus('warning', 'DEMO MODE');
-  initAudio();
-  console.log('🚀 Demo mode activated');
-}
-
-function checkOAuthCallback() {
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get('token');
-  const error = params.get('error');
-  
-  // Check if we're returning from OAuth
-  const wasPending = localStorage.getItem('flowstate_oauth_pending');
-  
-  if (error) {
-    console.error('❌ OAuth error:', error);
-    localStorage.removeItem('flowstate_oauth_pending');
-    window.history.replaceState({}, document.title, CALLBACK_URL);
-    alert('OAuth failed: ' + error + '. Please try again or use Demo Mode.');
-    return false;
-  }
-  
-  if (token) {
-    console.log('✅ OAuth token received!');
-    console.log('🔑 Token:', token.substring(0, 20) + '...');
-    
-    // Clean URL immediately
-    window.history.replaceState({}, document.title, CALLBACK_URL);
-    
-    // Store token
-    derivToken = token;
-    localStorage.setItem('deriv_token', token);
-    localStorage.removeItem('flowstate_oauth_pending');
-    isAuthenticated = true;
-    
-    // Hide auth overlay
-    document.getElementById('auth-overlay').classList.add('hidden');
-    document.getElementById('logout-btn').style.display = 'inline-block';
-    
-    initAudio();
-    updateStatus('warning', 'CONNECTING...');
-    
-    // Auto-start engine
-    if (!engineRunning) {
-      engineRunning = true;
-      updateControlButton();
-      connectWebSocket();
-    }
-    
-    return true;
-  }
-  
-  // Check if we were expecting a return but no token
-  if (wasPending) {
-    console.warn('⚠️ Returned from OAuth but no token found in URL');
-    localStorage.removeItem('flowstate_oauth_pending');
-    window.history.replaceState({}, document.title, CALLBACK_URL);
-  }
-  
-  // Check saved token
-  const saved = localStorage.getItem('deriv_token');
-  if (saved) {
-    console.log('🔑 Found saved token');
-    derivToken = saved;
-    isAuthenticated = true;
-    document.getElementById('auth-overlay').classList.add('hidden');
-    document.getElementById('logout-btn').style.display = 'inline-block';
-    return true;
-  }
-  
-  return false;
-}
-
-function logoutAndReset() {
-  engineRunning = false;
-  isAuthenticated = false;
-  derivToken = null;
-  localStorage.removeItem('deriv_token');
-  localStorage.removeItem('flowstate_oauth_pending');
-  
-  if (ws) ws.close();
-  ws = null;
-  activeSignal = null;
-  if (prepInterval) clearInterval(prepInterval);
-  prepInterval = null;
-  
-  document.getElementById('logout-btn').style.display = 'none';
-  document.getElementById('auth-overlay').classList.remove('hidden');
-  updateStatus('error', 'DISCONNECTED');
-  updateControlButton();
-  renderSignalBody();
-}
-
 // ==================== UI HELPERS ====================
 function $(id) { return document.getElementById(id); }
 
@@ -888,35 +746,213 @@ function updateStatus(type, text) {
   const dot = $('status-dot');
   const statusText = $('status-text');
   
-  badge.classList.remove('error', 'warning');
-  dot.classList.remove('green', 'red', 'yellow');
+  badge.className = 'status-badge';
+  dot.className = 'live-dot';
   
   if (type === 'connected') {
+    badge.classList.add('connected');
     dot.classList.add('green');
-  } else if (type === 'error') {
-    dot.classList.add('red');
-    badge.classList.add('error');
-  } else if (type === 'warning') {
-    dot.classList.add('yellow');
+    badge.style.color = 'var(--success)';
+    badge.style.borderColor = 'rgba(57,255,20,0.3)';
+    badge.style.background = 'rgba(57,255,20,0.07)';
+  } else if (type === 'connecting') {
     badge.classList.add('warning');
+    dot.classList.add('yellow');
+    badge.style.color = 'var(--warning)';
+    badge.style.borderColor = 'rgba(255,186,8,0.3)';
+    badge.style.background = 'rgba(255,186,8,0.07)';
+  } else if (type === 'error') {
+    badge.classList.add('error');
+    dot.classList.add('red');
+    badge.style.color = 'var(--danger)';
+    badge.style.borderColor = 'rgba(255,45,85,0.3)';
+    badge.style.background = 'rgba(255,45,85,0.07)';
+  } else {
+    badge.classList.add('idle');
+    dot.classList.add('gray');
+    badge.style.color = 'var(--text2)';
+    badge.style.borderColor = 'rgba(255,255,255,0.15)';
+    badge.style.background = 'rgba(255,255,255,0.03)';
   }
   
   statusText.textContent = text;
 }
 
-function updateControlButton() {
-  const btn = $('control-btn');
-  if (engineRunning) {
-    btn.textContent = 'STOP ENGINE';
-    btn.classList.remove('green');
-    btn.classList.add('danger');
+function updateConnectButton(state) {
+  const btn = $('btn-connect');
+  if (state === 'connected') {
+    btn.textContent = '✅ CONNECTED';
+    btn.classList.add('connected');
+    btn.onclick = disconnect;
+  } else if (state === 'connecting') {
+    btn.textContent = '⏳ CONNECTING...';
+    btn.disabled = true;
   } else {
-    btn.textContent = 'START ENGINE';
-    btn.classList.remove('danger');
-    btn.classList.add('green');
+    btn.textContent = '⚡ CONNECT';
+    btn.classList.remove('connected');
+    btn.disabled = false;
+    btn.onclick = toggleConnection;
   }
 }
 
+// ==================== CONNECTION ====================
+function toggleConnection() {
+  if (isConnected) {
+    disconnect();
+  } else {
+    connect();
+  }
+}
+
+function connect() {
+  initAudio();
+  updateStatus('connecting', 'CONNECTING...');
+  updateConnectButton('connecting');
+  
+  ws = new WebSocket(WS_URL);
+  
+  const timeout = setTimeout(() => {
+    if (!isConnected) {
+      updateStatus('error', 'TIMEOUT');
+      updateConnectButton('offline');
+      console.error('Connection timeout');
+    }
+  }, 12000);
+  
+  ws.onopen = () => {
+    console.log('✅ WebSocket connected');
+    clearTimeout(timeout);
+    isConnected = true;
+    
+    // Authorize if token saved
+    const token = localStorage.getItem('deriv_token');
+    if (token) {
+      ws.send(JSON.stringify({ authorize: token }));
+    }
+    
+    subscribeMarket();
+    updateStatus('connected', 'SYNCED');
+    updateConnectButton('connected');
+    renderSignalBody();
+  };
+  
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    
+    if (data.authorize) {
+      console.log('✅ Authorized');
+    }
+    
+    if (data.tick) {
+      processTick(data.tick);
+    }
+    
+    if (data.error) {
+      console.warn('Deriv error:', data.error);
+    }
+  };
+  
+  ws.onclose = () => {
+    console.log('WebSocket closed');
+    if (isConnected) {
+      updateStatus('error', 'RECONNECTING...');
+      updateConnectButton('connecting');
+      setTimeout(() => {
+        if (isConnected) connect();
+      }, 3000);
+    }
+  };
+  
+  ws.onerror = () => {
+    clearTimeout(timeout);
+    updateStatus('error', 'ERROR');
+    updateConnectButton('offline');
+  };
+}
+
+function disconnect() {
+  isConnected = false;
+  if (ws) ws.close();
+  ws = null;
+  activeSignal = null;
+  if (prepInterval) clearInterval(prepInterval);
+  prepInterval = null;
+  
+  updateStatus('idle', 'OFFLINE');
+  updateConnectButton('offline');
+  renderSignalBody();
+}
+
+function subscribeMarket() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ forget_all: 'ticks' }));
+  ws.send(JSON.stringify({ ticks: currentMarket, subscribe: 1 }));
+  console.log('📊 Subscribed to:', currentMarket);
+}
+
+function startOAuth() {
+  localStorage.setItem('flowstate_oauth_pending', 'true');
+  localStorage.setItem('flowstate_redirect', window.location.href);
+  window.location.href = OAUTH_URL;
+}
+
+// Check OAuth callback
+function checkOAuth() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+  if (token) {
+    console.log('✅ OAuth token received');
+    localStorage.setItem('deriv_token', token);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    // Auto-connect
+    if (!isConnected) connect();
+  }
+}
+
+// ==================== STRATEGY SWITCHING ====================
+function switchStrategy(strategy) {
+  currentStrategy = strategy;
+  
+  $('tab-matches').className = 'strategy-tab';
+  $('tab-evenodd').className = 'strategy-tab';
+  $('tab-matches').classList.add(strategy === 'matches' ? 'active-matches' : '');
+  $('tab-evenodd').classList.add(strategy === 'evenodd' ? 'active-evenodd' : '');
+  
+  const tag = $('strategy-tag');
+  if (strategy === 'matches') {
+    tag.textContent = 'MATCHES';
+    tag.style.color = 'var(--gold)';
+    tag.style.background = 'rgba(255,215,0,0.08)';
+    tag.style.border = '1px solid rgba(255,215,0,0.25)';
+    $('signal-card-title').textContent = 'MATCHES OUTPUT';
+  } else {
+    tag.textContent = 'EVEN/ODD';
+    tag.style.color = 'var(--purple)';
+    tag.style.background = 'rgba(168,85,247,0.08)';
+    tag.style.border = '1px solid rgba(168,85,247,0.25)';
+    $('signal-card-title').textContent = 'EVEN/ODD OUTPUT';
+  }
+  
+  activeSignal = null;
+  if (prepInterval) clearInterval(prepInterval);
+  prepInterval = null;
+  tickHistory = [];
+  renderSignalBody();
+  renderDigitHistory();
+}
+
+function switchMarket(sym) {
+  currentMarket = sym;
+  tickHistory = [];
+  activeSignal = null;
+  if (prepInterval) clearInterval(prepInterval);
+  prepInterval = null;
+  renderMarketButtons();
+  renderSignalBody();
+  subscribeMarket();
+}
+
+// ==================== RENDER ====================
 function renderMarketButtons() {
   const grid = $('market-grid');
   grid.innerHTML = Object.entries(MARKETS).map(([sym, cfg]) => `
@@ -931,80 +967,100 @@ function renderMarketButtons() {
 function renderSignalBody() {
   const body = $('signal-body');
   
-  if (!engineRunning) {
+  if (!isConnected) {
     body.innerHTML = `
-      <div class="empty-signal">
-        <div class="empty-icon">⚡</div>
-        <div class="empty-text">Engine Offline</div>
-        <div class="empty-sub">Press START ENGINE to begin</div>
+      <div style="text-align:center;color:var(--text2);padding:40px;">
+        <div style="font-size:50px;margin-bottom:16px;">🔌</div>
+        <div style="font-size:16px;letter-spacing:2px;margin-bottom:8px;">Not Connected</div>
+        <div style="font-size:11px;">Click <strong style="color:var(--accent);">CONNECT</strong> to start receiving signals</div>
       </div>`;
     return;
   }
   
   if (!activeSignal) {
     body.innerHTML = `
-      <div class="loading-overlay" style="position:relative;display:flex;">
+      <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;">
         <div class="radar-ring"><div class="radar-center"></div></div>
-        <div class="loading-text">Analyzing tick patterns...</div>
-        <div class="loading-text" style="font-size:10px;color:var(--gold);">Minimum 95% confidence required</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--text2);letter-spacing:3px;">
+          ${currentStrategy === 'matches' ? 'ANALYZING DIGIT PATTERNS...' : 'ANALYZING EVEN/ODD PATTERNS...'}
+        </div>
+        <div style="font-size:9px;color:var(--gold);">Minimum 95% confidence required</div>
         ${currentPrice ? `
-          <div style="font-family:'Share Tech Mono',monospace;font-size:18px;color:var(--accent);">
-            Last Digit: <strong style="font-size:28px;">${currentPrice.digit}</strong>
-          </div>` : ''}
+          <div style="font-family:'Share Tech Mono',monospace;font-size:16px;color:var(--accent);">
+            Last: <strong style="font-size:24px;">${currentPrice.digit}</strong>
+            <span style="color:${currentPrice.digit % 2 === 0 ? 'var(--accent)' : 'var(--purple)'};">
+              (${currentPrice.digit % 2 === 0 ? 'EVEN' : 'ODD'})
+            </span>
+          </div>` : '<div style="font-size:10px;color:var(--text2);">Waiting for tick data...</div>'}
       </div>`;
     return;
   }
   
   const sig = activeSignal;
+  const isMatches = sig.strategy === 'matches';
   const isPrep = sig.status === 'PREP';
   const isLive = sig.status === 'LIVE';
   const isSettled = sig.status === 'WON' || sig.status === 'LOST';
-  
-  const phaseClass = isPrep ? 'prep' : (isLive ? 'live' : '');
   
   if (isSettled) {
     const won = sig.status === 'WON';
     body.innerHTML = `
       <div class="signal-display signal-active" style="text-align:center;">
-        <div style="font-size:60px;margin-bottom:10px;">${won ? '✅' : '❌'}</div>
-        <div style="font-size:24px;font-weight:900;color:${won ? 'var(--success)' : 'var(--danger)'};margin-bottom:10px;">
-          MATCH ${won ? 'WON' : 'LOST'}
+        <div style="font-size:50px;margin-bottom:8px;">${won ? '✅' : '❌'}</div>
+        <div style="font-size:22px;font-weight:900;color:${won ? 'var(--success)' : 'var(--danger)'};margin-bottom:8px;">
+          ${isMatches ? 'MATCH' : 'EVEN/ODD'} ${won ? 'WON' : 'LOST'}
         </div>
-        <div style="color:var(--text2);">Primary: <strong style="color:var(--accent);font-size:20px;">${sig.digit}</strong></div>
-        <div style="color:var(--text2);">Recovery: <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong></div>
+        <div style="color:var(--text2);">
+          ${isMatches ? `Digit: <strong style="color:var(--accent);font-size:18px;">${sig.digit}</strong>` :
+            `Prediction: <strong style="color:${sig.prediction === 'EVEN' ? 'var(--accent)' : 'var(--purple)'};">${sig.prediction}</strong>`}
+        </div>
+        ${sig.recovery ? `<div style="color:var(--text2);font-size:11px;">Recovery: <strong style="color:var(--accent2);">${sig.recovery}</strong></div>` : ''}
         <div style="color:var(--text2);margin-top:4px;">Confidence: ${sig.confidence}%</div>
       </div>`;
     return;
   }
   
+  const phaseClass = isMatches ? (isPrep ? 'prep-matches' : '') : (isPrep ? 'prep-evenodd' : '');
+  
   body.innerHTML = `
     <div class="signal-display signal-active" style="text-align:center;">
-      <div class="market-name">${MARKETS[currentMarket].name}</div>
-      <div class="signal-type-label" style="color:${isPrep ? 'var(--gold)' : 'var(--accent3)'};">
-        ${isPrep ? '⚡ HIGH CONFIDENCE SIGNAL' : '🔵 TRADE WINDOW ACTIVE'}
+      <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:3px;margin-bottom:4px;">
+        ${MARKETS[currentMarket].name}
+      </div>
+      <div class="strategy-badge ${isMatches ? 'matches' : 'evenodd'}">
+        ${isMatches ? '🎯 MATCHES SIGNAL' : '🟣 EVEN/ODD SIGNAL'}
       </div>
       
-      <div class="digit-display">
-        <div style="text-align:center;">
-          <div style="font-size:9px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">Primary</div>
-          <div class="digit-box ${phaseClass}">${sig.digit}</div>
+      ${isMatches ? `
+        <div class="digit-display">
+          <div style="text-align:center;">
+            <div style="font-size:8px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">Primary</div>
+            <div class="digit-box ${phaseClass}">${sig.digit}</div>
+          </div>
+          ${sig.recoveryDigit ? `
+            <div style="text-align:center;">
+              <div style="font-size:8px;color:var(--accent2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">Recovery</div>
+              <div style="width:60px;height:60px;border:2px solid rgba(255,107,53,0.5);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:30px;font-weight:900;color:var(--accent2);background:rgba(255,107,53,0.07);">${sig.recoveryDigit}</div>
+            </div>` : ''}
         </div>
-        <div style="text-align:center;">
-          <div style="font-size:9px;color:var(--accent2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">Recovery</div>
-          <div style="width:70px;height:70px;border:2px solid rgba(255,107,53,0.5);border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:36px;font-weight:900;color:var(--accent2);background:rgba(255,107,53,0.07);">${sig.recoveryDigit}</div>
+        ${sig.recoveryDigit ? `
+          <div class="recovery-section">
+            <div style="font-size:9px;color:var(--accent2);text-transform:uppercase;letter-spacing:2px;">Backup Strategy</div>
+            <div style="color:var(--text2);font-size:9px;">Recovery digit <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong> at ${sig.recoveryConfidence}%</div>
+          </div>` : ''}
+      ` : `
+        <div class="evenodd-display ${sig.prediction === 'EVEN' ? 'even' : 'odd'}" style="margin-bottom:16px;">
+          ${sig.prediction}
         </div>
-      </div>
-      
-      <div class="recovery-section">
-        <div class="recovery-label">Backup Strategy</div>
-        <div style="color:var(--text2);font-size:10px;">
-          If primary <strong style="color:var(--accent);">${sig.digit}</strong> fails, recovery <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong> has ${sig.recoveryConfidence}% probability
+        <div style="color:var(--text2);font-size:11px;">
+          Recovery: <strong style="color:${sig.recovery === 'EVEN' ? 'var(--accent)' : 'var(--purple)'};">${sig.recovery}</strong>
+          at ${sig.recoveryConfidence}%
         </div>
-      </div>
+      `}
       
       <div class="signal-meta">
         <div class="meta-box">
-          <div class="meta-val gold">${sig.confidence}%</div>
+          <div class="meta-val ${isMatches ? 'gold' : 'purple'}">${sig.confidence}%</div>
           <div class="meta-key">Confidence</div>
         </div>
         <div class="meta-box">
@@ -1021,10 +1077,7 @@ function renderSignalBody() {
         <div class="countdown-display ${sig.prepTime <= 5 ? 'urgent' : ''}">
           ⏱ 00:${String(sig.prepTime).padStart(2, '0')}
         </div>
-        <div style="color:var(--text2);font-size:11px;margin-top:4px;">
-          seconds until trade window opens
-        </div>
-        ${sig.prepTime <= 5 ? '<div style="color:var(--danger);font-weight:700;margin-top:8px;font-size:14px;">⚡ PREPARE TO EXECUTE!</div>' : ''}
+        ${sig.prepTime <= 5 ? '<div style="color:var(--danger);font-weight:700;margin-top:6px;font-size:13px;">⚡ PREPARE NOW!</div>' : ''}
       ` : ''}
       
       ${isLive ? `
@@ -1035,18 +1088,18 @@ function renderSignalBody() {
             </div>
           `).join('')}
         </div>
-        <div style="color:var(--accent3);font-weight:700;margin-top:8px;">
-          Trade <strong>${sig.digit}</strong> • Recovery: <strong style="color:var(--accent2);">${sig.recoveryDigit}</strong>
+        <div style="color:var(--accent3);font-weight:700;margin-top:6px;">
+          ${isMatches ? `Trade digit <strong>${sig.digit}</strong>` : `Trade <strong>${sig.prediction}</strong>`}
         </div>
       ` : ''}
       
       <div class="confidence-bar-wrap">
         <div class="conf-label-row">
           <span class="conf-label">Signal Strength</span>
-          <span class="conf-pct">${sig.confidence}%</span>
+          <span class="conf-pct" style="color:${isMatches ? 'var(--gold)' : 'var(--purple)'};">${sig.confidence}%</span>
         </div>
         <div class="conf-track">
-          <div class="conf-fill" style="width:${sig.confidence}%;"></div>
+          <div class="conf-fill ${isMatches ? 'matches' : 'evenodd'}" style="width:${sig.confidence}%;"></div>
         </div>
       </div>
     </div>`;
@@ -1055,7 +1108,7 @@ function renderSignalBody() {
 function renderDigitHistory() {
   const container = $('digit-history');
   if (lastDigits.length === 0) {
-    container.innerHTML = '<div style="color:var(--text2);font-size:11px;text-align:center;">Waiting for ticks...</div>';
+    container.innerHTML = '<div style="color:var(--text2);font-size:10px;text-align:center;">Waiting for ticks...</div>';
     return;
   }
   
@@ -1067,6 +1120,8 @@ function renderDigitHistory() {
     let cls = 'neutral';
     if (count >= 4) cls = 'hot';
     else if (count >= 2) cls = 'cold';
+    if (d % 2 === 0) cls += ' even-digit';
+    else cls += ' odd-digit';
     const isNew = i === lastDigits.slice(-20).length - 1;
     return `<div class="hist-digit ${cls} ${isNew ? 'new-entry' : ''}">${d}</div>`;
   }).join('');
@@ -1075,22 +1130,23 @@ function renderDigitHistory() {
 function renderLog() {
   const container = $('log-list');
   if (signalLog.length === 0) {
-    container.innerHTML = '<div class="empty-signal"><div class="empty-text" style="font-size:11px;">No signals yet</div></div>';
+    container.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:10px;padding:10px;">No signals yet</div>';
     return;
   }
   
   container.innerHTML = signalLog.slice(0, 15).map(s => {
     const isWon = s.status === 'WON';
-    const isLost = s.status === 'LOST';
+    const isMatches = s.strategy === 'matches';
     return `
       <div class="log-item">
-        <div class="log-digit-badge ${isWon ? 'won' : ''} ${isLost ? 'lost' : ''}">${s.digit}</div>
+        <div class="log-badge ${isMatches ? 'matches' : 'evenodd'} ${isWon ? 'won' : 'lost'}">
+          ${isMatches ? s.digit : (s.prediction === 'EVEN' ? 'E' : 'O')}
+        </div>
         <div class="log-info">
-          <div class="log-market">${s.market} • ${s.confidence}%</div>
-          <div class="log-conf" style="color:${isWon ? 'var(--success)' : 'var(--danger)'};">
-            ${isWon ? '✅ WON' : '❌ LOST'}
+          <div class="log-type">${isMatches ? 'MATCHES' : 'EVEN/ODD'}</div>
+          <div class="log-detail" style="color:${isWon ? 'var(--success)' : 'var(--danger)'};">
+            ${s.confidence}% ${isWon ? '✅' : '❌'}
           </div>
-          <div class="log-recovery">Recovery: ${s.recoveryDigit} (${s.recoveryConf}%)</div>
         </div>
         <div class="log-time">${s.time}</div>
       </div>`;
@@ -1101,77 +1157,8 @@ function updateStats() {
   $('stat-signals').textContent = stats.total;
   const rate = stats.total > 0 ? Math.round((stats.won / stats.total) * 100) + '%' : '--';
   $('stat-acc').textContent = rate;
-  $('stat-hot').textContent = currentPrice ? currentPrice.digit : '--';
-}
-
-// ==================== WEBSOCKET ====================
-function connectWebSocket() {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    subscribeMarket();
-    return;
-  }
-  
-  console.log('🔌 Connecting to Deriv WebSocket...');
-  updateStatus('warning', 'CONNECTING...');
-  ws = new WebSocket(WS_URL);
-  
-  ws.onopen = () => {
-    console.log('✅ WebSocket connected');
-    
-    if (derivToken) {
-      console.log('🔑 Authorizing with token...');
-      ws.send(JSON.stringify({ authorize: derivToken }));
-    }
-    
-    updateStatus('connected', 'SYNCED');
-    subscribeMarket();
-  };
-  
-  ws.onmessage = (e) => {
-    const data = JSON.parse(e.data);
-    
-    if (data.authorize) {
-      console.log('✅ Authorized successfully');
-      updateStatus('connected', 'AUTHORIZED');
-    }
-    
-    if (data.tick) {
-      processTick(data.tick);
-    }
-    
-    if (data.error) {
-      console.warn('Deriv error:', data.error);
-      if (data.error.code === 'InvalidToken') {
-        logoutAndReset();
-      }
-    }
-  };
-  
-  ws.onclose = () => {
-    console.log('WebSocket closed');
-    updateStatus('error', 'RECONNECTING...');
-    if (engineRunning) setTimeout(connectWebSocket, 3000);
-  };
-  
-  ws.onerror = () => updateStatus('error', 'ERROR');
-}
-
-function subscribeMarket() {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify({ forget_all: 'ticks' }));
-  ws.send(JSON.stringify({ ticks: currentMarket, subscribe: 1 }));
-  console.log('📊 Subscribed to:', currentMarket);
-}
-
-function switchMarket(sym) {
-  currentMarket = sym;
-  tickHistory = [];
-  activeSignal = null;
-  if (prepInterval) clearInterval(prepInterval);
-  prepInterval = null;
-  renderMarketButtons();
-  renderSignalBody();
-  subscribeMarket();
+  $('stat-digit').textContent = currentPrice ? currentPrice.digit : '--';
+  $('stat-evenodd').textContent = currentPrice ? (currentPrice.digit % 2 === 0 ? 'EVEN' : 'ODD') : '--';
 }
 
 // ==================== TICK PROCESSING ====================
@@ -1195,16 +1182,26 @@ function processTick(tick) {
     activeSignal.elapsed++;
     
     if (activeSignal.elapsed >= 5) {
-      const won = lastDigit === activeSignal.digit || lastDigit === activeSignal.recoveryDigit;
-      activeSignal.status = won ? 'WON' : 'LOST';
-      activeSignal.actualMatch = lastDigit;
+      let won = false;
+      if (activeSignal.strategy === 'matches') {
+        won = lastDigit === activeSignal.digit || lastDigit === activeSignal.recoveryDigit;
+      } else {
+        const isEven = lastDigit % 2 === 0;
+        won = (activeSignal.prediction === 'EVEN' && isEven) || 
+              (activeSignal.prediction === 'ODD' && !isEven) ||
+              (activeSignal.recovery === 'EVEN' && isEven) ||
+              (activeSignal.recovery === 'ODD' && !isEven);
+      }
       
+      activeSignal.status = won ? 'WON' : 'LOST';
       stats.total++;
       if (won) stats.won++;
       
       signalLog.unshift({
+        strategy: activeSignal.strategy,
         digit: activeSignal.digit,
-        recoveryDigit: activeSignal.recoveryDigit,
+        prediction: activeSignal.prediction,
+        recovery: activeSignal.recoveryDigit || activeSignal.recovery,
         recoveryConf: activeSignal.recoveryConfidence,
         confidence: activeSignal.confidence,
         market: MARKETS[currentMarket].name,
@@ -1212,61 +1209,36 @@ function processTick(tick) {
         time: new Date().toLocaleTimeString()
       });
       
-      if (won) {
-        beep(1200, 0.2, 0.3);
-        setTimeout(() => beep(1500, 0.15, 0.3), 200);
-      } else {
-        beep(300, 0.5, 0.2);
-      }
+      if (won) { beep(1200, 0.2, 0.3); setTimeout(() => beep(1500, 0.15, 0.3), 200); }
+      else beep(300, 0.5, 0.2);
       
       renderSignalBody();
       renderLog();
       updateStats();
-      
-      setTimeout(() => {
-        activeSignal = null;
-        renderSignalBody();
-      }, 6000);
-      
+      setTimeout(() => { activeSignal = null; renderSignalBody(); }, 6000);
       return;
     }
-    
     renderSignalBody();
     return;
   }
   
   if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
   
-  if (tickHistory.length >= 30 && engineRunning) {
-    const result = analyzePatternsAdvanced(tickHistory);
+  if (tickHistory.length >= 30) {
+    let result = currentStrategy === 'matches' ? analyzeMatches(tickHistory) : analyzeEvenOdd(tickHistory);
+    
     if (result) {
-      activeSignal = {
-        digit: result.digit,
-        confidence: result.confidence,
-        recoveryDigit: result.recoveryDigit,
-        recoveryConfidence: result.recoveryConfidence,
-        status: 'PREP',
-        prepTime: 15,
-        elapsed: 0,
-        reason: result.reason
-      };
+      activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
       
       beep(880, 0.3, 0.25);
       setTimeout(() => beep(1100, 0.2, 0.25), 250);
       
       if (prepInterval) clearInterval(prepInterval);
       prepInterval = setInterval(() => {
-        if (!activeSignal || activeSignal.status !== 'PREP') {
-          clearInterval(prepInterval);
-          prepInterval = null;
-          return;
-        }
-        
+        if (!activeSignal || activeSignal.status !== 'PREP') { clearInterval(prepInterval); prepInterval = null; return; }
         activeSignal.prepTime--;
         renderSignalBody();
-        
         if (activeSignal.prepTime <= 5) beep(600, 0.1, 0.15);
-        
         if (activeSignal.prepTime <= 0) {
           activeSignal.status = 'LIVE';
           activeSignal.elapsed = 0;
@@ -1286,68 +1258,52 @@ function processTick(tick) {
   updateStats();
 }
 
-function analyzePatternsAdvanced(history) {
+// ==================== ANALYSIS ====================
+function analyzeMatches(history) {
   const recent = history.slice(-35);
   const freq = {};
   recent.forEach(d => freq[d] = (freq[d] || 0) + 1);
-  
-  const sorted = Object.entries(freq)
-    .map(([d, c]) => ({ digit: parseInt(d), count: c }))
-    .sort((a, b) => b.count - a.count);
-  
+  const sorted = Object.entries(freq).map(([d, c]) => ({ digit: parseInt(d), count: c })).sort((a, b) => b.count - a.count);
   if (sorted.length < 2) return null;
   
-  const primary = sorted[0];
-  const secondary = sorted[1];
-  const total = recent.length;
-  const primaryRatio = primary.count / total;
-  const dominance = primary.count - secondary.count;
+  const primary = sorted[0], secondary = sorted[1];
+  const total = recent.length, primaryRatio = primary.count / total, dominance = primary.count - secondary.count;
   const last5 = recent.slice(-5);
   
   if (primary.count >= 8 && dominance >= 2 && last5.includes(primary.digit)) {
     let confidence = 85 + (primaryRatio * 40) + (dominance * 3);
     confidence = Math.min(99, Math.round(confidence));
-    
     if (confidence < 95) return null;
-    
-    let recoveryConf = 60 + ((secondary.count / total) * 30);
-    recoveryConf = Math.min(89, Math.round(recoveryConf));
-    
-    return {
-      digit: primary.digit,
-      confidence,
-      recoveryDigit: secondary.digit,
-      recoveryConfidence: recoveryConf,
-      reason: `${primary.count}x dominant`
-    };
+    let recoveryConf = Math.min(89, Math.round(60 + ((secondary.count / total) * 30)));
+    return { strategy: 'matches', digit: primary.digit, confidence, recoveryDigit: secondary.digit, recoveryConfidence: recoveryConf, reason: `${primary.count}x dominant` };
   }
-  
   return null;
 }
 
-// ==================== ENGINE CONTROL ====================
-function toggleEngine() {
-  if (!isAuthenticated) {
-    alert('Please authenticate with Deriv first. Click "LOGIN WITH DERIV" or use "Continue in Demo Mode".');
-    return;
-  }
+function analyzeEvenOdd(history) {
+  const recent = history.slice(-35);
+  let evens = 0, odds = 0;
+  recent.forEach((d, i) => { const w = 1 + (i / recent.length); if (d % 2 === 0) evens += w; else odds += w; });
   
-  engineRunning = !engineRunning;
-  updateControlButton();
+  const total = evens + odds, evenRatio = evens / total, oddRatio = odds / total;
+  const dominant = evenRatio >= oddRatio ? 'EVEN' : 'ODD';
+  const domRatio = Math.max(evenRatio, oddRatio), subRatio = Math.min(evenRatio, oddRatio);
+  const ratioDominance = domRatio - subRatio;
   
-  if (engineRunning) {
-    initAudio();
-    connectWebSocket();
-    renderSignalBody();
-  } else {
-    if (ws) ws.close();
-    ws = null;
-    activeSignal = null;
-    if (prepInterval) clearInterval(prepInterval);
-    prepInterval = null;
-    updateStatus('error', 'STOPPED');
-    renderSignalBody();
+  const last5 = recent.slice(-5);
+  const lastEvens = last5.filter(d => d % 2 === 0).length;
+  const lastOdds = last5.filter(d => d % 2 !== 0).length;
+  const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
+  const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
+  
+  if (domRatio > 0.60 && dominant === recentDominant && recentSupport >= 4) {
+    let confidence = 75 + (ratioDominance * 60) + (recentSupport * 3);
+    confidence = Math.min(99, Math.round(confidence));
+    if (confidence < 95) return null;
+    const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
+    return { strategy: 'evenodd', prediction: dominant, confidence, recovery, recoveryConfidence: Math.min(89, Math.round(subRatio * 85)), reason: `${Math.round(domRatio * 100)}% dominance` };
   }
+  return null;
 }
 
 // ==================== INIT ====================
@@ -1357,30 +1313,20 @@ function init() {
   updateStats();
   renderDigitHistory();
   renderLog();
+  updateStatus('idle', 'OFFLINE');
   
-  // CHECK FOR OAUTH CALLBACK FIRST
-  const hasAuth = checkOAuthCallback();
-  
-  if (hasAuth) {
-    console.log('✅ Authenticated - ready to start');
-    updateStatus('warning', 'READY');
-  } else {
-    console.log('🔒 Authentication required');
-    updateStatus('error', 'AUTH REQUIRED');
-  }
+  // Check for OAuth callback
+  checkOAuth();
 }
 
 // Make functions global
-window.toggleEngine = toggleEngine;
+window.toggleConnection = toggleConnection;
+window.startOAuth = startOAuth;
+window.switchStrategy = switchStrategy;
 window.switchMarket = switchMarket;
-window.startOAuthFlow = startOAuthFlow;
-window.skipAuthDemo = skipAuthDemo;
-window.logoutAndReset = logoutAndReset;
 
 init();
-console.log('🚀 FlowState Pro v3.1 Ready');
-console.log('📍 Callback URL:', CALLBACK_URL);
-console.log('🔑 App ID:', DERIV_APP_ID);
+console.log('🚀 FlowState Pro v5.1 Ready');
 </script>
 </body>
 </html>
