@@ -24,7 +24,6 @@
     --warning: #ffba08;
     --glow: 0 0 20px rgba(0,229,255,0.3);
     --glow2: 0 0 30px rgba(57,255,20,0.2);
-    --glow-purple: 0 0 20px rgba(168,85,247,0.3);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -59,7 +58,6 @@
 
   .container { position: relative; z-index: 2; max-width: 1400px; margin: 0 auto; padding: 14px 14px 36px; }
 
-  /* HEADER */
   .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
   .logo-wrap { display: flex; align-items: center; gap: 12px; }
   .logo-icon { width: 40px; height: 40px; border: 2px solid var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: var(--glow); background: rgba(0,229,255,0.05); }
@@ -83,26 +81,23 @@
   .btn:hover { transform: translateY(-1px); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   .btn-connect { background: linear-gradient(135deg, #00c4e0, #0097b2); color: #030912; border: none; box-shadow: 0 4px 20px rgba(0,229,255,0.3); font-size: 10px; padding: 10px 22px; }
-  .btn-connect:hover { box-shadow: 0 6px 30px rgba(0,229,255,0.5); }
+  .btn-connect:hover:not(:disabled) { box-shadow: 0 6px 30px rgba(0,229,255,0.5); }
   .btn-connect.connected { background: linear-gradient(135deg, #16a34a, #15803d); box-shadow: 0 4px 20px rgba(57,255,20,0.3); }
   .btn-oauth { border: 1px solid rgba(255,215,0,0.4); color: var(--gold); background: rgba(255,215,0,0.05); font-size: 8px; padding: 6px 12px; }
   .btn-oauth:hover { background: rgba(255,215,0,0.12); border-color: var(--gold); }
   
-  /* ENGINE BUTTON */
   .btn-engine { width: 100%; padding: 14px; border-radius: 12px; font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; letter-spacing: 3px; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; border: none; text-align: center; margin-bottom: 8px; }
   .btn-engine.start { background: linear-gradient(135deg, #16a34a, #15803d); color: white; box-shadow: 0 4px 20px rgba(57,255,20,0.3); }
   .btn-engine.start:hover { box-shadow: 0 6px 30px rgba(57,255,20,0.5); transform: translateY(-2px); }
   .btn-engine.stop { background: linear-gradient(135deg, #dc2626, #991b1b); color: white; box-shadow: 0 4px 20px rgba(255,45,85,0.3); }
   .btn-engine.stop:hover { box-shadow: 0 6px 30px rgba(255,45,85,0.5); transform: translateY(-2px); }
 
-  /* STRATEGY TABS */
   .strategy-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .strategy-tab { flex: 1; padding: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.25s ease; font-family: 'Orbitron', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; }
   .strategy-tab:hover { border-color: var(--accent); color: var(--accent); }
   .strategy-tab.active-matches { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,0.08); box-shadow: 0 0 20px rgba(255,215,0,0.2); }
   .strategy-tab.active-evenodd { border-color: var(--purple); color: var(--purple); background: rgba(168,85,247,0.08); box-shadow: 0 0 20px rgba(168,85,247,0.2); }
 
-  /* TICK FEED */
   .tick-feed-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
   .tick-feed-header { padding: 8px 14px; border-bottom: 1px solid var(--border); font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; background: rgba(0,229,255,0.03); display: flex; justify-content: space-between; align-items: center; }
   .tick-feed-body { padding: 6px; max-height: 180px; overflow-y: auto; }
@@ -119,7 +114,6 @@
   .tick-row .tick-digit.unmatched { color: var(--text2); }
 
   .section-label { font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 4px; color: var(--text2); text-transform: uppercase; margin-bottom: 6px; }
-
   .market-grid { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 14px; }
   .market-btn { flex: 1; min-width: 75px; padding: 8px 4px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 8px; cursor: pointer; transition: all 0.25s ease; font-family: 'Orbitron', monospace; font-size: 8px; font-weight: 700; letter-spacing: 1px; text-align: center; }
   .market-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: var(--glow); }
@@ -218,6 +212,8 @@
   .help-note { background: rgba(0,229,255,0.03); border: 1px solid rgba(0,229,255,0.1); border-radius: 8px; padding: 10px; font-size: 9px; color: var(--text2); line-height: 1.4; }
   .help-note strong { color: var(--accent); }
 
+  .error-message { background: rgba(255,45,85,0.05); border: 1px solid rgba(255,45,85,0.2); border-radius: 8px; padding: 8px 10px; font-size: 9px; color: var(--danger); margin-bottom: 8px; display: none; }
+
   @media(max-width:600px) { .stats-row { grid-template-columns: 1fr 1fr; } .signal-meta { grid-template-columns: 1fr 1fr; } }
 </style>
 </head>
@@ -260,6 +256,9 @@
     <div class="stat-box"><div class="stat-val" style="color:var(--purple)" id="stat-evenodd">--</div><div class="stat-lbl">Even/Odd</div></div>
   </div>
 
+  <!-- ERROR MESSAGE -->
+  <div class="error-message" id="error-msg"></div>
+
   <!-- TICK FEED -->
   <div class="tick-feed-panel">
     <div class="tick-feed-header">
@@ -284,7 +283,6 @@
     </div>
 
     <div class="right-panel">
-      <!-- ENGINE START/STOP BUTTON -->
       <button class="btn-engine start" id="btn-engine" onclick="toggleEngine()">
         ▶ START ENGINE
       </button>
@@ -298,11 +296,11 @@
         <div class="panel-body"><div class="log-list" id="log-list"><div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div></div></div>
       </div>
       <div class="help-note">
-        <strong>How it works:</strong><br>
-        • <strong>Connect</strong> first, then <strong>Start Engine</strong><br>
-        • <strong>Matches:</strong> Predicts entry + recovery digit<br>
-        • <strong>Even/Odd:</strong> Predicts even/odd with recovery<br>
-        • Statistical analysis: Z-Score, Markov, Streaks<br>
+        <strong>How to use:</strong><br>
+        1️⃣ Click <strong>CONNECT</strong> to link Deriv<br>
+        2️⃣ Click <strong>START ENGINE</strong> to begin<br>
+        • Entry + Recovery digits displayed<br>
+        • Statistical analysis engine<br>
         • 15s countdown → 5-tick window
       </div>
     </div>
@@ -310,11 +308,17 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v6.1 ====================
+// ==================== FLOWSTATE PRO v6.2 - FIXED CONNECTION ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
-const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`;
 const REDIRECT_URI = 'https://flowstate-pro2.vercel.app';
 const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+
+// Try multiple WebSocket URLs
+const WS_URLS = [
+  `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`,
+  `wss://ws.derivws.com/websockets/v3?app_id=${DERIV_APP_ID}`,
+  `wss://ws.deriv.com/websockets/v3?app_id=${DERIV_APP_ID}`
+];
 
 const MARKETS = {
   'R_10':{name:'Volatility 10',decimals:3},'R_25':{name:'Volatility 25',decimals:3},
@@ -347,8 +351,7 @@ class StatisticalEngine {
     const d = window ? this.digits.slice(-window) : this.digits;
     const counts = Array(10).fill(0);
     d.forEach(v => counts[v]++);
-    const total = d.length || 1;
-    return counts.map(c => c/total);
+    return counts.map(c => c/(d.length||1));
   }
 
   getZScores(window = 100) {
@@ -377,9 +380,7 @@ class StatisticalEngine {
   }
 
   getMomentum(shortW = 15, longW = 80) {
-    const shortF = this.getFrequencies(shortW);
-    const longF = this.getFrequencies(longW);
-    return shortF.map((s,i) => s - longF[i]);
+    return this.getFrequencies(shortW).map((s,i) => s - this.getFrequencies(longW)[i]);
   }
 
   getBayesianPosterior(window = 100) {
@@ -387,8 +388,7 @@ class StatisticalEngine {
     const counts = Array(10).fill(0);
     d.forEach(v => counts[v]++);
     const total = d.length || 1;
-    const alpha = 1;
-    return counts.map(c => (alpha+c)/(alpha*10+total));
+    return counts.map(c => (1+c)/(10+total));
   }
 
   generateSignal() {
@@ -396,9 +396,9 @@ class StatisticalEngine {
     if (n < 40) return { entryDigit: -1, recoveryDigit: -1, confidence: 0, reason: `Collecting data (${n}/40 ticks)`, strategy: 'matches' };
 
     const currentDigit = this.digits[n-1];
+    const W = { frequency:0.25, transition:0.25, streak:0.20, momentum:0.15, bayesian:0.15 };
     const scores = Array(10).fill(0);
     
-    const W = { frequency:0.25, transition:0.25, streak:0.20, momentum:0.15, bayesian:0.15 };
     const zComp = this.getZScores(100).map(z => Math.max(0,-z)*25);
     const transComp = this.getTransitionProbabilities(currentDigit).map(p => p*100);
     const streaks = this.getStreaks();
@@ -446,12 +446,14 @@ let engineRunning = false;
 let currentStrategy = 'matches';
 let currentMarket = 'R_100';
 let ws = null;
+let wsUrlIndex = 0;
 let activeSignal = null;
 let prepInterval = null;
 let stats = { total: 0, won: 0 };
 let signalLog = [];
 let lastDigits = [];
 let currentPrice = null;
+let connectionTimeout = null;
 
 // ==================== AUDIO ====================
 let audioCtx = null;
@@ -471,6 +473,13 @@ function beep(f=880,d=0.25,v=0.2) {
 
 // ==================== UI ====================
 function $(id){return document.getElementById(id);}
+function showError(msg){
+  const el = $('error-msg');
+  el.textContent = '❌ ' + msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 5000);
+}
+function hideError(){ $('error-msg').style.display = 'none'; }
 
 function updateStatus(type,text){
   const b=$('status-badge'),d=$('status-dot'),t=$('status-text');
@@ -484,76 +493,191 @@ function updateStatus(type,text){
 
 function updateConnectBtn(state){
   const b=$('btn-connect');
-  if(state==='connected'){b.textContent='✅ CONNECTED';b.classList.add('connected');b.onclick=disconnect;}
+  if(state==='connected'){b.textContent='✅ CONNECTED';b.classList.add('connected');b.onclick=disconnect;b.disabled=false;}
   else if(state==='connecting'){b.textContent='⏳ CONNECTING...';b.disabled=true;}
   else {b.textContent='⚡ CONNECT';b.classList.remove('connected');b.disabled=false;b.onclick=toggleConnection;}
 }
 
 function updateEngineBtn(){
   const b=$('btn-engine');
-  if(engineRunning){
-    b.textContent='■ STOP ENGINE';
-    b.className='btn-engine stop';
-  } else {
-    b.textContent='▶ START ENGINE';
-    b.className='btn-engine start';
-  }
+  if(engineRunning){b.textContent='■ STOP ENGINE';b.className='btn-engine stop';}
+  else {b.textContent='▶ START ENGINE';b.className='btn-engine start';}
 }
 
 // ==================== CONNECTION ====================
 function toggleConnection(){ isConnected ? disconnect() : connect(); }
 
 function connect(){
-  initAudio(); updateStatus('connecting','CONNECTING...'); updateConnectBtn('connecting');
-  ws = new WebSocket(WS_URL);
-  const timeout = setTimeout(()=>{ if(!isConnected){updateStatus('error','TIMEOUT');updateConnectBtn('offline');} },12000);
+  hideError();
+  initAudio();
+  updateStatus('connecting','CONNECTING...');
+  updateConnectBtn('connecting');
+  
+  // Try to connect with current URL index
+  tryConnection(0);
+}
+
+function tryConnection(index){
+  if (index >= WS_URLS.length) {
+    // All URLs failed
+    updateStatus('error','CONNECTION FAILED');
+    updateConnectBtn('offline');
+    showError('Could not connect to Deriv. Check your internet or try again later. The Deriv API may be temporarily unavailable.');
+    isConnected = false;
+    return;
+  }
+  
+  wsUrlIndex = index;
+  const url = WS_URLS[index];
+  console.log(`🔌 Trying WebSocket: ${url}`);
+  
+  // Close existing connection if any
+  if (ws) {
+    try { ws.close(); } catch(e) {}
+    ws = null;
+  }
+  
+  // Clear any existing timeout
+  if (connectionTimeout) clearTimeout(connectionTimeout);
+  
+  try {
+    ws = new WebSocket(url);
+  } catch(e) {
+    console.error('WebSocket creation error:', e);
+    tryConnection(index + 1);
+    return;
+  }
+  
+  // Connection timeout - 8 seconds
+  connectionTimeout = setTimeout(() => {
+    console.log('⏰ Connection timeout, trying next URL...');
+    if (ws) {
+      try { ws.close(); } catch(e) {}
+      ws = null;
+    }
+    tryConnection(index + 1);
+  }, 8000);
+  
   ws.onopen = () => {
-    clearTimeout(timeout); isConnected = true;
+    console.log('✅ WebSocket connected!');
+    clearTimeout(connectionTimeout);
+    isConnected = true;
+    hideError();
+    
+    // Authorize if token saved
     const token = localStorage.getItem('deriv_token');
-    if(token) ws.send(JSON.stringify({authorize:token}));
-    subscribe(); updateStatus('connected','SYNCED'); updateConnectBtn('connected');
-    if(!engineRunning){ engineRunning=true; updateEngineBtn(); }
+    if (token) {
+      ws.send(JSON.stringify({ authorize: token }));
+    }
+    
+    subscribe();
+    updateStatus('connected','SYNCED');
+    updateConnectBtn('connected');
+    
+    // Auto-start engine if not running
+    if (!engineRunning) {
+      engineRunning = true;
+      updateEngineBtn();
+    }
     renderSignal();
   };
+  
   ws.onmessage = (e) => {
-    const d=JSON.parse(e.data);
-    if(d.authorize) console.log('✅ Authorized');
-    if(d.tick) processTick(d.tick);
-    if(d.error) console.warn('Error:',d.error);
+    try {
+      const d = JSON.parse(e.data);
+      if (d.authorize) console.log('✅ Authorized');
+      if (d.tick) processTick(d.tick);
+      if (d.error) {
+        console.warn('Deriv error:', d.error);
+        if (d.error.code === 'InvalidToken') {
+          showError('Invalid Deriv token. Please login again.');
+          localStorage.removeItem('deriv_token');
+        }
+      }
+    } catch(err) {
+      console.warn('Message parse error:', err);
+    }
   };
-  ws.onclose = () => { if(isConnected){ updateStatus('error','RECONNECTING...'); updateConnectBtn('connecting'); setTimeout(()=>{if(isConnected)connect();},3000); } };
-  ws.onerror = () => { clearTimeout(timeout); updateStatus('error','ERROR'); updateConnectBtn('offline'); };
+  
+  ws.onclose = (event) => {
+    console.log('WebSocket closed:', event.code, event.reason);
+    clearTimeout(connectionTimeout);
+    
+    if (isConnected) {
+      updateStatus('error','RECONNECTING...');
+      updateConnectBtn('connecting');
+      
+      // Auto-reconnect after delay
+      setTimeout(() => {
+        if (isConnected || engineRunning) {
+          connect();
+        }
+      }, 3000);
+    }
+  };
+  
+  ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+    clearTimeout(connectionTimeout);
+    
+    // Try next URL
+    if (!isConnected) {
+      try { ws.close(); } catch(e) {}
+      ws = null;
+      tryConnection(index + 1);
+    }
+  };
 }
 
 function disconnect(){
-  isConnected=false; if(ws) ws.close(); ws=null;
-  activeSignal=null; if(prepInterval) clearInterval(prepInterval); prepInterval=null;
-  updateStatus('idle','OFFLINE'); updateConnectBtn('offline'); renderSignal();
+  isConnected = false;
+  if (connectionTimeout) clearTimeout(connectionTimeout);
+  if (ws) {
+    try { ws.close(); } catch(e) {}
+  }
+  ws = null;
+  activeSignal = null;
+  if (prepInterval) clearInterval(prepInterval);
+  prepInterval = null;
+  
+  updateStatus('idle','OFFLINE');
+  updateConnectBtn('offline');
+  hideError();
+  renderSignal();
 }
 
-function subscribe(){ if(ws&&ws.readyState===WebSocket.OPEN){ ws.send(JSON.stringify({forget_all:'ticks'})); ws.send(JSON.stringify({ticks:currentMarket,subscribe:1})); } }
+function subscribe(){
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ forget_all: 'ticks' }));
+    ws.send(JSON.stringify({ ticks: currentMarket, subscribe: 1 }));
+    console.log('📊 Subscribed to:', currentMarket);
+  }
+}
 
-function startOAuth(){ localStorage.setItem('flowstate_oauth_pending','true'); window.location.href=OAUTH_URL; }
+function startOAuth(){
+  localStorage.setItem('flowstate_oauth_pending','true');
+  window.location.href = OAUTH_URL;
+}
 
 // ==================== ENGINE CONTROL ====================
 function toggleEngine(){
   engineRunning = !engineRunning;
   updateEngineBtn();
   
-  if(engineRunning){
-    if(!isConnected) connect();
+  if (engineRunning) {
+    if (!isConnected) connect();
     else renderSignal();
   } else {
-    activeSignal=null;
-    if(prepInterval) clearInterval(prepInterval);
-    prepInterval=null;
+    activeSignal = null;
+    if (prepInterval) clearInterval(prepInterval);
+    prepInterval = null;
     renderSignal();
   }
 }
 
 // ==================== STRATEGY ====================
 function switchStrategy(s){
-  currentStrategy=s;
+  currentStrategy = s;
   $('tab-matches').className='strategy-tab'+(s==='matches'?' active-matches':'');
   $('tab-evenodd').className='strategy-tab'+(s==='evenodd'?' active-evenodd':'');
   const tag=$('strategy-tag');
@@ -562,7 +686,11 @@ function switchStrategy(s){
   activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; engine.reset(); renderSignal();
 }
 
-function switchMarket(sym){ currentMarket=sym; engine.reset(); activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; renderMarkets(); renderSignal(); subscribe(); }
+function switchMarket(sym){
+  currentMarket=sym; engine.reset(); activeSignal=null;
+  if(prepInterval)clearInterval(prepInterval); prepInterval=null;
+  renderMarkets(); renderSignal(); subscribe();
+}
 
 // ==================== RENDER ====================
 function renderMarkets(){
@@ -589,12 +717,12 @@ function renderSignal(){
   const body=$('signal-body');
   
   if(!isConnected){
-    body.innerHTML='<div style="text-align:center;color:var(--text2);padding:30px;"><div style="font-size:40px;">🔌</div><div style="font-size:14px;letter-spacing:2px;margin:10px 0;">Not Connected</div><div style="font-size:10px;">Click <strong style="color:var(--accent);">CONNECT</strong> to start</div></div>';
+    body.innerHTML='<div style="text-align:center;color:var(--text2);padding:30px;"><div style="font-size:40px;">🔌</div><div style="font-size:14px;letter-spacing:2px;margin:10px 0;">Not Connected</div><div style="font-size:10px;">Click <strong style="color:var(--accent);">CONNECT</strong> to link Deriv</div></div>';
     return;
   }
   
   if(!engineRunning){
-    body.innerHTML='<div style="text-align:center;color:var(--text2);padding:30px;"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;letter-spacing:2px;margin:10px 0;">Engine Stopped</div><div style="font-size:10px;">Click <strong style="color:var(--success);">START ENGINE</strong> to begin analysis</div></div>';
+    body.innerHTML='<div style="text-align:center;color:var(--text2);padding:30px;"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;letter-spacing:2px;margin:10px 0;">Engine Stopped</div><div style="font-size:10px;">Click <strong style="color:var(--success);">START ENGINE</strong></div></div>';
     return;
   }
   
@@ -602,7 +730,7 @@ function renderSignal(){
     body.innerHTML=`<div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;">
       <div style="position:relative;width:60px;height:60px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;opacity:0.8;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;opacity:0.5;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;box-shadow:0 0 15px var(--accent);animation:radarCenter 1.5s ease-in-out infinite;"></div></div>
       <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text2);letter-spacing:2px;">${currentStrategy==='matches'?'ANALYZING DIGIT PATTERNS...':'ANALYZING EVEN/ODD PATTERNS...'}</div>
-      <div style="font-size:8px;color:var(--gold);">Statistical analysis active • Min 50% confidence</div>
+      <div style="font-size:8px;color:var(--gold);">Statistical analysis • Min 50% confidence</div>
       ${currentPrice?`<div style="font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--accent);">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong> (${currentPrice.digit%2===0?'EVEN':'ODD'})</div>`:'<div style="font-size:9px;color:var(--text2);">Waiting for tick data...</div>'}
     </div>`;
     return;
@@ -619,29 +747,16 @@ function renderSignal(){
   body.innerHTML=`<div class="signal-display signal-active" style="text-align:center;">
     <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:2px;">${MARKETS[currentMarket].name}</div>
     <div class="strategy-badge ${isMatches?'matches':'evenodd'}">${isMatches?'🎯 MATCHES SIGNAL':'🟣 EVEN/ODD SIGNAL'}</div>
-    
     ${isMatches?`
-      <div class="dual-digit-display">
-        <div class="digit-col"><div class="label entry">🎯 Entry</div><div class="digit-box entry ${entryClass}">${sig.entryDigit}</div></div>
-        <div class="digit-col"><div class="label recovery">💡 Recovery</div><div class="digit-box recovery">${sig.recoveryDigit}</div></div>
-      </div>
-      <div style="background:rgba(255,107,53,0.04);border:1px solid rgba(255,107,53,0.2);border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:9px;color:var(--accent2);">
-        If entry <strong>${sig.entryDigit}</strong> fails, recovery <strong>${sig.recoveryDigit}</strong> is backup
-      </div>
+      <div class="dual-digit-display"><div class="digit-col"><div class="label entry">🎯 Entry</div><div class="digit-box entry ${entryClass}">${sig.entryDigit}</div></div><div class="digit-col"><div class="label recovery">💡 Recovery</div><div class="digit-box recovery">${sig.recoveryDigit}</div></div></div>
+      <div style="background:rgba(255,107,53,0.04);border:1px solid rgba(255,107,53,0.2);border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:9px;color:var(--accent2);">If entry <strong>${sig.entryDigit}</strong> fails, recovery <strong>${sig.recoveryDigit}</strong> is backup</div>
     `:`
       <div class="evenodd-display ${sig.entryDigit%2===0?'even':'odd'}" style="margin-bottom:10px;">${sig.entryDigit%2===0?'EVEN':'ODD'}</div>
       <div style="font-size:10px;color:var(--text2);">Recovery: <strong style="color:${sig.recoveryDigit%2===0?'var(--accent)':'var(--purple)'};">${sig.recoveryDigit%2===0?'EVEN':'ODD'}</strong></div>
     `}
-    
-    <div class="signal-meta">
-      <div class="meta-box"><div class="meta-val ${isMatches?'gold':'purple'}">${sig.confidence}%</div><div class="meta-key">Confidence</div></div>
-      <div class="meta-box"><div class="meta-val cyan">${sig.reason}</div><div class="meta-key">Pattern</div></div>
-      <div class="meta-box"><div class="meta-val orange">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Countdown':'Ticks'}</div></div>
-    </div>
-    
+    <div class="signal-meta"><div class="meta-box"><div class="meta-val ${isMatches?'gold':'purple'}">${sig.confidence}%</div><div class="meta-key">Confidence</div></div><div class="meta-box"><div class="meta-val cyan">${sig.reason}</div><div class="meta-key">Pattern</div></div><div class="meta-box"><div class="meta-val orange">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Countdown':'Ticks'}</div></div></div>
     ${isPrep?`<div class="countdown-display${sig.prepTime<=5?' urgent':''}">⏱ 00:${String(sig.prepTime).padStart(2,'0')}</div>${sig.prepTime<=5?'<div style="color:var(--danger);font-weight:700;margin-top:4px;font-size:12px;">⚡ PREPARE!</div>':''}`:''}
     ${isLive?`<div class="tick-progress">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:4px;">Trade <strong>${sig.entryDigit}</strong></div>`:''}
-    
     <div class="confidence-bar-wrap"><div class="conf-label-row"><span class="conf-label">Strength</span><span class="conf-pct" style="color:${isMatches?'var(--gold)':'var(--purple)'};">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill ${isMatches?'matches':'evenodd'}" style="width:${sig.confidence}%;"></div></div></div>
   </div>`;
 }
@@ -666,8 +781,7 @@ function renderLog(){
 
 function updateStats(){
   $('stat-signals').textContent=stats.total;
-  const rate=stats.total>0?Math.round((stats.won/stats.total)*100)+'%':'--';
-  $('stat-acc').textContent=rate;
+  $('stat-acc').textContent=stats.total>0?Math.round((stats.won/stats.total)*100)+'%':'--';
   $('stat-digit').textContent=currentPrice?currentPrice.digit:'--';
   $('stat-evenodd').textContent=currentPrice?(currentPrice.digit%2===0?'EVEN':'ODD'):'--';
 }
@@ -730,14 +844,20 @@ function processTick(tick){
 function init(){
   renderMarkets();renderSignal();updateStats();renderDigitHistory();renderLog();
   updateStatus('idle','OFFLINE'); updateEngineBtn();
+  
+  // Check for OAuth callback
   const params=new URLSearchParams(window.location.search);
   const token=params.get('token');
-  if(token){localStorage.setItem('deriv_token',token);window.history.replaceState({},document.title,REDIRECT_URI);}
+  if(token){
+    localStorage.setItem('deriv_token',token);
+    window.history.replaceState({},document.title,REDIRECT_URI);
+    console.log('✅ OAuth token received');
+  }
 }
+
 init();
-console.log('🚀 FlowState Pro v6.1 - Statistical Engine Ready');
-console.log('🎯 Features: Entry + Recovery Digits, 15s Countdown, Tick Feed');
-console.log('📊 Statistical Methods: Z-Score, Markov, Streaks, Momentum, Bayesian');
+console.log('🚀 FlowState Pro v6.2 - Fixed Connection');
+console.log('🔌 Trying multiple WebSocket endpoints for reliability');
 </script>
 </body>
 </html>
