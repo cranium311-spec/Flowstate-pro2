@@ -3,63 +3,58 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FlowState Pro • Deriv Matches/Differs & Even/Odd Signals</title>
+<title>FlowState Pro • Matches & Even/Odd Signals</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #030912; --bg2: #060f1e; --panel: #0a1628; --border: #1a3a5c;
+    --bg: #030912; --panel: #0a1628; --border: #1a3a5c;
     --accent: #00e5ff; --accent2: #ff6b35; --accent3: #39ff14; --gold: #ffd700;
-    --purple: #a855f7; --muted: #3a5a7a; --text: #c8e0f4; --text2: #6a90b0;
+    --purple: #a855f7; --text: #c8e0f4; --text2: #6a90b0;
     --danger: #ff2d55; --success: #39ff14; --warning: #ffba08;
-    --glow: 0 0 20px rgba(0,229,255,0.3); --glow2: 0 0 30px rgba(57,255,20,0.2);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; min-height: 100vh; overflow-x: hidden; }
   body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
-  body::after { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.12) 2px, rgba(0,0,0,0.12) 4px); pointer-events: none; z-index: 1; }
   .container { position: relative; z-index: 2; max-width: 1400px; margin: 0 auto; padding: 14px 14px 36px; }
   .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
   .logo-wrap { display: flex; align-items: center; gap: 12px; }
-  .logo-icon { width: 40px; height: 40px; border: 2px solid var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: var(--glow); background: rgba(0,229,255,0.05); }
-  .logo-icon svg { width: 22px; height: 22px; }
-  .logo-text { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 900; color: var(--accent); letter-spacing: 2px; text-shadow: 0 0 20px rgba(0,229,255,0.5); }
-  .logo-sub { font-size: 10px; color: var(--text2); letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
+  .logo-icon { width: 40px; height: 40px; border: 2px solid var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(0,229,255,0.3); background: rgba(0,229,255,0.05); }
+  .logo-text { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 900; color: var(--accent); letter-spacing: 2px; }
+  .logo-sub { font-size: 10px; color: var(--text2); letter-spacing: 3px; text-transform: uppercase; }
   .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .status-badge { display: flex; align-items: center; gap: 8px; background: rgba(57,255,20,0.07); border: 1px solid rgba(57,255,20,0.3); border-radius: 20px; padding: 6px 14px; font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; }
-  .status-badge.connected { color: var(--success); }
-  .status-badge.error { border-color: rgba(255,45,85,0.3); background: rgba(255,45,85,0.07); color: var(--danger); }
-  .status-badge.warning { border-color: rgba(255,186,8,0.3); background: rgba(255,186,8,0.07); color: var(--warning); }
-  .status-badge.idle { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.02); color: var(--text2); }
+  .status-badge { display: flex; align-items: center; gap: 8px; border-radius: 20px; padding: 6px 14px; font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; }
+  .status-badge.connected { background: rgba(57,255,20,0.07); border: 1px solid rgba(57,255,20,0.3); color: var(--success); }
+  .status-badge.warning { background: rgba(255,186,8,0.07); border: 1px solid rgba(255,186,8,0.3); color: var(--warning); }
+  .status-badge.idle { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.12); color: var(--text2); }
+  .status-badge.error { background: rgba(255,45,85,0.07); border: 1px solid rgba(255,45,85,0.3); color: var(--danger); }
   .live-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 1.5s infinite; }
   .live-dot.green { background: var(--success); box-shadow: 0 0 8px var(--success); }
-  .live-dot.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
   .live-dot.yellow { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
   .live-dot.gray { background: #555; }
-  @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
-  .btn { padding: 8px 18px; border-radius: 20px; font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; border: 1px solid var(--border); background: var(--panel); color: var(--text2); white-space: nowrap; }
+  .live-dot.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .btn { padding: 8px 18px; border-radius: 20px; font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; border: 1px solid var(--border); background: var(--panel); color: var(--text2); }
   .btn:hover { transform: translateY(-1px); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-connect { background: linear-gradient(135deg, #00c4e0, #0097b2); color: #030912; border: none; box-shadow: 0 4px 20px rgba(0,229,255,0.3); font-size: 10px; padding: 10px 22px; }
+  .btn-connect { background: linear-gradient(135deg, #00c4e0, #0097b2); color: #030912; border: none; font-size: 10px; padding: 10px 22px; }
   .btn-connect.connected { background: linear-gradient(135deg, #16a34a, #15803d); }
   .btn-oauth { border: 1px solid rgba(255,215,0,0.4); color: var(--gold); background: rgba(255,215,0,0.05); font-size: 8px; padding: 6px 12px; }
-  .btn-engine { width: 100%; padding: 14px; border-radius: 12px; font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; letter-spacing: 3px; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; border: none; text-align: center; margin-bottom: 8px; }
+  .btn-engine { width: 100%; padding: 14px; border-radius: 12px; font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; letter-spacing: 3px; cursor: pointer; text-transform: uppercase; border: none; text-align: center; margin-bottom: 8px; }
   .btn-engine.start { background: linear-gradient(135deg, #16a34a, #15803d); color: white; }
   .btn-engine.stop { background: linear-gradient(135deg, #dc2626, #991b1b); color: white; }
   .strategy-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-  .strategy-tab { flex: 1; padding: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.25s ease; font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2px; }
+  .strategy-tab { flex: 1; padding: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.25s ease; font-family: 'Orbitron', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; }
   .strategy-tab.active-matches { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,0.08); }
-  .strategy-tab.active-differs { border-color: var(--danger); color: var(--danger); background: rgba(255,45,85,0.08); }
   .strategy-tab.active-evenodd { border-color: var(--purple); color: var(--purple); background: rgba(168,85,247,0.08); }
   .tick-feed-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
   .tick-feed-header { padding: 8px 14px; border-bottom: 1px solid var(--border); font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; background: rgba(0,229,255,0.03); display: flex; justify-content: space-between; }
   .tick-feed-body { padding: 6px; max-height: 160px; overflow-y: auto; }
   .tick-row { display: grid; grid-template-columns: 55px 14px 1fr 30px; gap: 3px; padding: 2px 5px; font-family: 'Share Tech Mono', monospace; font-size: 8px; align-items: center; }
-  .tick-row .tick-direction.up { color: var(--success); } .tick-row .tick-direction.down { color: var(--danger); }
-  .tick-row .tick-digit.matched { color: var(--accent); background: rgba(0,229,255,0.1); border-radius: 3px; }
+  .tick-direction.up { color: var(--success); } .tick-direction.down { color: var(--danger); }
+  .tick-digit.matched { color: var(--accent); background: rgba(0,229,255,0.1); border-radius: 3px; }
   .section-label { font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 4px; color: var(--text2); text-transform: uppercase; margin-bottom: 6px; }
   .market-grid { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
-  .market-btn { flex: 1; min-width: 70px; padding: 7px 3px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 7px; cursor: pointer; transition: all 0.25s ease; font-family: 'Orbitron', monospace; font-size: 7px; font-weight: 700; text-align: center; }
-  .market-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.08); box-shadow: var(--glow); }
+  .market-btn { flex: 1; min-width: 70px; padding: 7px 3px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 7px; cursor: pointer; font-family: 'Orbitron', monospace; font-size: 7px; font-weight: 700; text-align: center; transition: all 0.25s ease; }
+  .market-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.08); box-shadow: 0 0 20px rgba(0,229,255,0.3); }
   .main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 14px; }
   @media(max-width:1000px) { .main-grid { grid-template-columns: 1fr; } }
   .signal-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
@@ -69,32 +64,24 @@
   .signal-display { text-align: center; width: 100%; }
   .signal-active { animation: signalAppear 0.5s cubic-bezier(.34,1.56,.64,1); }
   @keyframes signalAppear { 0% { opacity: 0; transform: scale(0.85); } 100% { opacity: 1; transform: scale(1); } }
-
-  /* THREE DIGIT DISPLAY */
   .big-signal-display { background: rgba(255,215,0,0.04); border: 2px solid var(--gold); border-radius: 20px; padding: 20px 16px; margin-bottom: 14px; box-shadow: 0 0 40px rgba(255,215,0,0.12); }
   .big-signal-label { font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700; letter-spacing: 4px; color: var(--gold); text-transform: uppercase; margin-bottom: 14px; }
-  .three-digits-row { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
-  .digit-group { text-align: center; min-width: 80px; }
+  .three-digits-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+  .digit-group { text-align: center; min-width: 75px; }
   .digit-group .label { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; font-weight: 700; }
-  .digit-group .label.predicted { color: var(--accent3); }
-  .digit-group .label.entry { color: var(--accent); }
-  .digit-group .label.recovery { color: var(--accent2); }
-  .digit-group .big-num { width: 75px; height: 75px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', monospace; font-size: 40px; font-weight: 900; margin: 0 auto; }
-  .digit-group .big-num.predicted-num { border: 3px solid var(--accent3); color: var(--accent3); background: rgba(57,255,20,0.06); box-shadow: 0 0 25px rgba(57,255,20,0.25); }
-  .digit-group .big-num.entry-num { border: 3px solid var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); box-shadow: 0 0 25px rgba(0,229,255,0.25); }
-  .digit-group .big-num.recovery-num { border: 3px solid var(--accent2); color: var(--accent2); background: rgba(255,107,53,0.06); box-shadow: 0 0 25px rgba(255,107,53,0.25); }
-  .digit-group .big-num.live-num { border-color: var(--accent3); color: var(--accent3); animation: pulse 0.8s infinite; }
-  .arrow-divider { font-family: 'Orbitron', monospace; font-size: 16px; color: var(--muted); }
-
+  .label.predicted { color: var(--accent3); } .label.entry { color: var(--accent); } .label.recovery { color: var(--accent2); }
+  .digit-group .big-num { width: 72px; height: 72px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', monospace; font-size: 38px; font-weight: 900; margin: 0 auto; }
+  .big-num.predicted-num { border: 3px solid var(--accent3); color: var(--accent3); background: rgba(57,255,20,0.06); box-shadow: 0 0 25px rgba(57,255,20,0.25); }
+  .big-num.entry-num { border: 3px solid var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); box-shadow: 0 0 25px rgba(0,229,255,0.25); }
+  .big-num.recovery-num { border: 3px solid var(--accent2); color: var(--accent2); background: rgba(255,107,53,0.06); box-shadow: 0 0 25px rgba(255,107,53,0.25); }
+  .big-num.live-num { border-color: var(--accent3); animation: pulse 0.8s infinite; }
+  .arrow-divider { font-family: 'Orbitron', monospace; font-size: 16px; color: var(--muted); --muted: #3a5a7a; }
   .big-countdown { margin-top: 14px; font-family: 'Orbitron', monospace; font-size: 40px; font-weight: 900; color: var(--accent); text-shadow: 0 0 30px rgba(0,229,255,0.6); }
   .big-countdown.urgent { color: var(--danger); animation: pulse 0.5s infinite; }
   .voice-alert { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-top: 6px; }
-  .voice-alert.ready { color: var(--gold); }
-  .voice-alert.go { color: var(--accent3); font-size: 18px; }
-
+  .voice-alert.ready { color: var(--gold); } .voice-alert.go { color: var(--accent3); font-size: 18px; }
   .strategy-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px; }
   .strategy-badge.matches { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); color: var(--gold); }
-  .strategy-badge.differs { background: rgba(255,45,85,0.1); border: 1px solid rgba(255,45,85,0.3); color: var(--danger); }
   .strategy-badge.evenodd { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); color: var(--purple); }
   .signal-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
   .meta-box { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center; }
@@ -103,7 +90,7 @@
   .confidence-bar-wrap { margin-top: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%; }
   .conf-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
   .conf-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent3), var(--accent), var(--gold)); transition: width 0.6s ease; }
-  .conf-fill.differs { background: linear-gradient(90deg, var(--accent3), var(--accent2), var(--danger)); }
+  .conf-fill.evenodd { background: linear-gradient(90deg, var(--accent3), var(--accent), var(--purple)); }
   .tick-progress { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
   .tick-dot { width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text2); }
   .tick-dot.filled { border-color: var(--accent3); background: rgba(57,255,20,0.2); color: var(--accent3); }
@@ -129,7 +116,7 @@
   .stat-lbl { font-size: 7px; letter-spacing: 2px; color: var(--text2); text-transform: uppercase; }
   .help-note { background: rgba(0,229,255,0.03); border: 1px solid rgba(0,229,255,0.1); border-radius: 8px; padding: 10px; font-size: 9px; color: var(--text2); }
   .error-msg { background: rgba(255,45,85,0.05); border: 1px solid rgba(255,45,85,0.2); border-radius: 8px; padding: 8px 10px; font-size: 9px; color: var(--danger); margin-bottom: 8px; display: none; }
-  @media(max-width:600px) { .stats-row { grid-template-columns: 1fr 1fr; } .signal-meta { grid-template-columns: 1fr 1fr; } .three-digits-row { gap: 8px; } .digit-group .big-num { width: 55px; height: 55px; font-size: 28px; } }
+  @media(max-width:600px) { .stats-row { grid-template-columns: 1fr 1fr; } .signal-meta { grid-template-columns: 1fr 1fr; } .three-digits-row { gap: 6px; } .digit-group .big-num { width: 55px; height: 55px; font-size: 28px; } }
 </style>
 </head>
 <body>
@@ -137,7 +124,7 @@
   <div class="header">
     <div class="logo-wrap">
       <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-      <div><div class="logo-text">FLOWSTATE</div><div class="logo-sub">Matches • Differs • Even/Odd</div></div>
+      <div><div class="logo-text">FLOWSTATE</div><div class="logo-sub">Matches & Even/Odd Engine</div></div>
     </div>
     <div class="header-actions">
       <div class="status-badge idle" id="status-badge"><div class="live-dot gray" id="status-dot"></div><span id="status-text">OFFLINE</span></div>
@@ -147,7 +134,6 @@
   </div>
   <div class="strategy-tabs">
     <button class="strategy-tab active-matches" id="tab-matches" onclick="switchStrategy('matches')">🎯 MATCHES</button>
-    <button class="strategy-tab" id="tab-differs" onclick="switchStrategy('differs')">❌ DIFFERS</button>
     <button class="strategy-tab" id="tab-evenodd" onclick="switchStrategy('evenodd')">🟣 EVEN/ODD</button>
   </div>
   <div class="stats-row">
@@ -172,30 +158,32 @@
       <button class="btn-engine start" id="btn-engine" onclick="toggleEngine()">▶ START ENGINE</button>
       <div class="panel-card"><div class="panel-header">Digit Stream</div><div class="panel-body"><div class="digit-history" id="digit-history"></div></div></div>
       <div class="panel-card"><div class="panel-header">Signal History</div><div class="panel-body"><div class="log-list" id="log-list"><div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div></div></div></div>
-      <div class="help-note"><strong>🔊 Voice Alerts:</strong><br>• "Ready" when signal found<br>• "Go Time" at countdown zero<br>• Shows 3 digits: Predicted, Entry, Recovery</div>
+      <div class="help-note"><strong>🔊 Voice Alerts:</strong><br>• "Ready" when signal found<br>• "Go Time" at countdown zero<br>• 3 digits: Predicted, Entry, Recovery</div>
     </div>
   </div>
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v8.0 - THREE DIGIT SIGNALS ====================
+// ==================== FLOWSTATE PRO v9.0 - UNIFIED STATISTICAL ENGINE ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&redirect_uri=${encodeURIComponent(window.location.href)}`;
 const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`;
 const WS_URL_FALLBACK = `wss://ws.binaryws.com/websockets/v3?app_id=1089`;
 
 const MARKETS = {
-  'R_10':{name:'Volatility 10',decimals:3},'R_25':{name:'Volatility 25',decimals:3},
-  'R_50':{name:'Volatility 50',decimals:4},'R_75':{name:'Volatility 75',decimals:4},
-  'R_100':{name:'Volatility 100',decimals:2},'1HZ10V':{name:'Vol 10 (1s)',decimals:2},
+  'R_10':{name:'Vol 10',decimals:3},'R_25':{name:'Vol 25',decimals:3},
+  'R_50':{name:'Vol 50',decimals:4},'R_75':{name:'Vol 75',decimals:4},
+  'R_100':{name:'Vol 100',decimals:2},'1HZ10V':{name:'Vol 10 (1s)',decimals:2},
   '1HZ25V':{name:'Vol 25 (1s)',decimals:2},'1HZ50V':{name:'Vol 50 (1s)',decimals:2},
   '1HZ75V':{name:'Vol 75 (1s)',decimals:2},'1HZ100V':{name:'Vol 100 (1s)',decimals:2}
 };
 
-// ==================== STATISTICAL ENGINE ====================
+// ==================== UNIFIED STATISTICAL ENGINE ====================
+// This engine uses the SAME robust weighted approach for both Matches and Even/Odd
 class StatisticalEngine {
   constructor() { this.reset(); }
   reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
+  
   addTick(price, decimals) {
     const priceStr = price.toFixed(decimals);
     const lastDigit = parseInt(priceStr.slice(-1));
@@ -205,77 +193,159 @@ class StatisticalEngine {
     if(this.ticks.length>2000){this.ticks.shift();this.digits.shift();}
     return lastDigit;
   }
-  getFrequencies(w=null){const d=w?this.digits.slice(-w):this.digits;const c=Array(10).fill(0);d.forEach(v=>c[v]++);return c.map(x=>x/(d.length||1));}
-  getZScores(w=100){const d=w?this.digits.slice(-w):this.digits;const c=Array(10).fill(0);d.forEach(v=>c[v]++);const t=d.length||1;return c.map(x=>(x-t/10)/(Math.sqrt(t*0.1*0.9)||1));}
-  getTransitions(from){const r=this.transitionMatrix[from]||Array(10).fill(0);const t=r.reduce((a,b)=>a+b,0)||1;return r.map(x=>x/t);}
-  getStreaks(){const s=Array(10).fill(this.digits.length);for(let i=this.digits.length-1;i>=0;i--){const d=this.digits[i];if(s[d]===this.digits.length)s[d]=this.digits.length-1-i;}return s;}
-  getMomentum(){return this.getFrequencies(15).map((s,i)=>s-this.getFrequencies(80)[i]);}
-  getBayesian(w=100){const d=w?this.digits.slice(-w):this.digits;const c=Array(10).fill(0);d.forEach(v=>c[v]++);return c.map(x=>(1+x)/(10+(d.length||1)));}
   
-  // Generate signal for MATCHES (predict exact digit match)
-  generateMatchesSignal() {
-    const n=this.digits.length;
-    if(n<40)return null;
-    const cd=this.digits[n-1];
-    const W={f:0.25,t:0.25,s:0.20,m:0.15,b:0.15};
-    const zC=this.getZScores(100).map(z=>Math.max(0,-z)*25);
-    const tC=this.getTransitions(cd).map(p=>p*100);
-    const str=this.getStreaks();const ms=Math.max(...str,1);
-    const sC=str.map(x=>Math.min(100,(x/Math.max(ms,10))*100));
-    const mC=this.getMomentum().map(m=>Math.max(0,-m*500));
-    const pS=this.getBayesian(50),pL=this.getBayesian(200);
-    const bC=pS.map((x,i)=>Math.max(0,(pL[i]-x)*1000));
-    const scores=Array(10).fill(0);
-    for(let i=0;i<10;i++)scores[i]=W.f*zC[i]+W.t*tC[i]+W.s*sC[i]+W.m*mC[i]+W.b*bC[i];
-    const sorted=scores.map((s,i)=>({digit:i,score:s})).sort((a,b)=>b.score-a.score);
-    const avg=scores.reduce((a,b)=>a+b,0)/10,range=Math.max(...scores)-Math.min(...scores)||1;
-    const sep=(sorted[0].score-avg)/range,df=Math.min(1,n/500);
-    let ag=0;[zC,tC,sC,mC,bC].forEach(ind=>{if(ind.indexOf(Math.max(...ind))===sorted[0].digit)ag++;});
-    let cf=Math.round((sep*50+(ag/5)*35+df*15)*(0.6+0.4*df));
-    cf=Math.max(50,Math.min(98,cf));
-    return {predictedDigit:sorted[0].digit,entryDigit:sorted[0].digit,recoveryDigit:sorted[1].digit,confidence:cf,reason:`${sorted[0].digit} optimal`,strategy:'matches'};
+  // Weighted frequency with recency bias (core method used by both strategies)
+  getWeightedFrequency(window=35) {
+    const d = this.digits.slice(-window);
+    const counts = Array(10).fill(0);
+    d.forEach((digit, i) => {
+      const weight = 1 + (i / d.length); // Recent ticks get higher weight
+      counts[digit] += weight;
+    });
+    const total = counts.reduce((a,b)=>a+b,0) || 1;
+    return counts.map(c => c/total);
   }
   
-  // Generate signal for DIFFERS (predict digit will NOT match)
-  generateDiffersSignal() {
-    const n=this.digits.length;
-    if(n<40)return null;
-    const cd=this.digits[n-1];
-    // For differs, we want the LEAST likely digit
-    const freq=this.getFrequencies(60);
-    const str=this.getStreaks();
-    const trans=this.getTransitions(cd);
-    // Score digits by how UNLIKELY they are
-    const scores=Array(10).fill(0);
-    for(let i=0;i<10;i++){
-      scores[i] = (0.1-freq[i])*200 + (str[i]/Math.max(...str,1))*50 + (0.1-trans[i])*150;
+  getStreaks() {
+    const streaks = Array(10).fill(this.digits.length);
+    for(let i=this.digits.length-1;i>=0;i--){
+      const d=this.digits[i];
+      if(streaks[d]===this.digits.length)streaks[d]=this.digits.length-1-i;
     }
-    const sorted=scores.map((s,i)=>({digit:i,score:s})).sort((a,b)=>b.score-a.score);
-    const avg=scores.reduce((a,b)=>a+b,0)/10,range=Math.max(...scores)-Math.min(...scores)||1;
-    const sep=(sorted[0].score-avg)/range,df=Math.min(1,n/500);
-    let cf=Math.round((sep*45+df*20)*(0.5+0.5*df));
-    cf=Math.max(50,Math.min(95,cf));
-    return {predictedDigit:sorted[0].digit,entryDigit:sorted[0].digit,recoveryDigit:sorted[1].digit,confidence:cf,reason:`${sorted[0].digit} least likely`,strategy:'differs'};
+    return streaks;
   }
   
-  // Generate signal for EVEN/ODD
+  getTransitions(from) {
+    const row = this.transitionMatrix[from]||Array(10).fill(0);
+    const total = row.reduce((a,b)=>a+b,0)||1;
+    return row.map(x=>x/total);
+  }
+  
+  // ============ MATCHES STRATEGY (same robust approach as Even/Odd) ============
+  generateMatchesSignal() {
+    const n = this.digits.length;
+    if (n < 40) return null;
+    
+    const currentDigit = this.digits[n-1];
+    const recent35 = this.digits.slice(-35);
+    
+    // Build scores for each digit using weighted multi-factor analysis
+    const scores = Array(10).fill(0);
+    
+    // Factor 1: Weighted frequency (recent ticks matter more)
+    const weightedFreq = this.getWeightedFrequency(35);
+    
+    // Factor 2: Streak analysis (digits absent longer are more likely to appear)
+    const streaks = this.getStreaks();
+    const maxStreak = Math.max(...streaks, 1);
+    
+    // Factor 3: Transition probability from current digit
+    const transProbs = this.getTransitions(currentDigit);
+    
+    // Factor 4: Last 5 ticks dominance check
+    const last5 = recent35.slice(-5);
+    const last5Counts = Array(10).fill(0);
+    last5.forEach(d => last5Counts[d]++);
+    
+    // Combine factors with weights
+    for (let i = 0; i < 10; i++) {
+      const freqScore = weightedFreq[i] * 40;                    // 40% weight
+      const streakScore = (streaks[i] / maxStreak) * 30;         // 30% weight
+      const transScore = transProbs[i] * 20;                     // 20% weight
+      const recentScore = (last5Counts[i] / 5) * 10;             // 10% weight
+      scores[i] = freqScore + streakScore + transScore + recentScore;
+    }
+    
+    // Sort by score
+    const sorted = scores.map((s,i)=>({digit:i,score:s})).sort((a,b)=>b.score-a.score);
+    const primary = sorted[0];
+    const secondary = sorted[1];
+    
+    // Calculate dominance and confidence
+    const avgScore = scores.reduce((a,b)=>a+b,0)/10;
+    const range = Math.max(...scores)-Math.min(...scores)||1;
+    const dominance = (primary.score - avgScore) / range;
+    const secondaryDominance = (secondary.score - avgScore) / range;
+    
+    // Confidence calculation (same style as Even/Odd)
+    const dataFactor = Math.min(1, n/500);
+    const dominanceFactor = Math.min(1, dominance * 3);
+    const recentSupport = last5Counts[primary.digit] >= 2 ? 1 : 0.5;
+    
+    let confidence = Math.round((dominanceFactor*50 + recentSupport*30 + dataFactor*20));
+    confidence = Math.max(55, Math.min(98, confidence));
+    
+    // Recovery confidence
+    let recoveryConf = Math.round(secondaryDominance * 60 + dataFactor * 15);
+    recoveryConf = Math.min(85, Math.max(40, recoveryConf));
+    
+    // Only return if high confidence
+    if (confidence < 60) return null;
+    
+    return {
+      predictedDigit: primary.digit,
+      entryDigit: primary.digit,
+      recoveryDigit: secondary.digit,
+      confidence: confidence,
+      recoveryConfidence: recoveryConf,
+      reason: `${primary.digit} dominates (${(weightedFreq[primary.digit]*100).toFixed(0)}% freq)`,
+      strategy: 'matches'
+    };
+  }
+  
+  // ============ EVEN/ODD STRATEGY (proven robust approach) ============
   generateEvenOddSignal() {
-    const n=this.digits.length;
-    if(n<40)return null;
-    const recent=this.digits.slice(-35);
-    let evens=0,odds=0;
-    recent.forEach((d,i)=>{const w=1+(i/recent.length);if(d%2===0)evens+=w;else odds+=w;});
-    const total=evens+odds,evenR=evens/total,oddR=odds/total;
-    const dom=evenR>=oddR?'EVEN':'ODD',domR=Math.max(evenR,oddR),subR=Math.min(evenR,oddR);
-    const ratioDom=domR-subR;
-    const last5=recent.slice(-5);
-    const lastE=last5.filter(d=>d%2===0).length,lastO=last5.filter(d=>d%2!==0).length;
-    const recentDom=lastE>lastO?'EVEN':'ODD',recentSup=dom==='EVEN'?lastE:lastO;
-    if(domR>0.60&&dom===recentDom&&recentSup>=4){
-      let cf=75+(ratioDom*60)+(recentSup*3);cf=Math.min(99,Math.round(cf));
-      if(cf<60)return null;
-      const rec=dom==='EVEN'?'ODD':'EVEN';
-      return {predictedDigit:dom==='EVEN'?0:1,entryDigit:dom==='EVEN'?0:1,recoveryDigit:rec==='EVEN'?0:1,confidence:cf,reason:`${Math.round(domR*100)}% dominance`,strategy:'evenodd',prediction:dom,recoveryPrediction:rec};
+    const n = this.digits.length;
+    if (n < 40) return null;
+    
+    const recent35 = this.digits.slice(-35);
+    
+    // Weighted even/odd counts
+    let evens = 0, odds = 0;
+    recent35.forEach((d, i) => {
+      const weight = 1 + (i / recent35.length);
+      if (d % 2 === 0) evens += weight;
+      else odds += weight;
+    });
+    
+    const total = evens + odds;
+    const evenRatio = evens / total;
+    const oddRatio = odds / total;
+    
+    // Determine dominant
+    const dominant = evenRatio >= oddRatio ? 'EVEN' : 'ODD';
+    const domRatio = Math.max(evenRatio, oddRatio);
+    const subRatio = Math.min(evenRatio, oddRatio);
+    const ratioDominance = domRatio - subRatio;
+    
+    // Check last 5 ticks
+    const last5 = recent35.slice(-5);
+    const lastEvens = last5.filter(d => d % 2 === 0).length;
+    const lastOdds = last5.filter(d => d % 2 !== 0).length;
+    const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
+    const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
+    
+    // Strict criteria
+    if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
+      let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4);
+      confidence = Math.min(98, Math.round(confidence));
+      
+      if (confidence < 60) return null;
+      
+      const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
+      const recoveryConf = Math.round(subRatio * 80);
+      
+      return {
+        predictedDigit: dominant === 'EVEN' ? 0 : 1,
+        entryDigit: dominant === 'EVEN' ? 0 : 1,
+        recoveryDigit: recovery === 'EVEN' ? 0 : 1,
+        prediction: dominant,
+        recoveryPrediction: recovery,
+        confidence: confidence,
+        recoveryConfidence: Math.min(85, recoveryConf),
+        reason: `${Math.round(domRatio*100)}% ${dominant} dominance`,
+        strategy: 'evenodd'
+      };
     }
     return null;
   }
@@ -287,49 +357,40 @@ let isConnected=false,engineRunning=false,currentStrategy='matches',currentMarke
 let ws=null,activeSignal=null,prepInterval=null,usingFallback=false;
 let stats={total:0,won:0},signalLog=[],lastDigits=[],currentPrice=null;
 
-// ==================== VOICE ====================
-let voiceSynth=null;
+// ==================== VOICE & AUDIO ====================
+let voiceSynth=null,audioCtx=null;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
 function initVoice(){if(!voiceSynth)voiceSynth=window.speechSynthesis;}
 function speak(text,rate=1.0,pitch=1.0){
   if(!voiceSynth)initVoice();if(!voiceSynth)return;
-  voiceSynth.cancel();
-  const u=new SpeechSynthesisUtterance(text);u.rate=rate;u.pitch=pitch;u.volume=0.8;
-  const voices=voiceSynth.getVoices();
-  const ev=voices.find(v=>v.lang.startsWith('en')&&v.name.includes('Male'))||voices.find(v=>v.lang.startsWith('en'))||voices[0];
+  voiceSynth.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=rate;u.pitch=pitch;u.volume=0.8;
+  const voices=voiceSynth.getVoices(),ev=voices.find(v=>v.lang.startsWith('en')&&v.name.includes('Male'))||voices.find(v=>v.lang.startsWith('en'))||voices[0];
   if(ev)u.voice=ev;voiceSynth.speak(u);
 }
-
-// ==================== AUDIO ====================
-let audioCtx=null;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
 function beep(f=880,d=0.25,v=0.2){if(!audioCtx)return;try{if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.setValueAtTime(f,audioCtx.currentTime);g.gain.setValueAtTime(v,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+d);o.start();o.stop(audioCtx.currentTime+d);}catch(e){}}
 
-// ==================== UI ====================
+// ==================== UI HELPERS ====================
 function $(id){return document.getElementById(id);}
 function showError(m){const e=$('error-msg');e.textContent='❌ '+m;e.style.display='block';setTimeout(()=>{e.style.display='none';},6000);}
 function hideError(){$('error-msg').style.display='none';}
-
 function updateStatus(type,text){
-  const b=$('status-badge'),d=$('status-dot'),t=$('status-text');
-  b.className='status-badge';d.className='live-dot';
+  const b=$('status-badge'),d=$('status-dot');b.className='status-badge';d.className='live-dot';
   if(type==='connected'){b.classList.add('connected');d.classList.add('green');}
   else if(type==='connecting'){b.classList.add('warning');d.classList.add('yellow');}
   else if(type==='error'){b.classList.add('error');d.classList.add('red');}
-  else {b.classList.add('idle');d.classList.add('gray');}
-  t.textContent=text;
+  else{b.classList.add('idle');d.classList.add('gray');}
+  $('status-text').textContent=text;
 }
-
 function updateConnectBtn(state){
   const b=$('btn-connect');
   if(state==='connected'){b.textContent='✅ CONNECTED';b.classList.add('connected');b.disabled=false;b.onclick=disconnect;}
   else if(state==='connecting'){b.textContent='⏳ CONNECTING...';b.disabled=true;}
-  else {b.textContent='⚡ CONNECT';b.classList.remove('connected');b.disabled=false;b.onclick=toggleConnection;}
+  else{b.textContent='⚡ CONNECT';b.classList.remove('connected');b.disabled=false;b.onclick=toggleConnection;}
 }
-
 function updateEngineBtn(){
   const b=$('btn-engine');
   if(engineRunning){b.textContent='■ STOP ENGINE';b.className='btn-engine stop';}
-  else {b.textContent='▶ START ENGINE';b.className='btn-engine start';}
+  else{b.textContent='▶ START ENGINE';b.className='btn-engine start';}
 }
 
 // ==================== CONNECTION ====================
@@ -339,10 +400,7 @@ function connect(urlToUse){
   updateStatus('connecting','CONNECTING...');updateConnectBtn('connecting');
   const url=urlToUse||WS_URL;
   if(ws){try{ws.close();}catch(e){}}ws=null;
-  let timeout=setTimeout(()=>{
-    if(!isConnected){if(!urlToUse&&!usingFallback){usingFallback=true;showError('Trying fallback...');connect(WS_URL_FALLBACK);return;}
-    updateStatus('error','FAILED');updateConnectBtn('offline');showError('Connection failed.');}
-  },10000);
+  let timeout=setTimeout(()=>{if(!isConnected){if(!urlToUse&&!usingFallback){usingFallback=true;connect(WS_URL_FALLBACK);return;}updateStatus('error','FAILED');updateConnectBtn('offline');showError('Connection failed.');}},10000);
   try{ws=new WebSocket(url);}catch(e){clearTimeout(timeout);updateStatus('error','ERROR');updateConnectBtn('offline');return;}
   ws.onopen=()=>{clearTimeout(timeout);isConnected=true;hideError();subscribe();updateStatus('connected','SYNCED');updateConnectBtn('connected');if(!engineRunning){engineRunning=true;updateEngineBtn();}renderSignal();};
   ws.onmessage=(e)=>{try{const d=JSON.parse(e.data);if(d.ping){ws.send(JSON.stringify({pong:1}));return;}if(d.tick)processTick(d.tick);if(d.error&&(d.error.code==='InvalidToken'||d.error.code==='AppIdNotFound'))showError('App ID not registered.');}catch(err){}};
@@ -355,15 +413,13 @@ function startOAuth(){window.location.href=OAUTH_URL;}
 
 // ==================== ENGINE ====================
 function toggleEngine(){engineRunning=!engineRunning;updateEngineBtn();if(engineRunning){if(!isConnected)connect();else renderSignal();}else{activeSignal=null;if(prepInterval)clearInterval(prepInterval);prepInterval=null;renderSignal();}}
-
 function switchStrategy(s){
   currentStrategy=s;
-  ['matches','differs','evenodd'].forEach(st=>$('tab-'+st).className='strategy-tab');
-  $('tab-'+s).classList.add('active-'+s);
+  $('tab-matches').className='strategy-tab'+(s==='matches'?' active-matches':'');
+  $('tab-evenodd').className='strategy-tab'+(s==='evenodd'?' active-evenodd':'');
   const tag=$('strategy-tag'),title=$('signal-card-title');
-  if(s==='matches'){tag.textContent='MATCHES';tag.style.color='var(--gold)';title.textContent='MATCHES OUTPUT';}
-  else if(s==='differs'){tag.textContent='DIFFERS';tag.style.color='var(--danger)';title.textContent='DIFFERS OUTPUT';}
-  else {tag.textContent='EVEN/ODD';tag.style.color='var(--purple)';title.textContent='EVEN/ODD OUTPUT';}
+  if(s==='matches'){tag.textContent='MATCHES';tag.style.color='var(--gold)';tag.style.background='rgba(255,215,0,0.08)';tag.style.border='1px solid rgba(255,215,0,0.25)';title.textContent='MATCHES OUTPUT';}
+  else{tag.textContent='EVEN/ODD';tag.style.color='var(--purple)';tag.style.background='rgba(168,85,247,0.08)';tag.style.border='1px solid rgba(168,85,247,0.25)';title.textContent='EVEN/ODD OUTPUT';}
   activeSignal=null;if(prepInterval)clearInterval(prepInterval);prepInterval=null;engine.reset();renderSignal();
 }
 function switchMarket(sym){currentMarket=sym;engine.reset();activeSignal=null;if(prepInterval)clearInterval(prepInterval);prepInterval=null;renderMarkets();renderSignal();subscribe();}
@@ -384,41 +440,19 @@ function renderTickFeed(){
 
 function renderSignal(){
   const body=$('signal-body');
-  if(!isConnected){body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">🔌</div><div style="font-size:14px;">Not Connected</div><div style="font-size:10px;">Click <strong style="color:var(--accent);">CONNECT</strong></div></div>';return;}
-  if(!engineRunning){body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div><div style="font-size:10px;">Click <strong style="color:var(--success);">START ENGINE</strong></div></div>';return;}
-  if(!activeSignal){body.innerHTML=`<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':currentStrategy==='differs'?'ANALYZING DIFFERS...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}</div>`;return;}
-  
-  const sig=activeSignal,isPrep=sig.status==='PREP',isLive=sig.status==='LIVE',isDone=sig.status==='WON'||sig.status==='LOST';
-  const isMatches=sig.strategy==='matches',isDiffers=sig.strategy==='differs',isEvenOdd=sig.strategy==='evenodd';
-  
-  if(isDone){
-    body.innerHTML=`<div class="signal-display signal-active"><div style="font-size:44px;">${sig.status==='WON'?'✅':'❌'}</div><div style="font-size:20px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};">${isMatches?'MATCH':isDiffers?'DIFFERS':'EVEN/ODD'} ${sig.status==='WON'?'WON':'LOST'}</div><div style="color:var(--text2);margin-top:6px;">Predicted: <strong style="color:var(--accent3);">${isEvenOdd?(sig.prediction||'N/A'):sig.predictedDigit}</strong> | Entry: <strong style="color:var(--accent);">${isEvenOdd?(sig.entryDigit===0?'EVEN':'ODD'):sig.entryDigit}</strong> | Recovery: <strong style="color:var(--accent2);">${isEvenOdd?(sig.recoveryPrediction||'N/A'):sig.recoveryDigit}</strong></div></div>`;
+  if(!isConnected){body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">🔌</div><div style="font-size:14px;">Not Connected</div></div>';return;}
+  if(!engineRunning){body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>';return;}
+  if(!activeSignal){
+    body.innerHTML=`<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}</div>`;
     return;
   }
-
-  // STRATEGY BADGE
-  const badgeClass=isMatches?'matches':isDiffers?'differs':'evenodd';
-  const badgeText=isMatches?'🎯 MATCHES':isDiffers?'❌ DIFFERS':'🟣 EVEN/ODD';
-  const fillClass=isDiffers?'differs':'';
   
-  // Three digit display content
-  let digitsHTML='';
-  if(isEvenOdd){
-    digitsHTML=`<div class="three-digits-row">
-      <div class="digit-group"><div class="label predicted">🔮 Predicted</div><div class="big-num predicted-num ${isLive?'live-num':''}">${sig.prediction}</div></div>
-      <div class="arrow-divider">→</div>
-      <div class="digit-group"><div class="label entry">🎯 Entry</div><div class="big-num entry-num ${isLive?'live-num':''}">${sig.prediction}</div></div>
-      <div class="arrow-divider">VS</div>
-      <div class="digit-group"><div class="label recovery">💡 Recovery</div><div class="big-num recovery-num">${sig.recoveryPrediction}</div></div>
-    </div>`;
-  }else{
-    digitsHTML=`<div class="three-digits-row">
-      <div class="digit-group"><div class="label predicted">🔮 Predicted</div><div class="big-num predicted-num ${isLive?'live-num':''}">${sig.predictedDigit}</div></div>
-      <div class="arrow-divider">→</div>
-      <div class="digit-group"><div class="label entry">🎯 Entry</div><div class="big-num entry-num ${isLive?'live-num':''}">${sig.entryDigit}</div></div>
-      <div class="arrow-divider">VS</div>
-      <div class="digit-group"><div class="label recovery">💡 Recovery</div><div class="big-num recovery-num">${sig.recoveryDigit}</div></div>
-    </div>`;
+  const sig=activeSignal,isMatches=sig.strategy==='matches',isPrep=sig.status==='PREP',isLive=sig.status==='LIVE',isDone=sig.status==='WON'||sig.status==='LOST';
+  const badgeClass=isMatches?'matches':'evenodd',badgeText=isMatches?'🎯 MATCHES':'🟣 EVEN/ODD';
+  
+  if(isDone){
+    body.innerHTML=`<div class="signal-display signal-active"><div style="font-size:44px;">${sig.status==='WON'?'✅':'❌'}</div><div style="font-size:20px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};">${isMatches?'MATCH':'EVEN/ODD'} ${sig.status==='WON'?'WON':'LOST'}</div><div style="color:var(--text2);margin-top:6px;">Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.prediction}</strong> | Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.prediction}</strong> | Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryPrediction}</strong></div></div>`;
+    return;
   }
 
   body.innerHTML=`<div class="signal-display signal-active">
@@ -426,12 +460,18 @@ function renderSignal(){
     <div class="strategy-badge ${badgeClass}">${badgeText}</div>
     <div class="big-signal-display">
       <div class="big-signal-label">${isPrep?'🔊 SIGNAL FOUND - READY':'🔵 TRADE WINDOW ACTIVE'}</div>
-      ${digitsHTML}
+      <div class="three-digits-row">
+        <div class="digit-group"><div class="label predicted">🔮 Predicted</div><div class="big-num predicted-num ${isLive?'live-num':''}">${isMatches?sig.predictedDigit:sig.prediction}</div></div>
+        <div class="arrow-divider">→</div>
+        <div class="digit-group"><div class="label entry">🎯 Entry</div><div class="big-num entry-num ${isLive?'live-num':''}">${isMatches?sig.entryDigit:sig.prediction}</div></div>
+        <div class="arrow-divider">VS</div>
+        <div class="digit-group"><div class="label recovery">💡 Recovery</div><div class="big-num recovery-num">${isMatches?sig.recoveryDigit:sig.recoveryPrediction}</div></div>
+      </div>
       ${isPrep?`<div class="big-countdown${sig.prepTime<=5?' urgent':''}">⏱ 00:${String(sig.prepTime).padStart(2,'0')}</div><div class="voice-alert${sig.prepTime<=5?' go':' ready'}">${sig.prepTime<=5?'⚡ GO TIME! ⚡':'🔊 READY'}</div>`:''}
-      ${isLive?`<div class="tick-progress" style="margin-top:14px;">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:8px;">Trade <strong>${isEvenOdd?sig.prediction:isMatches?sig.entryDigit:sig.entryDigit}</strong> NOW</div>`:''}
+      ${isLive?`<div class="tick-progress" style="margin-top:14px;">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:8px;">Trade <strong>${isMatches?sig.entryDigit:sig.prediction}</strong> NOW</div>`:''}
     </div>
-    <div class="signal-meta"><div class="meta-box"><div class="meta-val" style="color:${isDiffers?'var(--danger)':'var(--gold)'}">${sig.confidence}%</div><div class="meta-key">Confidence</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent)">${sig.reason}</div><div class="meta-key">Pattern</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent2)">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Timer':'Ticks'}</div></div></div>
-    <div class="confidence-bar-wrap"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:var(--text2);">Signal Strength</span><span style="color:${isDiffers?'var(--danger)':'var(--gold)'};font-weight:700;">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill ${fillClass}" style="width:${sig.confidence}%;"></div></div></div>
+    <div class="signal-meta"><div class="meta-box"><div class="meta-val" style="color:var(--gold)">${sig.confidence}%</div><div class="meta-key">Confidence</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent)">${sig.reason}</div><div class="meta-key">Pattern</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent2)">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Timer':'Ticks'}</div></div></div>
+    <div class="confidence-bar-wrap"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:var(--text2);">Signal Strength</span><span style="color:var(--gold);font-weight:700;">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill${isMatches?'':' evenodd'}" style="width:${sig.confidence}%;"></div></div></div>
   </div>`;
 }
 
@@ -460,10 +500,9 @@ function processTick(tick){
     if(activeSignal.elapsed>=5){
       let won=false;
       if(activeSignal.strategy==='matches'){won=lastDigit===activeSignal.entryDigit||lastDigit===activeSignal.recoveryDigit;}
-      else if(activeSignal.strategy==='differs'){won=lastDigit!==activeSignal.entryDigit&&lastDigit!==activeSignal.recoveryDigit;}
-      else {won=(activeSignal.prediction==='EVEN'&&lastDigit%2===0)||(activeSignal.prediction==='ODD'&&lastDigit%2!==0)||(activeSignal.recoveryPrediction==='EVEN'&&lastDigit%2===0)||(activeSignal.recoveryPrediction==='ODD'&&lastDigit%2!==0);}
+      else{won=(activeSignal.prediction==='EVEN'&&lastDigit%2===0)||(activeSignal.prediction==='ODD'&&lastDigit%2!==0)||(activeSignal.recoveryPrediction==='EVEN'&&lastDigit%2===0)||(activeSignal.recoveryPrediction==='ODD'&&lastDigit%2!==0);}
       activeSignal.status=won?'WON':'LOST';stats.total++;if(won)stats.won++;
-      signalLog.unshift({entryDigit:activeSignal.entryDigit,recoveryDigit:activeSignal.recoveryDigit,confidence:activeSignal.confidence,status:activeSignal.status,time:new Date().toLocaleTimeString()});
+      signalLog.unshift({entryDigit:activeSignal.entryDigit,recoveryDigit:activeSignal.recoveryDigit||activeSignal.recoveryPrediction,confidence:activeSignal.confidence,status:activeSignal.status,time:new Date().toLocaleTimeString()});
       if(won){beep(1200,0.2);setTimeout(()=>beep(1500,0.15),200);speak('Win',1.2,1.1);}else{beep(300,0.5);speak('Lost',1.0,0.9);}
       renderSignal();renderLog();updateStats();setTimeout(()=>{activeSignal=null;renderSignal();},5000);return;
     }renderSignal();return;
@@ -471,15 +510,10 @@ function processTick(tick){
   if(activeSignal&&['PREP','WON','LOST'].includes(activeSignal.status))return;
   
   if(engine.digits.length>=40&&engineRunning){
-    let result=null;
-    if(currentStrategy==='matches')result=engine.generateMatchesSignal();
-    else if(currentStrategy==='differs')result=engine.generateDiffersSignal();
-    else result=engine.generateEvenOddSignal();
-    
-    if(result&&result.entryDigit>=0&&result.confidence>=50){
+    let result=currentStrategy==='matches'?engine.generateMatchesSignal():engine.generateEvenOddSignal();
+    if(result&&result.confidence>=60){
       activeSignal={...result,status:'PREP',prepTime:15,elapsed:0};
-      beep(880,0.3);setTimeout(()=>beep(1100,0.2),250);
-      speak('Ready',1.1,1.0);
+      beep(880,0.3);setTimeout(()=>beep(1100,0.2),250);speak('Ready',1.1,1.0);
       let hasSaidGoTime=false;
       if(prepInterval)clearInterval(prepInterval);
       prepInterval=setInterval(()=>{
@@ -502,8 +536,7 @@ function init(){
   if(p.get('token')){localStorage.setItem('deriv_token',p.get('token'));window.history.replaceState({},document.title,window.location.pathname);}
 }
 init();
-console.log('🚀 FlowState Pro v8.0 - Three Digit Signals Ready');
-console.log('🎯 Matches | ❌ Differs | 🟣 Even/Odd');
+console.log('🚀 FlowState Pro v9.0 - Unified Statistical Engine');
 </script>
 </body>
 </html>
