@@ -6,6 +6,7 @@
 <title>FlowState Pro • Matches & Even/Odd Signals</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
+  /* (your existing CSS – unchanged) */
   :root {
     --bg: #030912; --panel: #0a1628; --border: #1a3a5c;
     --accent: #00e5ff; --accent2: #ff6b35; --accent3: #39ff14; --gold: #ffd700;
@@ -120,6 +121,7 @@
   .token-section input { background: var(--panel); border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 11px; min-width: 260px; flex: 1; }
   .token-section input:focus { outline: none; border-color: var(--accent); }
   .mode-toggle { font-size: 9px; color: var(--gold); cursor: pointer; border: 1px solid var(--gold); padding: 4px 12px; border-radius: 16px; background: transparent; font-family: 'Orbitron', monospace; font-weight: 700; }
+  .account-select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 20px; font-family: 'Share Tech Mono', monospace; font-size: 11px; }
   @media(max-width:600px) { .stats-row { grid-template-columns: 1fr 1fr; } .signal-meta { grid-template-columns: 1fr 1fr; } .three-digits-row { gap: 6px; } .digit-group .big-num { width: 55px; height: 55px; font-size: 28px; } }
   @keyframes radarPing { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
 </style>
@@ -134,14 +136,18 @@
     <div class="header-actions">
       <div class="status-badge idle" id="status-badge"><div class="live-dot gray" id="status-dot"></div><span id="status-text">OFFLINE</span></div>
       <button class="btn btn-connect" id="btn-connect" onclick="toggleConnection()">⚡ CONNECT</button>
-      <button class="btn btn-oauth" onclick="startOAuth()">🔑 DERIV LOGIN</button>
+      <button class="btn btn-oauth" onclick="startOAuth('login')">🔑 LOGIN</button>
+      <button class="btn btn-oauth" onclick="startOAuth('signup')">📝 SIGN UP</button>
     </div>
   </div>
 
-  <!-- Token input + mode toggle -->
+  <!-- Token input + account selection + mode toggle -->
   <div class="token-section">
     <input type="text" id="patInput" placeholder="Paste your PAT token here (starts with pat_...)" style="flex:1;min-width:200px;">
     <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect PAT</button>
+    <select class="account-select" id="accountSelect" style="min-width:120px;">
+      <option value="">Select account</option>
+    </select>
     <button class="btn mode-toggle" id="modeToggleBtn" onclick="toggleMode()">MODE: <strong id="modeLabel">DEMO</strong></button>
     <button class="btn" onclick="disconnect()" style="color:var(--danger);border-color:var(--danger);font-size:9px;padding:4px 12px;">🚫 Disconnect</button>
   </div>
@@ -178,19 +184,19 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v9.3 - BACKEND OTP EXCHANGE ====================
-const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';   // ✅ CORRECT APP ID
-const DEMO_ACCOUNT_ID = 'DOT90737951';
-const REAL_ACCOUNT_ID = 'ROT90355563';
-let MODE = 'DEMO';
+// ==================== FLOWSTATE PRO v10 – FULL OAUTH + PAT ====================
+const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';   // ✅ Your OAuth app ID
+const BACKEND_URL = 'http://localhost:3000';    // Your backend URL
 let accessToken = null;
 let ws = null;
 let wsConnected = false;
 let wsReqId = 1;
 let manualDisconnect = false;
 let pingInterval = null;
+let MODE = 'DEMO'; // 'DEMO' or 'REAL'
+let selectedAccountId = null;
 
-// ==================== UNIFIED STATISTICAL ENGINE ====================
+// ==================== STATISTICAL ENGINE (unchanged) ====================
 class StatisticalEngine {
   constructor() { this.reset(); }
   reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
@@ -252,13 +258,12 @@ class StatisticalEngine {
     const avgScore = scores.reduce((a,b)=>a+b,0)/10;
     const range = Math.max(...scores)-Math.min(...scores)||1;
     const dominance = (primary.score - avgScore) / range;
-    const secondaryDominance = (secondary.score - avgScore) / range;
     const dataFactor = Math.min(1, n/500);
     const dominanceFactor = Math.min(1, dominance * 3);
     const recentSupport = last5Counts[primary.digit] >= 2 ? 1 : 0.5;
     let confidence = Math.round((dominanceFactor*50 + recentSupport*30 + dataFactor*20));
     confidence = Math.max(55, Math.min(98, confidence));
-    let recoveryConf = Math.round(secondaryDominance * 60 + dataFactor * 15);
+    let recoveryConf = Math.round(secondary.score / (primary.score+0.01) * 80);
     recoveryConf = Math.min(85, Math.max(40, recoveryConf));
     if (confidence < 60) return null;
     return {
@@ -359,12 +364,48 @@ function updateEngineBtn(){
   else{b.textContent='▶ START ENGINE';b.className='btn-engine start';}
 }
 
-// ==================== TOKEN & MODE ====================
+// ==================== ACCOUNT FETCHING ====================
+async function fetchAccounts(token) {
+  try {
+    const resp = await fetch(`${BACKEND_URL}/api/accounts?token=${encodeURIComponent(token)}&appId=${DERIV_APP_ID}`);
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Failed to fetch accounts');
+    return data.accounts || [];
+  } catch (e) {
+    console.error('Fetch accounts error:', e);
+    return [];
+  }
+}
+
+function populateAccountSelect(accounts) {
+  const sel = $('accountSelect');
+  sel.innerHTML = '<option value="">Select account</option>';
+  accounts.forEach(acc => {
+    const opt = document.createElement('option');
+    opt.value = acc.accountId;
+    // Show account type and balance if available
+    const label = `${acc.accountId} (${acc.currency || 'USD'}) - ${acc.balance || 0}`;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  });
+  // Auto-select first demo account if any
+  const demo = accounts.find(a => a.accountId && a.accountId.startsWith('DOT'));
+  if (demo) {
+    sel.value = demo.accountId;
+    selectedAccountId = demo.accountId;
+  } else if (accounts.length > 0) {
+    sel.value = accounts[0].accountId;
+    selectedAccountId = accounts[0].accountId;
+  }
+}
+
+// ==================== TOKEN & AUTH ====================
 function toggleMode(){
   MODE = (MODE === 'DEMO') ? 'REAL' : 'DEMO';
   $('modeLabel').textContent = MODE;
   if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
   else hideError();
+  // If connected, reconnect with new mode
   if (accessToken && ws) {
     if (ws) { ws.onclose = null; ws.close(); }
     wsConnected = false;
@@ -378,6 +419,25 @@ function connectWithPAT(){
   if (!token.startsWith('pat_')) { showError('Token should start with "pat_"'); return; }
   accessToken = token;
   localStorage.setItem('flowstate_token', token);
+  // Fetch accounts then connect
+  fetchAndConnect(token);
+}
+
+async function fetchAndConnect(token) {
+  const accounts = await fetchAccounts(token);
+  if (accounts.length === 0) {
+    showError('No accounts found. Please ensure your token has proper scopes.');
+    return;
+  }
+  populateAccountSelect(accounts);
+  // Use selected account or first
+  const sel = $('accountSelect');
+  if (sel.value) {
+    selectedAccountId = sel.value;
+  } else {
+    selectedAccountId = accounts[0].accountId;
+    sel.value = selectedAccountId;
+  }
   connectWebSocket(token);
 }
 
@@ -386,7 +446,7 @@ function loadStoredToken(){
   if (token) {
     accessToken = token;
     $('patInput').value = token;
-    connectWebSocket(token);
+    fetchAndConnect(token);
     return true;
   }
   return false;
@@ -406,23 +466,130 @@ function disconnect(){
   renderSignal();
 }
 
-// ==================== BACKEND OTP EXCHANGE ====================
+// ==================== OAuth 2.0 with PKCE ====================
+function generatePKCE() {
+  const array = new Uint8Array(64);
+  crypto.getRandomValues(array);
+  const codeVerifier = Array.from(array)
+    .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
+    .join('');
+
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier))
+    .then(hash => {
+      const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      return { codeVerifier, codeChallenge: challenge };
+    });
+}
+
+function startOAuth(action) {
+  // action: 'login' or 'signup'
+  generatePKCE().then(({ codeVerifier, codeChallenge }) => {
+    // Store verifier and state
+    const state = crypto.getRandomValues(new Uint8Array(16))
+      .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+    sessionStorage.setItem('pkce_code_verifier', codeVerifier);
+    sessionStorage.setItem('oauth_state', state);
+
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: DERIV_APP_ID,
+      redirect_uri: window.location.origin + window.location.pathname,
+      scope: 'trade account_manage application_read payment',
+      state: state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256'
+    });
+
+    if (action === 'signup') {
+      params.append('prompt', 'registration');
+      // Optional partner params can be added here
+    }
+
+    window.location.href = `https://auth.deriv.com/oauth2/auth?${params.toString()}`;
+  });
+}
+
+// Handle OAuth callback
+function handleOAuthCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const state = params.get('state');
+  const error = params.get('error');
+  if (error) {
+    showError(`OAuth error: ${error}`);
+    return;
+  }
+  if (code && state) {
+    const storedState = sessionStorage.getItem('oauth_state');
+    if (state !== storedState) {
+      showError('State mismatch – possible CSRF attack');
+      return;
+    }
+    const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+    if (!codeVerifier) {
+      showError('Missing code verifier');
+      return;
+    }
+
+    // Exchange code for token via backend
+    fetch(`${BACKEND_URL}/api/exchange-oauth-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: code,
+        code_verifier: codeVerifier,
+        redirect_uri: window.location.origin + window.location.pathname
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) {
+        showError('Token exchange failed: ' + data.error);
+        return;
+      }
+      if (data.access_token) {
+        accessToken = data.access_token;
+        localStorage.setItem('flowstate_token', accessToken);
+        sessionStorage.removeItem('pkce_code_verifier');
+        sessionStorage.removeItem('oauth_state');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        // Fetch accounts and connect
+        fetchAndConnect(accessToken);
+      }
+    })
+    .catch(err => {
+      showError('Backend exchange error: ' + err.message);
+    });
+  }
+}
+
+// ==================== WEBSOCKET CONNECTION ====================
 async function connectWebSocket(token) {
   manualDisconnect = false;
-  const accountId = (MODE === 'REAL') ? REAL_ACCOUNT_ID : DEMO_ACCOUNT_ID;
+  if (!selectedAccountId) {
+    showError('Please select an account first');
+    return;
+  }
+  // Determine if it's demo or real based on account ID prefix (or use MODE)
+  const isDemo = selectedAccountId.startsWith('DOT') || MODE === 'DEMO';
+  const accountId = selectedAccountId; // use selected
+
   updateStatus('connecting','CONNECTING...');
   updateConnectBtn('connecting');
   hideError();
 
   try {
-    // 🔥 Call your backend to exchange PAT for session token
-    const response = await fetch('/api/get-otp', {
+    const response = await fetch(`${BACKEND_URL}/api/get-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         token: token,
         accountId: accountId,
-        appId: DERIV_APP_ID   // ✅ Correct app ID
+        appId: DERIV_APP_ID
       })
     });
 
@@ -683,8 +850,7 @@ function switchStrategy(s){
   else{ tag.textContent='EVEN/ODD'; tag.style.color='var(--purple)'; tag.style.background='rgba(168,85,247,0.08)'; tag.style.border='1px solid rgba(168,85,247,0.25)'; title.textContent='EVEN/ODD OUTPUT'; }
   activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; engine.reset(); renderSignal();
 }
-function toggleConnection(){ if(isConnected) disconnect(); else { const t=$('patInput').value.trim(); if(t) connectWithPAT(); else showError('Paste a PAT token first'); } }
-function startOAuth(){ window.location.href=`https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&redirect_uri=${encodeURIComponent(window.location.href)}`; }
+function toggleConnection(){ if(isConnected) disconnect(); else { const t=$('patInput').value.trim(); if(t) connectWithPAT(); else showError('Paste a PAT token first or use OAuth Login'); } }
 
 // ==================== INIT ====================
 function init(){
@@ -695,13 +861,17 @@ function init(){
   renderLog();
   updateStatus('idle','OFFLINE');
   updateEngineBtn();
-  loadStoredToken();
-  // Handle OAuth callback (token param)
-  const p=new URLSearchParams(window.location.search);
-  if(p.get('token')){ localStorage.setItem('flowstate_token', p.get('token')); window.history.replaceState({},document.title,window.location.pathname); location.reload(); }
+  // Load stored token and auto-connect
+  const loaded = loadStoredToken();
+  // Handle OAuth callback
+  handleOAuthCallback();
+  // If no token loaded, show info
+  if (!loaded) {
+    showError('No token found. Please login with OAuth or paste a PAT.');
+  }
 }
 init();
-console.log('🚀 FlowState Pro v9.3 — Backend OTP exchange (correct app ID)');
+console.log('🚀 FlowState Pro v10 — Full OAuth + PAT support');
 </script>
 </body>
 </html>
