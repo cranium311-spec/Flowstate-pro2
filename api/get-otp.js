@@ -1,3 +1,4 @@
+// /api/get-otp.js (Vercel serverless function)
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -10,6 +11,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Exchange PAT for session token
     const authResponse = await fetch('https://api.binaryws.com/authorize', {
       method: 'POST',
       headers: {
@@ -31,12 +33,15 @@ export default async function handler(req, res) {
     const sessionToken = authData?.authorize?.token;
 
     if (!sessionToken) {
-      return res.status(401).json({ error: 'Invalid PAT token' });
+      return res.status(401).json({ error: 'Invalid PAT token – no session token returned' });
     }
 
+    // Build the WebSocket URL with the session token
     const wsUrl = `wss://ws.binaryws.com/websockets/v3?app_id=${appId}&token=${sessionToken}`;
+
     return res.status(200).json({ url: wsUrl });
   } catch (error) {
+    console.error('Unhandled error:', error);
     return res.status(500).json({ error: 'Internal server error', message: error.message });
   }
 }
