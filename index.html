@@ -121,6 +121,7 @@
   .token-section input:focus { outline: none; border-color: var(--accent); }
   .mode-toggle { font-size: 9px; color: var(--gold); cursor: pointer; border: 1px solid var(--gold); padding: 4px 12px; border-radius: 16px; background: transparent; font-family: 'Orbitron', monospace; font-weight: 700; }
   @media(max-width:600px) { .stats-row { grid-template-columns: 1fr 1fr; } .signal-meta { grid-template-columns: 1fr 1fr; } .three-digits-row { gap: 6px; } .digit-group .big-num { width: 55px; height: 55px; font-size: 28px; } }
+  @keyframes radarPing { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
 </style>
 </head>
 <body>
@@ -177,8 +178,8 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v9.2 - DIRECT PAT CONNECTION ====================
-const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
+// ==================== FLOWSTATE PRO v9.3 - BACKEND OTP EXCHANGE ====================
+const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';   // ✅ CORRECT APP ID
 const DEMO_ACCOUNT_ID = 'DOT90737951';
 const REAL_ACCOUNT_ID = 'ROT90355563';
 let MODE = 'DEMO';
@@ -364,13 +365,13 @@ function toggleMode(){
   $('modeLabel').textContent = MODE;
   if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
   else hideError();
-  // Reconnect with same token to update account display
   if (accessToken && ws) {
     if (ws) { ws.onclose = null; ws.close(); }
     wsConnected = false;
     setTimeout(() => connectWebSocket(accessToken), 500);
   }
 }
+
 function connectWithPAT(){
   const token = $('patInput').value.trim();
   if (!token) { showError('Please paste a PAT token'); return; }
@@ -379,6 +380,7 @@ function connectWithPAT(){
   localStorage.setItem('flowstate_token', token);
   connectWebSocket(token);
 }
+
 function loadStoredToken(){
   const token = localStorage.getItem('flowstate_token');
   if (token) {
@@ -389,6 +391,7 @@ function loadStoredToken(){
   }
   return false;
 }
+
 function disconnect(){
   manualDisconnect = true;
   if (pingInterval) clearInterval(pingInterval);
@@ -403,19 +406,35 @@ function disconnect(){
   renderSignal();
 }
 
-// ==================== DIRECT PAT WEBSOCKET (NO BACKEND) ====================
-function connectWebSocket(token) {
+// ==================== BACKEND OTP EXCHANGE ====================
+async function connectWebSocket(token) {
   manualDisconnect = false;
+  const accountId = (MODE === 'REAL') ? REAL_ACCOUNT_ID : DEMO_ACCOUNT_ID;
   updateStatus('connecting','CONNECTING...');
   updateConnectBtn('connecting');
   hideError();
 
   try {
-    // ✅ DIRECT connection — no backend needed!
-    const wsUrl = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}&token=${token}`;
-    console.log('🔗 Connecting to Deriv WS (PAT)');
+    // 🔥 Call your backend to exchange PAT for session token
+    const response = await fetch('/api/get-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: token,
+        accountId: accountId,
+        appId: DERIV_APP_ID   // ✅ Correct app ID
+      })
+    });
 
-    ws = new WebSocket(wsUrl);
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'OTP request failed');
+    }
+
+    const { url } = await response.json();
+    console.log('🔗 Connecting via OTP URL:', url);
+
+    ws = new WebSocket(url);
 
     ws.onopen = function() {
       console.log('✅ WebSocket open');
@@ -424,9 +443,7 @@ function connectWebSocket(token) {
       updateStatus('connected','SYNCED');
       updateConnectBtn('connected');
       if (!engineRunning) { engineRunning = true; updateEngineBtn(); }
-      // Subscribe to ticks
       subscribeTicks();
-      // Ping interval
       if (pingInterval) clearInterval(pingInterval);
       pingInterval = setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -448,13 +465,9 @@ function connectWebSocket(token) {
         if (data.error) {
           showError('API Error: ' + data.error.message);
           if (data.error.code === 'InvalidToken' || data.error.code === 'AuthorizationFailed') {
-            showError('❌ Invalid PAT token — please check and reconnect');
+            showError('❌ Invalid token — please reconnect');
             disconnect();
           }
-        }
-        // Handle balance or other messages if needed
-        if (data.msg_type === 'balance') {
-          // Could display balance if wanted
         }
       } catch(e) { console.warn('WS parse error', e); }
     };
@@ -688,7 +701,7 @@ function init(){
   if(p.get('token')){ localStorage.setItem('flowstate_token', p.get('token')); window.history.replaceState({},document.title,window.location.pathname); location.reload(); }
 }
 init();
-console.log('🚀 FlowState Pro v9.2 — Direct PAT connection (no backend)');
+console.log('🚀 FlowState Pro v9.3 — Backend OTP exchange (correct app ID)');
 </script>
 </body>
 </html>
