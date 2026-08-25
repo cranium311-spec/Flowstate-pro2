@@ -1,5 +1,6 @@
 // /api/get-otp.js (Vercel serverless function)
 export default async function handler(req, res) {
+  // 1. Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -11,37 +12,50 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Exchange PAT for session token
+    // 2. Exchange PAT for session token using Deriv's authorize endpoint
+    //    Official method: send { "authorize": "pat_..." } in the body
     const authResponse = await fetch('https://api.binaryws.com/authorize', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({})
+      body: JSON.stringify({ authorize: token })   // ✅ Correct format
     });
 
+    // 3. Handle HTTP errors
     if (!authResponse.ok) {
       const errorText = await authResponse.text();
+      console.error('Deriv auth error:', authResponse.status, errorText);
       return res.status(authResponse.status).json({
-        error: 'Failed to authenticate with Deriv',
-        details: errorText
+        error: `Deriv API returned ${authResponse.status}`,
+        details: errorText.substring(0, 200) // Trim for readability
       });
     }
 
     const authData = await authResponse.json();
+
+    // 4. Extract session token
     const sessionToken = authData?.authorize?.token;
 
     if (!sessionToken) {
-      return res.status(401).json({ error: 'Invalid PAT token – no session token returned' });
+      console.error('No session token in response:', authData);
+      return res.status(401).json({
+        error: 'Invalid PAT token – no session token returned',
+        details: authData
+      });
     }
 
-    // Build the WebSocket URL with the session token
+    // 5. Build WebSocket URL
     const wsUrl = `wss://ws.binaryws.com/websockets/v3?app_id=${appId}&token=${sessionToken}`;
 
     return res.status(200).json({ url: wsUrl });
+
   } catch (error) {
-    console.error('Unhandled error:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+    console.error('Unhandled error in /api/get-otp:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message,
+      stack: error.stack // Include stack trace for debugging
+    });
   }
 }
