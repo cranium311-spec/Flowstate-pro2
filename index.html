@@ -139,10 +139,10 @@
 
   <!-- Token input + mode toggle -->
   <div class="token-section">
-    <input type="text" id="patInput" placeholder="Paste your PAT token here..." style="flex:1;min-width:200px;">
+    <input type="text" id="patInput" placeholder="Paste your PAT token here (starts with pat_...)" style="flex:1;min-width:200px;">
     <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect PAT</button>
-    <button class="btn btn-ghost" id="modeToggleBtn" onclick="toggleMode()" style="border:1px solid var(--gold);color:var(--gold);font-size:9px;padding:4px 12px;border-radius:16px;font-family:'Orbitron',monospace;font-weight:700;background:transparent;">MODE: <strong id="modeLabel">DEMO</strong></button>
-    <button class="btn btn-ghost" onclick="disconnect()" style="color:var(--danger);border-color:var(--danger);font-size:9px;padding:4px 12px;">🚫 Disconnect</button>
+    <button class="btn mode-toggle" id="modeToggleBtn" onclick="toggleMode()">MODE: <strong id="modeLabel">DEMO</strong></button>
+    <button class="btn" onclick="disconnect()" style="color:var(--danger);border-color:var(--danger);font-size:9px;padding:4px 12px;">🚫 Disconnect</button>
   </div>
 
   <div class="strategy-tabs">
@@ -177,7 +177,7 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v9.1 - NEW API CONNECTION ====================
+// ==================== FLOWSTATE PRO v9.2 - DIRECT PAT CONNECTION ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const DEMO_ACCOUNT_ID = 'DOT90737951';
 const REAL_ACCOUNT_ID = 'ROT90355563';
@@ -187,8 +187,9 @@ let ws = null;
 let wsConnected = false;
 let wsReqId = 1;
 let manualDisconnect = false;
+let pingInterval = null;
 
-// ==================== UNIFIED STATISTICAL ENGINE (unchanged) ====================
+// ==================== UNIFIED STATISTICAL ENGINE ====================
 class StatisticalEngine {
   constructor() { this.reset(); }
   reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
@@ -363,7 +364,8 @@ function toggleMode(){
   $('modeLabel').textContent = MODE;
   if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
   else hideError();
-  if (accessToken) {
+  // Reconnect with same token to update account display
+  if (accessToken && ws) {
     if (ws) { ws.onclose = null; ws.close(); }
     wsConnected = false;
     setTimeout(() => connectWebSocket(accessToken), 500);
@@ -372,6 +374,7 @@ function toggleMode(){
 function connectWithPAT(){
   const token = $('patInput').value.trim();
   if (!token) { showError('Please paste a PAT token'); return; }
+  if (!token.startsWith('pat_')) { showError('Token should start with "pat_"'); return; }
   accessToken = token;
   localStorage.setItem('flowstate_token', token);
   connectWebSocket(token);
@@ -388,6 +391,7 @@ function loadStoredToken(){
 }
 function disconnect(){
   manualDisconnect = true;
+  if (pingInterval) clearInterval(pingInterval);
   if (ws) { try { ws.close(); } catch(e){} }
   ws = null;
   wsConnected = false;
@@ -396,32 +400,22 @@ function disconnect(){
   localStorage.removeItem('flowstate_token');
   updateStatus('idle','OFFLINE');
   updateConnectBtn('offline');
-  $('patInput').value = '';
   renderSignal();
 }
 
-// ==================== NEW API WEBSOCKET via OTP ====================
-async function connectWebSocket(token) {
+// ==================== DIRECT PAT WEBSOCKET (NO BACKEND) ====================
+function connectWebSocket(token) {
   manualDisconnect = false;
-  const accountId = (MODE === 'REAL') ? REAL_ACCOUNT_ID : DEMO_ACCOUNT_ID;
   updateStatus('connecting','CONNECTING...');
   updateConnectBtn('connecting');
   hideError();
 
   try {
-    const response = await fetch('/api/get-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, accountId, appId: DERIV_APP_ID })
-    });
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'OTP request failed');
-    }
-    const { url } = await response.json();
-    console.log('Connecting to New API WS:', url);
+    // ✅ DIRECT connection — no backend needed!
+    const wsUrl = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}&token=${token}`;
+    console.log('🔗 Connecting to Deriv WS (PAT)');
 
-    ws = new WebSocket(url);
+    ws = new WebSocket(wsUrl);
 
     ws.onopen = function() {
       console.log('✅ WebSocket open');
@@ -430,11 +424,11 @@ async function connectWebSocket(token) {
       updateStatus('connected','SYNCED');
       updateConnectBtn('connected');
       if (!engineRunning) { engineRunning = true; updateEngineBtn(); }
-      // Subscribe to ticks immediately
+      // Subscribe to ticks
       subscribeTicks();
       // Ping interval
-      if (window.wsPingInterval) clearInterval(window.wsPingInterval);
-      window.wsPingInterval = setInterval(() => {
+      if (pingInterval) clearInterval(pingInterval);
+      pingInterval = setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ ping: 1 }));
         }
@@ -445,7 +439,6 @@ async function connectWebSocket(token) {
     ws.onmessage = function(event) {
       try {
         const data = JSON.parse(event.data);
-        // console.log('WS:', data.msg_type, data);
         if (data.ping) { ws.send(JSON.stringify({ pong: 1 })); return; }
         if (data.msg_type === 'tick') {
           if (data.tick && data.tick.symbol === currentMarket) {
@@ -454,8 +447,16 @@ async function connectWebSocket(token) {
         }
         if (data.error) {
           showError('API Error: ' + data.error.message);
+          if (data.error.code === 'InvalidToken' || data.error.code === 'AuthorizationFailed') {
+            showError('❌ Invalid PAT token — please check and reconnect');
+            disconnect();
+          }
         }
-      } catch(e) { console.error('WS parse error', e); }
+        // Handle balance or other messages if needed
+        if (data.msg_type === 'balance') {
+          // Could display balance if wanted
+        }
+      } catch(e) { console.warn('WS parse error', e); }
     };
 
     ws.onerror = function(err) {
@@ -464,7 +465,7 @@ async function connectWebSocket(token) {
     };
 
     ws.onclose = function() {
-      if (window.wsPingInterval) clearInterval(window.wsPingInterval);
+      if (pingInterval) clearInterval(pingInterval);
       wsConnected = false;
       isConnected = false;
       updateStatus('error','RECONNECTING...');
@@ -494,7 +495,7 @@ function subscribeTicks() {
   }));
 }
 
-// ==================== TICK PROCESSING (unchanged logic) ====================
+// ==================== TICK PROCESSING ====================
 function processTick(tick) {
   if (!tick || tick.symbol !== currentMarket) return;
   const decimals = (() => {
@@ -567,17 +568,14 @@ function processTick(tick) {
   updateStats();
 }
 
-// ==================== RENDER FUNCTIONS (unchanged) ====================
+// ==================== RENDER FUNCTIONS ====================
+const MARKET_NAMES = {
+  'R_10':'Vol 10','R_25':'Vol 25','R_50':'Vol 50','R_75':'Vol 75','R_100':'Vol 100',
+  '1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'
+};
 function renderMarkets(){
-  const MARKETS = {
-    'R_10':{name:'Vol 10',decimals:3},'R_25':{name:'Vol 25',decimals:3},
-    'R_50':{name:'Vol 50',decimals:4},'R_75':{name:'Vol 75',decimals:4},
-    'R_100':{name:'Vol 100',decimals:2},'1HZ10V':{name:'Vol 10 (1s)',decimals:2},
-    '1HZ25V':{name:'Vol 25 (1s)',decimals:2},'1HZ50V':{name:'Vol 50 (1s)',decimals:2},
-    '1HZ75V':{name:'Vol 75 (1s)',decimals:2},'1HZ100V':{name:'Vol 100 (1s)',decimals:2}
-  };
-  $('market-grid').innerHTML = Object.entries(MARKETS).map(([s,c]) =>
-    `<button class="market-btn${s===currentMarket?' active':''}" onclick="switchMarket('${s}')">${c.name}</button>`
+  $('market-grid').innerHTML = Object.entries(MARKET_NAMES).map(([s,c]) =>
+    `<button class="market-btn${s===currentMarket?' active':''}" onclick="switchMarket('${s}')">${c}</button>`
   ).join('');
 }
 function switchMarket(sym){
@@ -621,7 +619,7 @@ function renderSignal(){
     return;
   }
   body.innerHTML=`<div class="signal-display signal-active">
-    <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${Object.values({R_10:'Vol 10',R_25:'Vol 25',R_50:'Vol 50',R_75:'Vol 75',R_100:'Vol 100','1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'})[currentMarket]||''}</div>
+    <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${MARKET_NAMES[currentMarket]||''}</div>
     <div class="strategy-badge ${badgeClass}">${badgeText}</div>
     <div class="big-signal-display">
       <div class="big-signal-label">${isPrep?'🔊 SIGNAL FOUND - READY':'🔵 TRADE WINDOW ACTIVE'}</div>
@@ -685,12 +683,12 @@ function init(){
   updateStatus('idle','OFFLINE');
   updateEngineBtn();
   loadStoredToken();
-  // handle OAuth callback
+  // Handle OAuth callback (token param)
   const p=new URLSearchParams(window.location.search);
   if(p.get('token')){ localStorage.setItem('flowstate_token', p.get('token')); window.history.replaceState({},document.title,window.location.pathname); location.reload(); }
 }
 init();
-console.log('🚀 FlowState Pro v9.1 - New API with PAT');
+console.log('🚀 FlowState Pro v9.2 — Direct PAT connection (no backend)');
 </script>
 </body>
 </html>
