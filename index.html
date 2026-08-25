@@ -116,6 +116,10 @@
   .stat-lbl { font-size: 7px; letter-spacing: 2px; color: var(--text2); text-transform: uppercase; }
   .help-note { background: rgba(0,229,255,0.03); border: 1px solid rgba(0,229,255,0.1); border-radius: 8px; padding: 10px; font-size: 9px; color: var(--text2); }
   .error-msg { background: rgba(255,45,85,0.05); border: 1px solid rgba(255,45,85,0.2); border-radius: 8px; padding: 8px 10px; font-size: 9px; color: var(--danger); margin-bottom: 8px; display: none; }
+  .token-section { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .token-section input { background: var(--panel); border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 11px; min-width: 260px; flex: 1; }
+  .token-section input:focus { outline: none; border-color: var(--accent); }
+  .mode-toggle { font-size: 9px; color: var(--gold); cursor: pointer; border: 1px solid var(--gold); padding: 4px 12px; border-radius: 16px; background: transparent; font-family: 'Orbitron', monospace; font-weight: 700; }
   @media(max-width:600px) { .stats-row { grid-template-columns: 1fr 1fr; } .signal-meta { grid-template-columns: 1fr 1fr; } .three-digits-row { gap: 6px; } .digit-group .big-num { width: 55px; height: 55px; font-size: 28px; } }
 </style>
 </head>
@@ -132,6 +136,15 @@
       <button class="btn btn-oauth" onclick="startOAuth()">🔑 DERIV LOGIN</button>
     </div>
   </div>
+
+  <!-- Token input + mode toggle -->
+  <div class="token-section">
+    <input type="text" id="patInput" placeholder="Paste your PAT token here..." style="flex:1;min-width:200px;">
+    <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect PAT</button>
+    <button class="btn btn-ghost" id="modeToggleBtn" onclick="toggleMode()" style="border:1px solid var(--gold);color:var(--gold);font-size:9px;padding:4px 12px;border-radius:16px;font-family:'Orbitron',monospace;font-weight:700;background:transparent;">MODE: <strong id="modeLabel">DEMO</strong></button>
+    <button class="btn btn-ghost" onclick="disconnect()" style="color:var(--danger);border-color:var(--danger);font-size:9px;padding:4px 12px;">🚫 Disconnect</button>
+  </div>
+
   <div class="strategy-tabs">
     <button class="strategy-tab active-matches" id="tab-matches" onclick="switchStrategy('matches')">🎯 MATCHES</button>
     <button class="strategy-tab" id="tab-evenodd" onclick="switchStrategy('evenodd')">🟣 EVEN/ODD</button>
@@ -164,26 +177,21 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v9.0 - UNIFIED STATISTICAL ENGINE ====================
+// ==================== FLOWSTATE PRO v9.1 - NEW API CONNECTION ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
-const OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&redirect_uri=${encodeURIComponent(window.location.href)}`;
-const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`;
-const WS_URL_FALLBACK = `wss://ws.binaryws.com/websockets/v3?app_id=1089`;
+const DEMO_ACCOUNT_ID = 'DOT90737951';
+const REAL_ACCOUNT_ID = 'ROT90355563';
+let MODE = 'DEMO';
+let accessToken = null;
+let ws = null;
+let wsConnected = false;
+let wsReqId = 1;
+let manualDisconnect = false;
 
-const MARKETS = {
-  'R_10':{name:'Vol 10',decimals:3},'R_25':{name:'Vol 25',decimals:3},
-  'R_50':{name:'Vol 50',decimals:4},'R_75':{name:'Vol 75',decimals:4},
-  'R_100':{name:'Vol 100',decimals:2},'1HZ10V':{name:'Vol 10 (1s)',decimals:2},
-  '1HZ25V':{name:'Vol 25 (1s)',decimals:2},'1HZ50V':{name:'Vol 50 (1s)',decimals:2},
-  '1HZ75V':{name:'Vol 75 (1s)',decimals:2},'1HZ100V':{name:'Vol 100 (1s)',decimals:2}
-};
-
-// ==================== UNIFIED STATISTICAL ENGINE ====================
-// This engine uses the SAME robust weighted approach for both Matches and Even/Odd
+// ==================== UNIFIED STATISTICAL ENGINE (unchanged) ====================
 class StatisticalEngine {
   constructor() { this.reset(); }
   reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
-  
   addTick(price, decimals) {
     const priceStr = price.toFixed(decimals);
     const lastDigit = parseInt(priceStr.slice(-1));
@@ -193,19 +201,16 @@ class StatisticalEngine {
     if(this.ticks.length>2000){this.ticks.shift();this.digits.shift();}
     return lastDigit;
   }
-  
-  // Weighted frequency with recency bias (core method used by both strategies)
   getWeightedFrequency(window=35) {
     const d = this.digits.slice(-window);
     const counts = Array(10).fill(0);
     d.forEach((digit, i) => {
-      const weight = 1 + (i / d.length); // Recent ticks get higher weight
+      const weight = 1 + (i / d.length);
       counts[digit] += weight;
     });
     const total = counts.reduce((a,b)=>a+b,0) || 1;
     return counts.map(c => c/total);
   }
-  
   getStreaks() {
     const streaks = Array(10).fill(this.digits.length);
     for(let i=this.digits.length-1;i>=0;i--){
@@ -214,74 +219,46 @@ class StatisticalEngine {
     }
     return streaks;
   }
-  
   getTransitions(from) {
     const row = this.transitionMatrix[from]||Array(10).fill(0);
     const total = row.reduce((a,b)=>a+b,0)||1;
     return row.map(x=>x/total);
   }
-  
-  // ============ MATCHES STRATEGY (same robust approach as Even/Odd) ============
   generateMatchesSignal() {
     const n = this.digits.length;
     if (n < 40) return null;
-    
     const currentDigit = this.digits[n-1];
     const recent35 = this.digits.slice(-35);
-    
-    // Build scores for each digit using weighted multi-factor analysis
     const scores = Array(10).fill(0);
-    
-    // Factor 1: Weighted frequency (recent ticks matter more)
     const weightedFreq = this.getWeightedFrequency(35);
-    
-    // Factor 2: Streak analysis (digits absent longer are more likely to appear)
     const streaks = this.getStreaks();
     const maxStreak = Math.max(...streaks, 1);
-    
-    // Factor 3: Transition probability from current digit
     const transProbs = this.getTransitions(currentDigit);
-    
-    // Factor 4: Last 5 ticks dominance check
     const last5 = recent35.slice(-5);
     const last5Counts = Array(10).fill(0);
     last5.forEach(d => last5Counts[d]++);
-    
-    // Combine factors with weights
     for (let i = 0; i < 10; i++) {
-      const freqScore = weightedFreq[i] * 40;                    // 40% weight
-      const streakScore = (streaks[i] / maxStreak) * 30;         // 30% weight
-      const transScore = transProbs[i] * 20;                     // 20% weight
-      const recentScore = (last5Counts[i] / 5) * 10;             // 10% weight
+      const freqScore = weightedFreq[i] * 40;
+      const streakScore = (streaks[i] / maxStreak) * 30;
+      const transScore = transProbs[i] * 20;
+      const recentScore = (last5Counts[i] / 5) * 10;
       scores[i] = freqScore + streakScore + transScore + recentScore;
     }
-    
-    // Sort by score
     const sorted = scores.map((s,i)=>({digit:i,score:s})).sort((a,b)=>b.score-a.score);
     const primary = sorted[0];
     const secondary = sorted[1];
-    
-    // Calculate dominance and confidence
     const avgScore = scores.reduce((a,b)=>a+b,0)/10;
     const range = Math.max(...scores)-Math.min(...scores)||1;
     const dominance = (primary.score - avgScore) / range;
     const secondaryDominance = (secondary.score - avgScore) / range;
-    
-    // Confidence calculation (same style as Even/Odd)
     const dataFactor = Math.min(1, n/500);
     const dominanceFactor = Math.min(1, dominance * 3);
     const recentSupport = last5Counts[primary.digit] >= 2 ? 1 : 0.5;
-    
     let confidence = Math.round((dominanceFactor*50 + recentSupport*30 + dataFactor*20));
     confidence = Math.max(55, Math.min(98, confidence));
-    
-    // Recovery confidence
     let recoveryConf = Math.round(secondaryDominance * 60 + dataFactor * 15);
     recoveryConf = Math.min(85, Math.max(40, recoveryConf));
-    
-    // Only return if high confidence
     if (confidence < 60) return null;
-    
     return {
       predictedDigit: primary.digit,
       entryDigit: primary.digit,
@@ -292,49 +269,34 @@ class StatisticalEngine {
       strategy: 'matches'
     };
   }
-  
-  // ============ EVEN/ODD STRATEGY (proven robust approach) ============
   generateEvenOddSignal() {
     const n = this.digits.length;
     if (n < 40) return null;
-    
     const recent35 = this.digits.slice(-35);
-    
-    // Weighted even/odd counts
     let evens = 0, odds = 0;
     recent35.forEach((d, i) => {
       const weight = 1 + (i / recent35.length);
       if (d % 2 === 0) evens += weight;
       else odds += weight;
     });
-    
     const total = evens + odds;
     const evenRatio = evens / total;
     const oddRatio = odds / total;
-    
-    // Determine dominant
     const dominant = evenRatio >= oddRatio ? 'EVEN' : 'ODD';
     const domRatio = Math.max(evenRatio, oddRatio);
     const subRatio = Math.min(evenRatio, oddRatio);
     const ratioDominance = domRatio - subRatio;
-    
-    // Check last 5 ticks
     const last5 = recent35.slice(-5);
     const lastEvens = last5.filter(d => d % 2 === 0).length;
     const lastOdds = last5.filter(d => d % 2 !== 0).length;
     const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
     const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
-    
-    // Strict criteria
     if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
       let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4);
       confidence = Math.min(98, Math.round(confidence));
-      
       if (confidence < 60) return null;
-      
       const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
       const recoveryConf = Math.round(subRatio * 80);
-      
       return {
         predictedDigit: dominant === 'EVEN' ? 0 : 1,
         entryDigit: dominant === 'EVEN' ? 0 : 1,
@@ -353,12 +315,17 @@ class StatisticalEngine {
 
 // ==================== STATE ====================
 let engine=new StatisticalEngine();
-let isConnected=false,engineRunning=false,currentStrategy='matches',currentMarket='R_100';
-let ws=null,activeSignal=null,prepInterval=null,usingFallback=false;
-let stats={total:0,won:0},signalLog=[],lastDigits=[],currentPrice=null;
+let isConnected=false, engineRunning=false, currentStrategy='matches', currentMarket='R_100';
+let activeSignal=null, prepInterval=null;
+let stats={total:0,won:0}, signalLog=[], lastDigits=[], currentPrice=null;
+let voiceSynth=null, audioCtx=null;
 
-// ==================== VOICE & AUDIO ====================
-let voiceSynth=null,audioCtx=null;
+// ==================== DOM refs ====================
+function $(id){return document.getElementById(id);}
+function showError(m){const e=$('error-msg');e.textContent='❌ '+m;e.style.display='block';setTimeout(()=>{e.style.display='none';},6000);}
+function hideError(){$('error-msg').style.display='none';}
+
+// ==================== AUDIO / VOICE ====================
 function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
 function initVoice(){if(!voiceSynth)voiceSynth=window.speechSynthesis;}
 function speak(text,rate=1.0,pitch=1.0){
@@ -369,10 +336,7 @@ function speak(text,rate=1.0,pitch=1.0){
 }
 function beep(f=880,d=0.25,v=0.2){if(!audioCtx)return;try{if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.setValueAtTime(f,audioCtx.currentTime);g.gain.setValueAtTime(v,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+d);o.start();o.stop(audioCtx.currentTime+d);}catch(e){}}
 
-// ==================== UI HELPERS ====================
-function $(id){return document.getElementById(id);}
-function showError(m){const e=$('error-msg');e.textContent='❌ '+m;e.style.display='block';setTimeout(()=>{e.style.display='none';},6000);}
-function hideError(){$('error-msg').style.display='none';}
+// ==================== UI ====================
 function updateStatus(type,text){
   const b=$('status-badge'),d=$('status-dot');b.className='status-badge';d.className='live-dot';
   if(type==='connected'){b.classList.add('connected');d.classList.add('green');}
@@ -383,9 +347,9 @@ function updateStatus(type,text){
 }
 function updateConnectBtn(state){
   const b=$('btn-connect');
-  if(state==='connected'){b.textContent='✅ CONNECTED';b.classList.add('connected');b.disabled=false;b.onclick=disconnect;}
+  if(state==='connected'){b.textContent='✅ CONNECTED';b.classList.add('connected');b.disabled=false;}
   else if(state==='connecting'){b.textContent='⏳ CONNECTING...';b.disabled=true;}
-  else{b.textContent='⚡ CONNECT';b.classList.remove('connected');b.disabled=false;b.onclick=toggleConnection;}
+  else{b.textContent='⚡ CONNECT';b.classList.remove('connected');b.disabled=false;}
 }
 function updateEngineBtn(){
   const b=$('btn-engine');
@@ -393,70 +357,271 @@ function updateEngineBtn(){
   else{b.textContent='▶ START ENGINE';b.className='btn-engine start';}
 }
 
-// ==================== CONNECTION ====================
-function toggleConnection(){isConnected?disconnect():connect();}
-function connect(urlToUse){
-  hideError();initAudio();initVoice();
-  updateStatus('connecting','CONNECTING...');updateConnectBtn('connecting');
-  const url=urlToUse||WS_URL;
-  if(ws){try{ws.close();}catch(e){}}ws=null;
-  let timeout=setTimeout(()=>{if(!isConnected){if(!urlToUse&&!usingFallback){usingFallback=true;connect(WS_URL_FALLBACK);return;}updateStatus('error','FAILED');updateConnectBtn('offline');showError('Connection failed.');}},10000);
-  try{ws=new WebSocket(url);}catch(e){clearTimeout(timeout);updateStatus('error','ERROR');updateConnectBtn('offline');return;}
-  ws.onopen=()=>{clearTimeout(timeout);isConnected=true;hideError();subscribe();updateStatus('connected','SYNCED');updateConnectBtn('connected');if(!engineRunning){engineRunning=true;updateEngineBtn();}renderSignal();};
-  ws.onmessage=(e)=>{try{const d=JSON.parse(e.data);if(d.ping){ws.send(JSON.stringify({pong:1}));return;}if(d.tick)processTick(d.tick);if(d.error&&(d.error.code==='InvalidToken'||d.error.code==='AppIdNotFound'))showError('App ID not registered.');}catch(err){}};
-  ws.onclose=()=>{clearTimeout(timeout);if(isConnected){updateStatus('error','RECONNECTING...');updateConnectBtn('connecting');setTimeout(()=>{if(isConnected||engineRunning)connect(usingFallback?WS_URL_FALLBACK:WS_URL);},3000);}};
-  ws.onerror=()=>{clearTimeout(timeout);if(!isConnected&&!urlToUse&&!usingFallback){usingFallback=true;connect(WS_URL_FALLBACK);}};
+// ==================== TOKEN & MODE ====================
+function toggleMode(){
+  MODE = (MODE === 'DEMO') ? 'REAL' : 'DEMO';
+  $('modeLabel').textContent = MODE;
+  if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
+  else hideError();
+  if (accessToken) {
+    if (ws) { ws.onclose = null; ws.close(); }
+    wsConnected = false;
+    setTimeout(() => connectWebSocket(accessToken), 500);
+  }
 }
-function disconnect(){isConnected=false;usingFallback=false;if(ws){try{ws.close();}catch(e){}}ws=null;activeSignal=null;if(prepInterval)clearInterval(prepInterval);prepInterval=null;updateStatus('idle','OFFLINE');updateConnectBtn('offline');hideError();renderSignal();}
-function subscribe(){if(ws&&ws.readyState===WebSocket.OPEN){ws.send(JSON.stringify({ticks:currentMarket,subscribe:1}));}}
-function startOAuth(){window.location.href=OAUTH_URL;}
-
-// ==================== ENGINE ====================
-function toggleEngine(){engineRunning=!engineRunning;updateEngineBtn();if(engineRunning){if(!isConnected)connect();else renderSignal();}else{activeSignal=null;if(prepInterval)clearInterval(prepInterval);prepInterval=null;renderSignal();}}
-function switchStrategy(s){
-  currentStrategy=s;
-  $('tab-matches').className='strategy-tab'+(s==='matches'?' active-matches':'');
-  $('tab-evenodd').className='strategy-tab'+(s==='evenodd'?' active-evenodd':'');
-  const tag=$('strategy-tag'),title=$('signal-card-title');
-  if(s==='matches'){tag.textContent='MATCHES';tag.style.color='var(--gold)';tag.style.background='rgba(255,215,0,0.08)';tag.style.border='1px solid rgba(255,215,0,0.25)';title.textContent='MATCHES OUTPUT';}
-  else{tag.textContent='EVEN/ODD';tag.style.color='var(--purple)';tag.style.background='rgba(168,85,247,0.08)';tag.style.border='1px solid rgba(168,85,247,0.25)';title.textContent='EVEN/ODD OUTPUT';}
-  activeSignal=null;if(prepInterval)clearInterval(prepInterval);prepInterval=null;engine.reset();renderSignal();
+function connectWithPAT(){
+  const token = $('patInput').value.trim();
+  if (!token) { showError('Please paste a PAT token'); return; }
+  accessToken = token;
+  localStorage.setItem('flowstate_token', token);
+  connectWebSocket(token);
 }
-function switchMarket(sym){currentMarket=sym;engine.reset();activeSignal=null;if(prepInterval)clearInterval(prepInterval);prepInterval=null;renderMarkets();renderSignal();subscribe();}
+function loadStoredToken(){
+  const token = localStorage.getItem('flowstate_token');
+  if (token) {
+    accessToken = token;
+    $('patInput').value = token;
+    connectWebSocket(token);
+    return true;
+  }
+  return false;
+}
+function disconnect(){
+  manualDisconnect = true;
+  if (ws) { try { ws.close(); } catch(e){} }
+  ws = null;
+  wsConnected = false;
+  isConnected = false;
+  accessToken = null;
+  localStorage.removeItem('flowstate_token');
+  updateStatus('idle','OFFLINE');
+  updateConnectBtn('offline');
+  $('patInput').value = '';
+  renderSignal();
+}
 
-// ==================== RENDER ====================
-function renderMarkets(){$('market-grid').innerHTML=Object.entries(MARKETS).map(([s,c])=>`<button class="market-btn${s===currentMarket?' active':''}" onclick="switchMarket('${s}')">${c.name}</button>`).join('');}
+// ==================== NEW API WEBSOCKET via OTP ====================
+async function connectWebSocket(token) {
+  manualDisconnect = false;
+  const accountId = (MODE === 'REAL') ? REAL_ACCOUNT_ID : DEMO_ACCOUNT_ID;
+  updateStatus('connecting','CONNECTING...');
+  updateConnectBtn('connecting');
+  hideError();
+
+  try {
+    const response = await fetch('/api/get-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, accountId, appId: DERIV_APP_ID })
+    });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'OTP request failed');
+    }
+    const { url } = await response.json();
+    console.log('Connecting to New API WS:', url);
+
+    ws = new WebSocket(url);
+
+    ws.onopen = function() {
+      console.log('✅ WebSocket open');
+      wsConnected = true;
+      isConnected = true;
+      updateStatus('connected','SYNCED');
+      updateConnectBtn('connected');
+      if (!engineRunning) { engineRunning = true; updateEngineBtn(); }
+      // Subscribe to ticks immediately
+      subscribeTicks();
+      // Ping interval
+      if (window.wsPingInterval) clearInterval(window.wsPingInterval);
+      window.wsPingInterval = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ ping: 1 }));
+        }
+      }, 30000);
+      renderSignal();
+    };
+
+    ws.onmessage = function(event) {
+      try {
+        const data = JSON.parse(event.data);
+        // console.log('WS:', data.msg_type, data);
+        if (data.ping) { ws.send(JSON.stringify({ pong: 1 })); return; }
+        if (data.msg_type === 'tick') {
+          if (data.tick && data.tick.symbol === currentMarket) {
+            processTick(data.tick);
+          }
+        }
+        if (data.error) {
+          showError('API Error: ' + data.error.message);
+        }
+      } catch(e) { console.error('WS parse error', e); }
+    };
+
+    ws.onerror = function(err) {
+      console.error('WS error:', err);
+      updateStatus('error','ERROR');
+    };
+
+    ws.onclose = function() {
+      if (window.wsPingInterval) clearInterval(window.wsPingInterval);
+      wsConnected = false;
+      isConnected = false;
+      updateStatus('error','RECONNECTING...');
+      updateConnectBtn('connecting');
+      if (accessToken && !manualDisconnect) {
+        setTimeout(() => connectWebSocket(accessToken), 3000);
+      } else {
+        updateStatus('idle','OFFLINE');
+        updateConnectBtn('offline');
+        renderSignal();
+      }
+    };
+  } catch (err) {
+    console.error('Connection error:', err);
+    showError(err.message);
+    updateStatus('error','FAILED');
+    updateConnectBtn('offline');
+  }
+}
+
+function subscribeTicks() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({
+    ticks: currentMarket,
+    subscribe: 1,
+    req_id: wsReqId++
+  }));
+}
+
+// ==================== TICK PROCESSING (unchanged logic) ====================
+function processTick(tick) {
+  if (!tick || tick.symbol !== currentMarket) return;
+  const decimals = (() => {
+    const m = { 'R_10':3,'R_25':3,'R_50':4,'R_75':4,'R_100':2,'1HZ10V':2,'1HZ25V':2,'1HZ50V':2,'1HZ75V':2,'1HZ100V':2 };
+    return m[currentMarket] || 3;
+  })();
+  const lastDigit = engine.addTick(tick.quote, decimals);
+  currentPrice = { digit: lastDigit };
+  lastDigits.push(lastDigit);
+  if (lastDigits.length > 60) lastDigits.shift();
+
+  if (activeSignal && activeSignal.status === 'LIVE') {
+    activeSignal.elapsed++;
+    if (activeSignal.elapsed >= 5) {
+      let won = false;
+      if (activeSignal.strategy === 'matches') {
+        won = lastDigit === activeSignal.entryDigit || lastDigit === activeSignal.recoveryDigit;
+      } else {
+        const predEven = activeSignal.prediction === 'EVEN';
+        const recEven = activeSignal.recoveryPrediction === 'EVEN';
+        const isEven = lastDigit % 2 === 0;
+        won = (predEven && isEven) || (!predEven && !isEven) || (recEven && isEven) || (!recEven && !isEven);
+      }
+      activeSignal.status = won ? 'WON' : 'LOST';
+      stats.total++; if (won) stats.won++;
+      signalLog.unshift({
+        entryDigit: activeSignal.entryDigit,
+        recoveryDigit: activeSignal.recoveryDigit || activeSignal.recoveryPrediction,
+        confidence: activeSignal.confidence,
+        status: activeSignal.status,
+        time: new Date().toLocaleTimeString()
+      });
+      if (won) { beep(1200,0.2); setTimeout(()=>beep(1500,0.15),200); speak('Win',1.2,1.1); }
+      else { beep(300,0.5); speak('Lost',1.0,0.9); }
+      renderSignal(); renderLog(); updateStats();
+      setTimeout(() => { activeSignal = null; renderSignal(); }, 5000);
+      return;
+    }
+    renderSignal();
+    return;
+  }
+  if (activeSignal && ['PREP','WON','LOST'].includes(activeSignal.status)) return;
+
+  if (engine.digits.length >= 40 && engineRunning) {
+    let result = currentStrategy === 'matches' ? engine.generateMatchesSignal() : engine.generateEvenOddSignal();
+    if (result && result.confidence >= 60) {
+      activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
+      beep(880,0.3); setTimeout(()=>beep(1100,0.2),250); speak('Ready',1.1,1.0);
+      let hasSaidGoTime = false;
+      if (prepInterval) clearInterval(prepInterval);
+      prepInterval = setInterval(() => {
+        if (!activeSignal || activeSignal.status !== 'PREP') { clearInterval(prepInterval); prepInterval = null; return; }
+        activeSignal.prepTime--;
+        renderSignal();
+        if (activeSignal.prepTime <= 5) beep(600,0.1);
+        if (activeSignal.prepTime <= 0) {
+          activeSignal.status = 'LIVE';
+          activeSignal.elapsed = 0;
+          clearInterval(prepInterval); prepInterval = null;
+          beep(1500,0.15);
+          if (!hasSaidGoTime) { speak('Go time',1.3,1.2); hasSaidGoTime = true; }
+          renderSignal();
+        }
+      }, 1000);
+      renderSignal();
+    }
+  }
+  renderTickFeed();
+  renderDigitHistory();
+  updateStats();
+}
+
+// ==================== RENDER FUNCTIONS (unchanged) ====================
+function renderMarkets(){
+  const MARKETS = {
+    'R_10':{name:'Vol 10',decimals:3},'R_25':{name:'Vol 25',decimals:3},
+    'R_50':{name:'Vol 50',decimals:4},'R_75':{name:'Vol 75',decimals:4},
+    'R_100':{name:'Vol 100',decimals:2},'1HZ10V':{name:'Vol 10 (1s)',decimals:2},
+    '1HZ25V':{name:'Vol 25 (1s)',decimals:2},'1HZ50V':{name:'Vol 50 (1s)',decimals:2},
+    '1HZ75V':{name:'Vol 75 (1s)',decimals:2},'1HZ100V':{name:'Vol 100 (1s)',decimals:2}
+  };
+  $('market-grid').innerHTML = Object.entries(MARKETS).map(([s,c]) =>
+    `<button class="market-btn${s===currentMarket?' active':''}" onclick="switchMarket('${s}')">${c.name}</button>`
+  ).join('');
+}
+function switchMarket(sym){
+  currentMarket = sym;
+  engine.reset();
+  activeSignal = null;
+  if (prepInterval) clearInterval(prepInterval); prepInterval = null;
+  renderMarkets();
+  renderSignal();
+  if (wsConnected) subscribeTicks();
+}
 function renderTickFeed(){
-  const feed=$('tick-feed'),count=$('tick-count'),ticks=engine.ticks.slice(-40).reverse();
-  if(ticks.length===0){feed.innerHTML='<div style="text-align:center;color:var(--text2);font-size:10px;">Waiting for ticks...</div>';count.textContent='0 ticks';return;}
+  const feed=$('tick-feed'), count=$('tick-count'), ticks=engine.ticks.slice(-40).reverse();
+  if (ticks.length===0){ feed.innerHTML='<div style="text-align:center;color:var(--text2);font-size:10px;">Waiting for ticks...</div>'; count.textContent='0 ticks'; return; }
   count.textContent=engine.ticks.length+' ticks';
-  feed.innerHTML=ticks.map((t,i)=>{
-    const time=new Date(t.time).toLocaleTimeString('en-US',{hour12:false}),ps=t.price.toFixed(MARKETS[currentMarket].decimals);
-    let dir='flat',sym='—';if(i<ticks.length-1){if(t.price>ticks[i+1].price){dir='up';sym='▲';}else if(t.price<ticks[i+1].price){dir='down';sym='▼';}}
-    const matched=activeSignal&&activeSignal.entryDigit===t.digit;
+  const decimals = (() => {
+    const m = { 'R_10':3,'R_25':3,'R_50':4,'R_75':4,'R_100':2,'1HZ10V':2,'1HZ25V':2,'1HZ50V':2,'1HZ75V':2,'1HZ100V':2 };
+    return m[currentMarket] || 3;
+  })();
+  feed.innerHTML = ticks.map((t,i)=>{
+    const time=new Date(t.time).toLocaleTimeString('en-US',{hour12:false});
+    const ps = t.price.toFixed(decimals);
+    let dir='flat', sym='—';
+    if(i<ticks.length-1){ if(t.price>ticks[i+1].price){dir='up';sym='▲';} else if(t.price<ticks[i+1].price){dir='down';sym='▼';} }
+    const matched = activeSignal && activeSignal.entryDigit === t.digit;
     return `<div class="tick-row"><span>${time}</span><span class="tick-direction ${dir}">${sym}</span><span>${ps.slice(0,-1)}<strong style="color:var(--accent)">${ps.slice(-1)}</strong></span><span class="tick-digit${matched?' matched':''}">${t.digit}</span></div>`;
   }).join('');
 }
-
 function renderSignal(){
   const body=$('signal-body');
-  if(!isConnected){body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">🔌</div><div style="font-size:14px;">Not Connected</div></div>';return;}
-  if(!engineRunning){body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>';return;}
+  if(!isConnected){ body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">🔌</div><div style="font-size:14px;">Not Connected</div></div>'; return; }
+  if(!engineRunning){ body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>'; return; }
   if(!activeSignal){
     body.innerHTML=`<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}</div>`;
     return;
   }
-  
-  const sig=activeSignal,isMatches=sig.strategy==='matches',isPrep=sig.status==='PREP',isLive=sig.status==='LIVE',isDone=sig.status==='WON'||sig.status==='LOST';
-  const badgeClass=isMatches?'matches':'evenodd',badgeText=isMatches?'🎯 MATCHES':'🟣 EVEN/ODD';
-  
+  const sig=activeSignal, isMatches=sig.strategy==='matches', isPrep=sig.status==='PREP', isLive=sig.status==='LIVE', isDone=sig.status==='WON'||sig.status==='LOST';
+  const badgeClass=isMatches?'matches':'evenodd', badgeText=isMatches?'🎯 MATCHES':'🟣 EVEN/ODD';
   if(isDone){
     body.innerHTML=`<div class="signal-display signal-active"><div style="font-size:44px;">${sig.status==='WON'?'✅':'❌'}</div><div style="font-size:20px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};">${isMatches?'MATCH':'EVEN/ODD'} ${sig.status==='WON'?'WON':'LOST'}</div><div style="color:var(--text2);margin-top:6px;">Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.prediction}</strong> | Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.prediction}</strong> | Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryPrediction}</strong></div></div>`;
     return;
   }
-
   body.innerHTML=`<div class="signal-display signal-active">
-    <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${MARKETS[currentMarket].name}</div>
+    <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${Object.values({R_10:'Vol 10',R_25:'Vol 25',R_50:'Vol 50',R_75:'Vol 75',R_100:'Vol 100','1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'})[currentMarket]||''}</div>
     <div class="strategy-badge ${badgeClass}">${badgeText}</div>
     <div class="big-signal-display">
       <div class="big-signal-label">${isPrep?'🔊 SIGNAL FOUND - READY':'🔵 TRADE WINDOW ACTIVE'}</div>
@@ -474,69 +639,58 @@ function renderSignal(){
     <div class="confidence-bar-wrap"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:var(--text2);">Signal Strength</span><span style="color:var(--gold);font-weight:700;">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill${isMatches?'':' evenodd'}" style="width:${sig.confidence}%;"></div></div></div>
   </div>`;
 }
-
 function renderDigitHistory(){
-  const c=$('digit-history');if(lastDigits.length===0){c.innerHTML='<div style="color:var(--text2);font-size:10px;">Waiting...</div>';return;}
-  const freq={};lastDigits.forEach(d=>freq[d]=(freq[d]||0)+1);
-  c.innerHTML=lastDigits.slice(-24).map((d,i)=>{let cls='neutral';const cnt=freq[d]||0;if(cnt>=4)cls='hot';else if(cnt>=2)cls='cold';return`<div class="hist-digit ${cls}${i===lastDigits.slice(-24).length-1?' new-entry':''}">${d}</div>`;}).join('');
+  const c=$('digit-history');
+  if(lastDigits.length===0){ c.innerHTML='<div style="color:var(--text2);font-size:10px;">Waiting...</div>'; return; }
+  const freq={}; lastDigits.forEach(d=>freq[d]=(freq[d]||0)+1);
+  c.innerHTML=lastDigits.slice(-24).map((d,i)=>{
+    let cls='neutral'; const cnt=freq[d]||0;
+    if(cnt>=4) cls='hot'; else if(cnt>=2) cls='cold';
+    return `<div class="hist-digit ${cls}${i===lastDigits.slice(-24).length-1?' new-entry':''}">${d}</div>`;
+  }).join('');
 }
 function renderLog(){
-  const c=$('log-list');if(signalLog.length===0){c.innerHTML='<div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div>';return;}
+  const c=$('log-list');
+  if(signalLog.length===0){ c.innerHTML='<div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div>'; return; }
   c.innerHTML=signalLog.slice(0,15).map(s=>`<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.confidence}% ${s.status==='WON'?'✅':'❌'}</div></div><div style="font-size:8px;color:var(--muted);">${s.time}</div></div>`).join('');
 }
 function updateStats(){
-  $('stat-signals').textContent=stats.total;$('stat-acc').textContent=stats.total>0?Math.round((stats.won/stats.total)*100)+'%':'--';
-  $('stat-digit').textContent=currentPrice?currentPrice.digit:'--';$('stat-evenodd').textContent=currentPrice?(currentPrice.digit%2===0?'EVEN':'ODD'):'--';
+  $('stat-signals').textContent=stats.total;
+  $('stat-acc').textContent=stats.total>0?Math.round((stats.won/stats.total)*100)+'%':'--';
+  $('stat-digit').textContent=currentPrice?currentPrice.digit:'--';
+  $('stat-evenodd').textContent=currentPrice?(currentPrice.digit%2===0?'EVEN':'ODD'):'--';
 }
 
-// ==================== TICK PROCESSING ====================
-function processTick(tick){
-  if(!tick||tick.symbol!==currentMarket)return;
-  const lastDigit=engine.addTick(tick.quote,MARKETS[currentMarket].decimals);
-  currentPrice={digit:lastDigit};lastDigits.push(lastDigit);if(lastDigits.length>60)lastDigits.shift();
-  
-  if(activeSignal&&activeSignal.status==='LIVE'){
-    activeSignal.elapsed++;
-    if(activeSignal.elapsed>=5){
-      let won=false;
-      if(activeSignal.strategy==='matches'){won=lastDigit===activeSignal.entryDigit||lastDigit===activeSignal.recoveryDigit;}
-      else{won=(activeSignal.prediction==='EVEN'&&lastDigit%2===0)||(activeSignal.prediction==='ODD'&&lastDigit%2!==0)||(activeSignal.recoveryPrediction==='EVEN'&&lastDigit%2===0)||(activeSignal.recoveryPrediction==='ODD'&&lastDigit%2!==0);}
-      activeSignal.status=won?'WON':'LOST';stats.total++;if(won)stats.won++;
-      signalLog.unshift({entryDigit:activeSignal.entryDigit,recoveryDigit:activeSignal.recoveryDigit||activeSignal.recoveryPrediction,confidence:activeSignal.confidence,status:activeSignal.status,time:new Date().toLocaleTimeString()});
-      if(won){beep(1200,0.2);setTimeout(()=>beep(1500,0.15),200);speak('Win',1.2,1.1);}else{beep(300,0.5);speak('Lost',1.0,0.9);}
-      renderSignal();renderLog();updateStats();setTimeout(()=>{activeSignal=null;renderSignal();},5000);return;
-    }renderSignal();return;
-  }
-  if(activeSignal&&['PREP','WON','LOST'].includes(activeSignal.status))return;
-  
-  if(engine.digits.length>=40&&engineRunning){
-    let result=currentStrategy==='matches'?engine.generateMatchesSignal():engine.generateEvenOddSignal();
-    if(result&&result.confidence>=60){
-      activeSignal={...result,status:'PREP',prepTime:15,elapsed:0};
-      beep(880,0.3);setTimeout(()=>beep(1100,0.2),250);speak('Ready',1.1,1.0);
-      let hasSaidGoTime=false;
-      if(prepInterval)clearInterval(prepInterval);
-      prepInterval=setInterval(()=>{
-        if(!activeSignal||activeSignal.status!=='PREP'){clearInterval(prepInterval);prepInterval=null;return;}
-        activeSignal.prepTime--;renderSignal();
-        if(activeSignal.prepTime<=5)beep(600,0.1);
-        if(activeSignal.prepTime<=0){activeSignal.status='LIVE';activeSignal.elapsed=0;clearInterval(prepInterval);prepInterval=null;beep(1500,0.15);if(!hasSaidGoTime){speak('Go time',1.3,1.2);hasSaidGoTime=true;}renderSignal();}
-      },1000);
-      renderSignal();
-    }
-  }
-  renderTickFeed();renderDigitHistory();updateStats();
+// ==================== ENGINE CONTROL ====================
+function toggleEngine(){ engineRunning=!engineRunning; updateEngineBtn(); if(engineRunning){ if(!isConnected) showError('Connect first'); else renderSignal(); } else { activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; renderSignal(); } }
+function switchStrategy(s){
+  currentStrategy=s;
+  $('tab-matches').className='strategy-tab'+(s==='matches'?' active-matches':'');
+  $('tab-evenodd').className='strategy-tab'+(s==='evenodd'?' active-evenodd':'');
+  const tag=$('strategy-tag'), title=$('signal-card-title');
+  if(s==='matches'){ tag.textContent='MATCHES'; tag.style.color='var(--gold)'; tag.style.background='rgba(255,215,0,0.08)'; tag.style.border='1px solid rgba(255,215,0,0.25)'; title.textContent='MATCHES OUTPUT'; }
+  else{ tag.textContent='EVEN/ODD'; tag.style.color='var(--purple)'; tag.style.background='rgba(168,85,247,0.08)'; tag.style.border='1px solid rgba(168,85,247,0.25)'; title.textContent='EVEN/ODD OUTPUT'; }
+  activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; engine.reset(); renderSignal();
 }
+function toggleConnection(){ if(isConnected) disconnect(); else { const t=$('patInput').value.trim(); if(t) connectWithPAT(); else showError('Paste a PAT token first'); } }
+function startOAuth(){ window.location.href=`https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&redirect_uri=${encodeURIComponent(window.location.href)}`; }
 
 // ==================== INIT ====================
 function init(){
-  renderMarkets();renderSignal();updateStats();renderDigitHistory();renderLog();
-  updateStatus('idle','OFFLINE');updateEngineBtn();
+  renderMarkets();
+  renderSignal();
+  updateStats();
+  renderDigitHistory();
+  renderLog();
+  updateStatus('idle','OFFLINE');
+  updateEngineBtn();
+  loadStoredToken();
+  // handle OAuth callback
   const p=new URLSearchParams(window.location.search);
-  if(p.get('token')){localStorage.setItem('deriv_token',p.get('token'));window.history.replaceState({},document.title,window.location.pathname);}
+  if(p.get('token')){ localStorage.setItem('flowstate_token', p.get('token')); window.history.replaceState({},document.title,window.location.pathname); location.reload(); }
 }
 init();
-console.log('🚀 FlowState Pro v9.0 - Unified Statistical Engine');
+console.log('🚀 FlowState Pro v9.1 - New API with PAT');
 </script>
 </body>
 </html>
