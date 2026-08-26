@@ -189,7 +189,7 @@ const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const BACKEND_URL = ''; // empty => relative API calls
 const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
-// ==================== STATISTICAL ENGINE (unchanged) ====================
+// ==================== STATISTICAL ENGINE ====================
 class StatisticalEngine {
   constructor() { this.reset(); }
   reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
@@ -272,6 +272,8 @@ class StatisticalEngine {
   generateEvenOddSignal() {
     const n = this.digits.length;
     if (n < 40) return null;
+
+    // --- Parity analysis ---
     const recent35 = this.digits.slice(-35);
     let evens = 0, odds = 0;
     recent35.forEach((d, i) => {
@@ -286,26 +288,61 @@ class StatisticalEngine {
     const domRatio = Math.max(evenRatio, oddRatio);
     const subRatio = Math.min(evenRatio, oddRatio);
     const ratioDominance = domRatio - subRatio;
+
     const last5 = recent35.slice(-5);
     const lastEvens = last5.filter(d => d % 2 === 0).length;
     const lastOdds = last5.filter(d => d % 2 !== 0).length;
     const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
     const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
+
     if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
-      let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4);
+      // --- Digit selection within dominant parity ---
+      const weightedFreq = this.getWeightedFrequency(35);
+      const streaks = this.getStreaks();
+      const maxStreak = Math.max(...streaks, 1);
+      const currentDigit = this.digits[n - 1];
+      const transProbs = this.getTransitions(currentDigit);
+      const last5Counts = Array(10).fill(0);
+      last5.forEach(d => last5Counts[d]++);
+
+      const scores = Array(10).fill(0);
+      for (let i = 0; i < 10; i++) {
+        const freqScore = weightedFreq[i] * 40;
+        const streakScore = (streaks[i] / maxStreak) * 30;
+        const transScore = transProbs[i] * 20;
+        const recentScore = (last5Counts[i] / 5) * 10;
+        scores[i] = freqScore + streakScore + transScore + recentScore;
+      }
+
+      // Filter by dominant parity
+      const isEven = (d) => d % 2 === 0;
+      const dominantDigits = Array.from({ length: 10 }, (_, i) => i)
+        .filter(d => (dominant === 'EVEN' ? isEven(d) : !isEven(d)));
+      const oppositeDigits = Array.from({ length: 10 }, (_, i) => i)
+        .filter(d => (dominant === 'EVEN' ? !isEven(d) : isEven(d)));
+
+      const topDominant = dominantDigits.sort((a, b) => scores[b] - scores[a])[0];
+      const topOpposite = oppositeDigits.sort((a, b) => scores[b] - scores[a])[0];
+
+      // Confidence: parity dominance + digit dominance
+      const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
+      const range = Math.max(...scores) - Math.min(...scores) || 1;
+      const digitDominance = (scores[topDominant] - avgScore) / range;
+      let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
       confidence = Math.min(98, Math.round(confidence));
       if (confidence < 60) return null;
+
       const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
-      const recoveryConf = Math.round(subRatio * 80);
+      const recoveryConf = Math.round((scores[topOpposite] / (scores[topDominant] + 0.01)) * 80);
       return {
-        predictedDigit: dominant === 'EVEN' ? 0 : 1,
-        entryDigit: dominant === 'EVEN' ? 0 : 1,
-        recoveryDigit: recovery === 'EVEN' ? 0 : 1,
+        predictedDigit: topDominant,
+        entryDigit: topDominant,
+        recoveryDigit: topOpposite,
         prediction: dominant,
         recoveryPrediction: recovery,
         confidence: confidence,
-        recoveryConfidence: Math.min(85, recoveryConf),
-        reason: `${Math.round(domRatio*100)}% ${dominant} dominance`,
+        recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
+        reason: `${Math.round(domRatio * 100)}% ${dominant} dominance`,
         strategy: 'evenodd'
       };
     }
@@ -603,7 +640,6 @@ async function connectWebSocket(token) {
       })
     });
 
-    // Read the response as text so we can see the raw error
     const rawText = await response.text();
     let data;
     try {
@@ -613,13 +649,11 @@ async function connectWebSocket(token) {
     }
 
     if (!response.ok) {
-      // Use the 'error' field or the raw text as the error message
       const errorMsg = data.error || data.raw || rawText.substring(0, 200);
       throw new Error(errorMsg);
     }
 
     if (!data.url) {
-      // If no URL, show the raw response for debugging
       throw new Error(`No WebSocket URL returned. Response: ${rawText.substring(0, 200)}`);
     }
 
@@ -700,7 +734,7 @@ function subscribeTicks() {
   }));
 }
 
-// ==================== TICK PROCESSING (unchanged) ====================
+// ==================== TICK PROCESSING ====================
 function processTick(tick) {
   if (!tick || tick.symbol !== currentMarket) return;
   const decimals = (() => {
@@ -731,6 +765,7 @@ function processTick(tick) {
         recoveryDigit: activeSignal.recoveryDigit || activeSignal.recoveryPrediction,
         confidence: activeSignal.confidence,
         status: activeSignal.status,
+        parity: activeSignal.strategy === 'evenodd' ? activeSignal.prediction : null,
         time: new Date().toLocaleTimeString()
       });
       if (won) { beep(1200,0.2); setTimeout(()=>beep(1500,0.15),200); speak('Win',1.2,1.1); }
@@ -773,7 +808,7 @@ function processTick(tick) {
   updateStats();
 }
 
-// ==================== RENDER FUNCTIONS (unchanged) ====================
+// ==================== RENDER FUNCTIONS ====================
 const MARKET_NAMES = {
   'R_10':'Vol 10','R_25':'Vol 25','R_50':'Vol 50','R_75':'Vol 75','R_100':'Vol 100',
   '1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'
@@ -820,7 +855,7 @@ function renderSignal(){
   const sig=activeSignal, isMatches=sig.strategy==='matches', isPrep=sig.status==='PREP', isLive=sig.status==='LIVE', isDone=sig.status==='WON'||sig.status==='LOST';
   const badgeClass=isMatches?'matches':'evenodd', badgeText=isMatches?'🎯 MATCHES':'🟣 EVEN/ODD';
   if(isDone){
-    body.innerHTML=`<div class="signal-display signal-active"><div style="font-size:44px;">${sig.status==='WON'?'✅':'❌'}</div><div style="font-size:20px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};">${isMatches?'MATCH':'EVEN/ODD'} ${sig.status==='WON'?'WON':'LOST'}</div><div style="color:var(--text2);margin-top:6px;">Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.prediction}</strong> | Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.prediction}</strong> | Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryPrediction}</strong></div></div>`;
+    body.innerHTML=`<div class="signal-display signal-active"><div style="font-size:44px;">${sig.status==='WON'?'✅':'❌'}</div><div style="font-size:20px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};">${isMatches?'MATCH':'EVEN/ODD'} ${sig.status==='WON'?'WON':'LOST'}</div><div style="color:var(--text2);margin-top:6px;">Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryDigit}${!isMatches ? ' ('+sig.recoveryPrediction+')' : ''}</strong></div></div>`;
     return;
   }
   body.innerHTML=`<div class="signal-display signal-active">
@@ -829,14 +864,23 @@ function renderSignal(){
     <div class="big-signal-display">
       <div class="big-signal-label">${isPrep?'🔊 SIGNAL FOUND - READY':'🔵 TRADE WINDOW ACTIVE'}</div>
       <div class="three-digits-row">
-        <div class="digit-group"><div class="label predicted">🔮 Predicted</div><div class="big-num predicted-num ${isLive?'live-num':''}">${isMatches?sig.predictedDigit:sig.prediction}</div></div>
+        <div class="digit-group">
+          <div class="label predicted">🔮 Predicted</div>
+          <div class="big-num predicted-num ${isLive?'live-num':''}">${isMatches ? sig.predictedDigit : sig.predictedDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
+        </div>
         <div class="arrow-divider">→</div>
-        <div class="digit-group"><div class="label entry">🎯 Entry</div><div class="big-num entry-num ${isLive?'live-num':''}">${isMatches?sig.entryDigit:sig.prediction}</div></div>
+        <div class="digit-group">
+          <div class="label entry">🎯 Entry</div>
+          <div class="big-num entry-num ${isLive?'live-num':''}">${isMatches ? sig.entryDigit : sig.entryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
+        </div>
         <div class="arrow-divider">VS</div>
-        <div class="digit-group"><div class="label recovery">💡 Recovery</div><div class="big-num recovery-num">${isMatches?sig.recoveryDigit:sig.recoveryPrediction}</div></div>
+        <div class="digit-group">
+          <div class="label recovery">💡 Recovery</div>
+          <div class="big-num recovery-num">${isMatches ? sig.recoveryDigit : sig.recoveryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.recoveryPrediction+')' : ''}</span></div>
+        </div>
       </div>
       ${isPrep?`<div class="big-countdown${sig.prepTime<=5?' urgent':''}">⏱ 00:${String(sig.prepTime).padStart(2,'0')}</div><div class="voice-alert${sig.prepTime<=5?' go':' ready'}">${sig.prepTime<=5?'⚡ GO TIME! ⚡':'🔊 READY'}</div>`:''}
-      ${isLive?`<div class="tick-progress" style="margin-top:14px;">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:8px;">Trade <strong>${isMatches?sig.entryDigit:sig.prediction}</strong> NOW</div>`:''}
+      ${isLive?`<div class="tick-progress" style="margin-top:14px;">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:8px;">Trade <strong>${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> NOW</div>`:''}
     </div>
     <div class="signal-meta"><div class="meta-box"><div class="meta-val" style="color:var(--gold)">${sig.confidence}%</div><div class="meta-key">Confidence</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent)">${sig.reason}</div><div class="meta-key">Pattern</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent2)">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Timer':'Ticks'}</div></div></div>
     <div class="confidence-bar-wrap"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:var(--text2);">Signal Strength</span><span style="color:var(--gold);font-weight:700;">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill${isMatches?'':' evenodd'}" style="width:${sig.confidence}%;"></div></div></div>
@@ -855,7 +899,7 @@ function renderDigitHistory(){
 function renderLog(){
   const c=$('log-list');
   if(signalLog.length===0){ c.innerHTML='<div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div>'; return; }
-  c.innerHTML=signalLog.slice(0,15).map(s=>`<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.confidence}% ${s.status==='WON'?'✅':'❌'}</div></div><div style="font-size:8px;color:var(--muted);">${s.time}</div></div>`).join('');
+  c.innerHTML=signalLog.slice(0,15).map(s=>`<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.confidence}% ${s.status==='WON'?'✅':'❌'}${s.parity ? ` (${s.parity})` : ''}</div></div><div style="font-size:8px;color:var(--muted);">${s.time}</div></div>`).join('');
 }
 function updateStats(){
   $('stat-signals').textContent=stats.total;
