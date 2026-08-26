@@ -6,6 +6,7 @@
 <title>FlowState Pro • Matches & Even/Odd Signals</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
+  /* ----- all CSS from before (unchanged) ----- */
   :root {
     --bg: #030912; --panel: #0a1628; --border: #1a3a5c;
     --accent: #00e5ff; --accent2: #ff6b35; --accent3: #39ff14; --gold: #ffd700;
@@ -183,11 +184,11 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v10 – UPDATED REDIRECT URI (no trailing slash) ====================
+// ==================== FLOWSTATE PRO v10 – IMPROVED ERROR HANDLING ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const BACKEND_URL = ''; // empty => relative API calls
 
-// ---- HARDCODED REDIRECT URI (no trailing slash) ----
+// HARDCODED REDIRECT URI (no trailing slash)
 const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
 // ==================== STATISTICAL ENGINE (unchanged) ====================
@@ -378,11 +379,16 @@ function updateEngineBtn(){
 async function fetchAccounts(token) {
   try {
     const resp = await fetch(`${BACKEND_URL}/api/accounts?token=${encodeURIComponent(token)}&appId=${DERIV_APP_ID}`);
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`HTTP ${resp.status}: ${text.substring(0,100)}`);
+    }
     const data = await resp.json();
     if (!resp.ok) throw new Error(data.error || 'Failed to fetch accounts');
     return data.accounts || [];
   } catch (e) {
     console.error('Fetch accounts error:', e);
+    showError('Accounts fetch: ' + e.message);
     return [];
   }
 }
@@ -397,13 +403,15 @@ function populateAccountSelect(accounts) {
     opt.textContent = label;
     sel.appendChild(opt);
   });
-  const demo = accounts.find(a => a.accountId && a.accountId.startsWith('DOT'));
-  if (demo) {
-    sel.value = demo.accountId;
-    selectedAccountId = demo.accountId;
-  } else if (accounts.length > 0) {
-    sel.value = accounts[0].accountId;
-    selectedAccountId = accounts[0].accountId;
+  // Auto‑select first demo account or any account
+  let selected = null;
+  if (accounts.length > 0) {
+    const demo = accounts.find(a => a.accountId && a.accountId.startsWith('DOT'));
+    selected = demo || accounts[0];
+    sel.value = selected.accountId;
+    selectedAccountId = selected.accountId;
+  } else {
+    showError('No accounts found – please check your token scopes.');
   }
 }
 
@@ -432,7 +440,7 @@ function connectWithPAT(){
 async function fetchAndConnect(token) {
   const accounts = await fetchAccounts(token);
   if (accounts.length === 0) {
-    showError('No accounts found. Please ensure your token has proper scopes.');
+    // fetchAccounts already shows error
     return;
   }
   populateAccountSelect(accounts);
@@ -471,7 +479,7 @@ function disconnect(){
   renderSignal();
 }
 
-// ==================== OAUTH 2.0 with PKCE (using fixed redirect_uri) ====================
+// ==================== OAUTH 2.0 with PKCE ====================
 function generatePKCE() {
   const array = new Uint8Array(64);
   crypto.getRandomValues(array);
@@ -586,14 +594,22 @@ async function connectWebSocket(token) {
     });
 
     if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'OTP request failed');
+      let errorMsg = 'OTP request failed';
+      try {
+        const err = await response.json();
+        errorMsg = err.error || errorMsg;
+      } catch(e) {
+        // if response isn't JSON
+        errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMsg);
     }
 
-    const { url } = await response.json();
-    console.log('🔗 Connecting via OTP URL:', url);
+    const data = await response.json();
+    if (!data.url) throw new Error('No WebSocket URL returned');
+    console.log('🔗 Connecting via OTP URL:', data.url);
 
-    ws = new WebSocket(url);
+    ws = new WebSocket(data.url);
 
     ws.onopen = function() {
       console.log('✅ WebSocket open');
@@ -634,6 +650,7 @@ async function connectWebSocket(token) {
     ws.onerror = function(err) {
       console.error('WS error:', err);
       updateStatus('error','ERROR');
+      showError('WebSocket error – check console');
     };
 
     ws.onclose = function() {
@@ -652,7 +669,7 @@ async function connectWebSocket(token) {
     };
   } catch (err) {
     console.error('Connection error:', err);
-    showError(err.message);
+    showError('WebSocket connection failed: ' + err.message);
     updateStatus('error','FAILED');
     updateConnectBtn('offline');
   }
@@ -667,7 +684,7 @@ function subscribeTicks() {
   }));
 }
 
-// ==================== TICK PROCESSING ====================
+// ==================== TICK PROCESSING (unchanged) ====================
 function processTick(tick) {
   if (!tick || tick.symbol !== currentMarket) return;
   const decimals = (() => {
@@ -740,7 +757,7 @@ function processTick(tick) {
   updateStats();
 }
 
-// ==================== RENDER FUNCTIONS ====================
+// ==================== RENDER FUNCTIONS (unchanged) ====================
 const MARKET_NAMES = {
   'R_10':'Vol 10','R_25':'Vol 25','R_50':'Vol 50','R_75':'Vol 75','R_100':'Vol 100',
   '1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'
@@ -860,7 +877,7 @@ function init(){
   }
 }
 init();
-console.log('🚀 FlowState Pro v10 — Redirect URI updated (no trailing slash)');
+console.log('🚀 FlowState Pro v10 — Improved error handling');
 </script>
 </body>
 </html>
