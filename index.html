@@ -184,7 +184,7 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v10 – FINAL FIX (Token saving + unwrapped accounts) ====================
+// ==================== FLOWSTATE PRO v10 – FINAL FIX (Token saving + error handling) ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const BACKEND_URL = ''; // empty => relative API calls
 const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
@@ -603,19 +603,26 @@ async function connectWebSocket(token) {
       })
     });
 
+    // Read the response as text so we can see the raw error
+    const rawText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (e) {
+      throw new Error(`Server returned non‑JSON: ${rawText.substring(0, 200)}`);
+    }
+
     if (!response.ok) {
-      let errorMsg = 'OTP request failed';
-      try {
-        const err = await response.json();
-        errorMsg = err.error || errorMsg;
-      } catch(e) {
-        errorMsg = `HTTP ${response.status}: ${response.statusText}`;
-      }
+      // Use the 'error' field or the raw text as the error message
+      const errorMsg = data.error || data.raw || rawText.substring(0, 200);
       throw new Error(errorMsg);
     }
 
-    const data = await response.json();
-    if (!data.url) throw new Error('No WebSocket URL returned');
+    if (!data.url) {
+      // If no URL, show the raw response for debugging
+      throw new Error(`No WebSocket URL returned. Response: ${rawText.substring(0, 200)}`);
+    }
+
     console.log('🔗 Connecting via OTP URL:', data.url);
 
     ws = new WebSocket(data.url);
@@ -886,7 +893,7 @@ function init(){
   }
 }
 init();
-console.log('🚀 FlowState Pro v10 — Final version with token saving and unwrapped accounts');
+console.log('🚀 FlowState Pro v10 — Final version with improved OTP error handling');
 </script>
 </body>
 </html>
