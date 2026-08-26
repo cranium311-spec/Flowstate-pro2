@@ -4,9 +4,8 @@
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "@vercel/node@2"
-    }
-  }
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "index.html", "use": "@vercel/static" }
+  ]
 }
