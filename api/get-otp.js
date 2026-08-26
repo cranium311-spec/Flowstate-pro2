@@ -25,16 +25,18 @@ module.exports = async (req, res) => {
 
     const text = await response.text();
 
-    // Try to parse JSON
     let data;
     try {
       data = JSON.parse(text);
     } catch (e) {
-      // Not JSON – return the raw text
-      return res.status(500).json({ error: 'Deriv returned non‑JSON', raw: text });
+      // Not JSON – return raw text
+      return res.status(500).json({
+        error: `Deriv returned non‑JSON: ${text.substring(0, 200)}`,
+        raw: text
+      });
     }
 
-    // If Deriv returned an error (even with 200 status), forward it
+    // If Deriv returned an error (even with 200 status)
     if (data.error || data.message) {
       return res.status(response.status === 200 ? 400 : response.status).json({
         error: data.message || data.error || 'Deriv API error',
@@ -55,9 +57,9 @@ module.exports = async (req, res) => {
       return res.json({ url: wsUrl });
     }
 
-    // No OTP or URL found
+    // No OTP or URL found – return raw response
     return res.status(500).json({
-      error: 'No OTP or URL in response',
+      error: `No OTP or URL. Deriv responded with: ${text.substring(0, 200)}`,
       raw: text,
       details: data
     });
