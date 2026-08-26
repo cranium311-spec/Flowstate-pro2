@@ -19,15 +19,12 @@ module.exports = async (req, res) => {
       },
     });
 
-    // Read the response body as text first (it might be JSON or plain text)
     const text = await response.text();
 
-    // Try to parse it as JSON; if it fails, treat it as an error message
     let data;
     try {
       data = JSON.parse(text);
     } catch (parseErr) {
-      // Not JSON – forward the raw text as the error message
       return res.status(response.status || 500).json({
         error: 'Deriv API returned non‑JSON response',
         raw: text
@@ -41,8 +38,11 @@ module.exports = async (req, res) => {
       });
     }
 
-    // Success – return accounts array
-    res.json({ accounts: data });
+    // 📌 FIX: Unwrap the "data" wrapper if it exists
+    const accountsArray = data.data || data.accounts || data;
+
+    // ✅ Send back just the array (not wrapped)
+    res.json(accountsArray);
   } catch (err) {
     console.error('Accounts fetch error:', err);
     res.status(500).json({ error: err.message || 'Internal server error' });
