@@ -183,11 +183,14 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v10 – FULL OAUTH + PAT (Vercel‑ready) ====================
+// ==================== FLOWSTATE PRO v10 – FIXED REDIRECT URI ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const BACKEND_URL = ''; // empty => relative API calls
 
-// ==================== STATISTICAL ENGINE ====================
+// ---- HARDCODED REDIRECT URI ----
+const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app/';
+
+// ==================== STATISTICAL ENGINE (unchanged) ====================
 class StatisticalEngine {
   constructor() { this.reset(); }
   reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
@@ -468,7 +471,7 @@ function disconnect(){
   renderSignal();
 }
 
-// ==================== OAUTH 2.0 with PKCE ====================
+// ==================== OAUTH 2.0 with PKCE (using fixed redirect_uri) ====================
 function generatePKCE() {
   const array = new Uint8Array(64);
   crypto.getRandomValues(array);
@@ -496,17 +499,15 @@ function startOAuth(action) {
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: DERIV_APP_ID,
-      redirect_uri: window.location.origin + window.location.pathname,
+      redirect_uri: REDIRECT_URI,  // <-- fixed
       scope: 'trade account_manage application_read payment',
       state: state,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256'
     });
-
     if (action === 'signup') {
       params.append('prompt', 'registration');
     }
-
     window.location.href = `https://auth.deriv.com/oauth2/auth?${params.toString()}`;
   });
 }
@@ -538,7 +539,7 @@ function handleOAuthCallback() {
       body: JSON.stringify({
         code: code,
         code_verifier: codeVerifier,
-        redirect_uri: window.location.origin + window.location.pathname
+        redirect_uri: REDIRECT_URI   // <-- fixed
       })
     })
     .then(res => res.json())
@@ -859,7 +860,7 @@ function init(){
   }
 }
 init();
-console.log('🚀 FlowState Pro v10 — Vercel-ready with OAuth + PAT');
+console.log('🚀 FlowState Pro v10 — Redirect URI fixed');
 </script>
 </body>
 </html>
