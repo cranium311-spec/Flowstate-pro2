@@ -3,7 +3,6 @@ const fetch = require('node-fetch');
 const DERIV_APP_ID = process.env.DERIV_APP_ID || '33rxAwkQtyvcvVAj38XLU';
 
 module.exports = async (req, res) => {
-  // Enable CORS for all origins (useful during development)
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   if (req.method === 'OPTIONS') {
@@ -32,10 +31,10 @@ module.exports = async (req, res) => {
       return res.status(response.status).json({ error: data.message || 'Failed to fetch accounts' });
     }
 
-    // Deriv returns an array of account objects; we wrap it.
     res.json({ accounts: data });
   } catch (err) {
-    console.error('Accounts fetch error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('ERROR in /api/accounts:', err);
+    // Return the exact error message to the client
+    res.status(500).json({ error: err.message || 'Internal server error' });
   }
 };
