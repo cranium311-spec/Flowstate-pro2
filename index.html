@@ -183,12 +183,12 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v10 – FIXED REDIRECT URI ====================
+// ==================== FLOWSTATE PRO v10 – UPDATED REDIRECT URI (no trailing slash) ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const BACKEND_URL = ''; // empty => relative API calls
 
-// ---- HARDCODED REDIRECT URI ----
-const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app/';
+// ---- HARDCODED REDIRECT URI (no trailing slash) ----
+const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
 // ==================== STATISTICAL ENGINE (unchanged) ====================
 class StatisticalEngine {
@@ -499,7 +499,7 @@ function startOAuth(action) {
     const params = new URLSearchParams({
       response_type: 'code',
       client_id: DERIV_APP_ID,
-      redirect_uri: REDIRECT_URI,  // <-- fixed
+      redirect_uri: REDIRECT_URI,
       scope: 'trade account_manage application_read payment',
       state: state,
       code_challenge: codeChallenge,
@@ -539,7 +539,7 @@ function handleOAuthCallback() {
       body: JSON.stringify({
         code: code,
         code_verifier: codeVerifier,
-        redirect_uri: REDIRECT_URI   // <-- fixed
+        redirect_uri: REDIRECT_URI
       })
     })
     .then(res => res.json())
@@ -860,7 +860,7 @@ function init(){
   }
 }
 init();
-console.log('🚀 FlowState Pro v10 — Redirect URI fixed');
+console.log('🚀 FlowState Pro v10 — Redirect URI updated (no trailing slash)');
 </script>
 </body>
 </html>
