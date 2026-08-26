@@ -184,11 +184,9 @@
 </div>
 
 <script>
-// ==================== FLOWSTATE PRO v10 – IMPROVED ERROR HANDLING ====================
+// ==================== FLOWSTATE PRO v10 – FINAL FIX (Token saving + unwrapped accounts) ====================
 const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const BACKEND_URL = ''; // empty => relative API calls
-
-// HARDCODED REDIRECT URI (no trailing slash)
 const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
 // ==================== STATISTICAL ENGINE (unchanged) ====================
@@ -384,8 +382,9 @@ async function fetchAccounts(token) {
       throw new Error(`HTTP ${resp.status}: ${text.substring(0,100)}`);
     }
     const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Failed to fetch accounts');
-    return data.accounts || [];
+    // Unwrap the accounts array (handles both wrapped and unwrapped responses)
+    const accountsArray = data.accounts?.data || data.accounts || data.data || data;
+    return Array.isArray(accountsArray) ? accountsArray : [];
   } catch (e) {
     console.error('Fetch accounts error:', e);
     showError('Accounts fetch: ' + e.message);
@@ -398,18 +397,18 @@ function populateAccountSelect(accounts) {
   sel.innerHTML = '<option value="">Select account</option>';
   accounts.forEach(acc => {
     const opt = document.createElement('option');
-    opt.value = acc.accountId;
-    const label = `${acc.accountId} (${acc.currency || 'USD'}) - ${acc.balance || 0}`;
+    opt.value = acc.account_id || acc.accountId;
+    const label = `${acc.account_id || acc.accountId} (${acc.currency || 'USD'}) - ${acc.balance || 0}`;
     opt.textContent = label;
     sel.appendChild(opt);
   });
-  // Auto‑select first demo account or any account
-  let selected = null;
+  // Auto‑select first demo account
   if (accounts.length > 0) {
-    const demo = accounts.find(a => a.accountId && a.accountId.startsWith('DOT'));
-    selected = demo || accounts[0];
-    sel.value = selected.accountId;
-    selectedAccountId = selected.accountId;
+    const demo = accounts.find(a => (a.account_id || a.accountId || '').startsWith('DOT'));
+    const selected = demo || accounts[0];
+    const id = selected.account_id || selected.accountId;
+    sel.value = id;
+    selectedAccountId = id;
   } else {
     showError('No accounts found – please check your token scopes.');
   }
@@ -434,13 +433,15 @@ function connectWithPAT(){
   if (!token.startsWith('pat_')) { showError('Token should start with "pat_"'); return; }
   accessToken = token;
   localStorage.setItem('flowstate_token', token);
+  // Clear any previous error
+  hideError();
   fetchAndConnect(token);
 }
 
 async function fetchAndConnect(token) {
   const accounts = await fetchAccounts(token);
   if (accounts.length === 0) {
-    // fetchAccounts already shows error
+    showError('No accounts found. Ensure token has proper scopes.');
     return;
   }
   populateAccountSelect(accounts);
@@ -448,9 +449,10 @@ async function fetchAndConnect(token) {
   if (sel.value) {
     selectedAccountId = sel.value;
   } else {
-    selectedAccountId = accounts[0].accountId;
+    selectedAccountId = accounts[0].account_id || accounts[0].accountId;
     sel.value = selectedAccountId;
   }
+  // Automatically connect after fetching accounts
   connectWebSocket(token);
 }
 
@@ -459,7 +461,15 @@ function loadStoredToken(){
   if (token) {
     accessToken = token;
     $('patInput').value = token;
-    fetchAndConnect(token);
+    // Do NOT auto‑connect here – let the user click CONNECT
+    // We'll just populate accounts and let the user trigger connection
+    fetchAccounts(token).then(accounts => {
+      if (accounts.length > 0) {
+        populateAccountSelect(accounts);
+        const sel = $('accountSelect');
+        if (sel.value) selectedAccountId = sel.value;
+      }
+    });
     return true;
   }
   return false;
@@ -599,7 +609,6 @@ async function connectWebSocket(token) {
         const err = await response.json();
         errorMsg = err.error || errorMsg;
       } catch(e) {
-        // if response isn't JSON
         errorMsg = `HTTP ${response.status}: ${response.statusText}`;
       }
       throw new Error(errorMsg);
@@ -877,7 +886,7 @@ function init(){
   }
 }
 init();
-console.log('🚀 FlowState Pro v10 — Improved error handling');
+console.log('🚀 FlowState Pro v10 — Final version with token saving and unwrapped accounts');
 </script>
 </body>
 </html>
