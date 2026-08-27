@@ -124,6 +124,9 @@
   .account-select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 20px; font-family: 'Share Tech Mono', monospace; font-size: 11px; }
   @media(max-width:600px) { .stats-row { grid-template-columns: 1fr 1fr; } .signal-meta { grid-template-columns: 1fr 1fr; } .three-digits-row { gap: 6px; } .digit-group .big-num { width: 55px; height: 55px; font-size: 28px; } }
   @keyframes radarPing { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+  /* Result animation */
+  .result-display { animation: resultPop 0.6s ease-out; }
+  @keyframes resultPop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 </style>
 </head>
 <body>
@@ -189,7 +192,31 @@ const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const BACKEND_URL = ''; // empty => relative API calls
 const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
-// ==================== STATISTICAL ENGINE ====================
+// ==================== SELF-LEARNING STATE ====================
+let learningState = {
+  matches: { total: 0, wins: 0, recent: [] },   // recent array of booleans
+  evenodd: { total: 0, wins: 0, recent: [] }
+};
+
+// Function to get performance factor based on recent win rate
+function getPerformanceFactor(strategy) {
+  const s = learningState[strategy];
+  if (s.total === 0) return 1.0; // no data, neutral
+  const winRate = s.wins / s.total;
+  // Map win rate (0 to 1) to factor (0.7 to 1.3)
+  return 0.7 + (winRate * 0.6);
+}
+
+// Function to update learning state after a signal result
+function updateLearning(strategy, won) {
+  const s = learningState[strategy];
+  s.total++;
+  if (won) s.wins++;
+  s.recent.push(won);
+  if (s.recent.length > 50) s.recent.shift(); // keep last 50 results
+}
+
+// ==================== STATISTICAL ENGINE (with learning adjustments) ====================
 class StatisticalEngine {
   constructor() { this.reset(); }
   reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
@@ -256,6 +283,10 @@ class StatisticalEngine {
     const recentSupport = last5Counts[primary.digit] >= 2 ? 1 : 0.5;
     let confidence = Math.round((dominanceFactor*50 + recentSupport*30 + dataFactor*20));
     confidence = Math.max(55, Math.min(98, confidence));
+    // Apply learning factor
+    const perfFactor = getPerformanceFactor('matches');
+    confidence = Math.round(confidence * perfFactor);
+    confidence = Math.max(55, Math.min(98, confidence));
     let recoveryConf = Math.round(secondary.score / (primary.score+0.01) * 80);
     recoveryConf = Math.min(85, Math.max(40, recoveryConf));
     if (confidence < 60) return null;
@@ -272,7 +303,6 @@ class StatisticalEngine {
   generateEvenOddSignal() {
     const n = this.digits.length;
     if (n < 40) return null;
-
     // --- Parity analysis ---
     const recent35 = this.digits.slice(-35);
     let evens = 0, odds = 0;
@@ -330,6 +360,10 @@ class StatisticalEngine {
       const digitDominance = (scores[topDominant] - avgScore) / range;
       let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
       confidence = Math.min(98, Math.round(confidence));
+      // Apply learning factor
+      const perfFactor = getPerformanceFactor('evenodd');
+      confidence = Math.round(confidence * perfFactor);
+      confidence = Math.max(55, Math.min(98, confidence));
       if (confidence < 60) return null;
 
       const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
@@ -734,7 +768,7 @@ function subscribeTicks() {
   }));
 }
 
-// ==================== TICK PROCESSING ====================
+// ==================== TICK PROCESSING (with learning update) ====================
 function processTick(tick) {
   if (!tick || tick.symbol !== currentMarket) return;
   const decimals = (() => {
@@ -760,6 +794,10 @@ function processTick(tick) {
       }
       activeSignal.status = won ? 'WON' : 'LOST';
       stats.total++; if (won) stats.won++;
+
+      // Update learning state
+      updateLearning(activeSignal.strategy, won);
+
       signalLog.unshift({
         entryDigit: activeSignal.entryDigit,
         recoveryDigit: activeSignal.recoveryDigit || activeSignal.recoveryPrediction,
@@ -771,7 +809,8 @@ function processTick(tick) {
       if (won) { beep(1200,0.2); setTimeout(()=>beep(1500,0.15),200); speak('Win',1.2,1.1); }
       else { beep(300,0.5); speak('Lost',1.0,0.9); }
       renderSignal(); renderLog(); updateStats();
-      setTimeout(() => { activeSignal = null; renderSignal(); }, 5000);
+      // Keep result visible longer (8 seconds)
+      setTimeout(() => { activeSignal = null; renderSignal(); }, 8000);
       return;
     }
     renderSignal();
@@ -808,7 +847,7 @@ function processTick(tick) {
   updateStats();
 }
 
-// ==================== RENDER FUNCTIONS ====================
+// ==================== RENDER FUNCTIONS (enhanced result display) ====================
 const MARKET_NAMES = {
   'R_10':'Vol 10','R_25':'Vol 25','R_50':'Vol 50','R_75':'Vol 75','R_100':'Vol 100',
   '1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'
@@ -855,7 +894,18 @@ function renderSignal(){
   const sig=activeSignal, isMatches=sig.strategy==='matches', isPrep=sig.status==='PREP', isLive=sig.status==='LIVE', isDone=sig.status==='WON'||sig.status==='LOST';
   const badgeClass=isMatches?'matches':'evenodd', badgeText=isMatches?'🎯 MATCHES':'🟣 EVEN/ODD';
   if(isDone){
-    body.innerHTML=`<div class="signal-display signal-active"><div style="font-size:44px;">${sig.status==='WON'?'✅':'❌'}</div><div style="font-size:20px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};">${isMatches?'MATCH':'EVEN/ODD'} ${sig.status==='WON'?'WON':'LOST'}</div><div style="color:var(--text2);margin-top:6px;">Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryDigit}${!isMatches ? ' ('+sig.recoveryPrediction+')' : ''}</strong></div></div>`;
+    // Big, clear result display
+    body.innerHTML=`<div class="signal-display signal-active result-display">
+      <div style="font-size:60px;margin-bottom:10px;">${sig.status==='WON'?'✅':'❌'}</div>
+      <div style="font-size:28px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};text-transform:uppercase;letter-spacing:2px;">${sig.status==='WON'?'WIN':'LOSS'}</div>
+      <div style="font-size:14px;color:var(--text2);margin-top:10px;">
+        Strategy: <strong>${isMatches?'MATCHES':'EVEN/ODD'}</strong> | 
+        Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
+        Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
+        Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryDigit}${!isMatches ? ' ('+sig.recoveryPrediction+')' : ''}</strong>
+      </div>
+      <div style="margin-top:12px;color:var(--text2);font-size:12px;">Confidence was ${sig.confidence}%</div>
+    </div>`;
     return;
   }
   body.innerHTML=`<div class="signal-display signal-active">
