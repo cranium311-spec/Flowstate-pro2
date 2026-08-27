@@ -792,8 +792,11 @@ async function connectWebSocket(token) {
                     }
                 }
                 // Bot trade response handling
-                if (data.msg_type === 'proposal_open_contract' || data.msg_type === 'buy') {
+                if (data.msg_type === 'proposal') {
                     handleProposalResponse(data);
+                }
+                if (data.msg_type === 'buy') {
+                    handleBuyResponse(data);
                 }
             } catch(e) { console.warn('WS parse error', e); }
         };
@@ -901,27 +904,38 @@ function triggerBulkTrades(signal) {
 
     for (let i = 0; i < bulkCount; i++) {
         const req_id = wsReqId++;
-        pendingProposals.set(req_id, { count: i + 1, signal: signal });
+        // Correct contract type and barrier for even/odd
+        let cType, barrier;
+        if (signal.strategy === 'evenodd') {
+            cType = signal.prediction === 'EVEN' ? 'DIGITEVEN' : 'DIGITODD';
+            barrier = signal.prediction === 'EVEN' ? 'E' : 'O';
+        } else {
+            cType = 'DIGITMATCH';
+            barrier = String(signal.entryDigit);
+        }
+
         const proposalMsg = {
-            proposal_open_contract: 1,
+            proposal: 1,                  // ✅ correct endpoint (not proposal_open_contract)
             req_id: req_id,
-            contract_type: signal.strategy === 'matches' ? 'DIGITMATCH' : 'DIGITEVENODD',
+            contract_type: cType,
             currency: 'USD',
             symbol: botMarket,
             amount: botStake,
             basis: 'stake',
             duration: 1,
             duration_unit: 't',
-            barrier: signal.strategy === 'matches' ? signal.entryDigit : (signal.prediction === 'EVEN' ? 'even' : 'odd')
+            barrier: barrier
         };
+        pendingProposals.set(req_id, { count: i + 1, signal: signal });
         ws.send(JSON.stringify(proposalMsg));
     }
 }
 
 function handleProposalResponse(data) {
-    if (data.msg_type === 'proposal_open_contract') {
+    if (data.msg_type === 'proposal') {
         const req_id = data.req_id;
-        const proposalId = data.proposal_open_contract?.id;
+        const proposalObj = data.proposal;
+        const proposalId = proposalObj?.id;
         if (!proposalId) {
             addBotLog(`Proposal error: ${data.error?.message || 'Unknown'}`, 'error');
             pendingProposals.delete(req_id);
@@ -929,16 +943,22 @@ function handleProposalResponse(data) {
         }
         const buyMsg = {
             buy: proposalId,
-            price: 0,
+            price: proposalObj.ask_price || 0,   // Use the ask_price from the proposal
             req_id: wsReqId++
         };
         ws.send(JSON.stringify(buyMsg));
-        pendingProposals.get(req_id).proposalId = proposalId;
+        // Store the proposal ID for tracking
+        if (pendingProposals.has(req_id)) {
+            pendingProposals.get(req_id).proposalId = proposalId;
+        }
         addBotLog(`Proposal ${req_id} received, buying...`, 'info');
     }
-    else if (data.msg_type === 'buy') {
+}
+
+function handleBuyResponse(data) {
+    if (data.msg_type === 'buy') {
         if (data.buy) {
-            addBotLog(`✅ Buy successful for ${data.buy.contract_id}`, 'success');
+            addBotLog(`✅ Buy successful for contract ${data.buy.contract_id}`, 'success');
         } else if (data.error) {
             addBotLog(`❌ Buy failed: ${data.error.message}`, 'error');
         }
