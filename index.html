@@ -478,6 +478,8 @@ let botExecuting = false;
 let botCompletedCount = 0;
 let executionStartTime = 0;
 let pendingProposals = new Map();
+let retrySignal = null;
+let apiParam = 'underlying'; // This will automatically switch to 'symbol' if needed
 
 // ==================== DOM refs ====================
 function $(id){return document.getElementById(id);}
@@ -896,6 +898,7 @@ function triggerBulkTrades(signal) {
         return;
     }
 
+    retrySignal = signal; // Store the signal for retries
     botExecuting = true;
     botCompletedCount = 0;
     executionStartTime = Date.now();
@@ -919,12 +922,14 @@ function triggerBulkTrades(signal) {
             req_id: req_id,
             contract_type: cType,
             currency: 'USD',
-            symbol: botMarket,  // REVERTED to symbol (Legacy API)
             amount: botStake,
             basis: 'stake',
             duration: 1,
             duration_unit: 't'
         };
+
+        // DYNAMICALLY USE THE CORRECT PROPERTY NAME
+        proposalMsg[apiParam] = botMarket;
 
         // Only add barrier for DIGITMATCH
         if (barrier) {
@@ -941,19 +946,50 @@ function handleProposalResponse(data) {
         const req_id = data.req_id;
         const proposalObj = data.proposal;
         const proposalId = proposalObj?.id;
+
         if (!proposalId) {
-            addBotLog(`Proposal error: ${data.error?.message || 'Unknown'}`, 'error');
-            pendingProposals.delete(req_id);
-            // Increment count so we don't hang
-            botCompletedCount++;
-            if (botCompletedCount >= bulkCount) {
-                const totalTime = Date.now() - executionStartTime;
-                addBotLog(`🏁 Bulk execution completed in ${totalTime}ms`, 'success');
+            const errorMsg = data.error?.message || 'Unknown';
+            addBotLog(`Proposal error: ${errorMsg}`, 'error');
+
+            // CHECK FOR THE SPECIFIC VALIDATION ERROR
+            if (errorMsg.includes("Properties not allowed")) {
+                // If the current parameter is 'symbol' but it says 'symbol' is not allowed, switch to 'underlying'
+                if (apiParam === 'symbol' && errorMsg.includes("symbol")) {
+                    apiParam = 'underlying';
+                    addBotLog("🔁 API version detected: New API. Switching to 'underlying'.", 'info');
+                }
+                // If the current parameter is 'underlying' but it says 'underlying' is not allowed, switch to 'symbol'
+                else if (apiParam === 'underlying' && errorMsg.includes("underlying")) {
+                    apiParam = 'symbol';
+                    addBotLog("🔁 API version detected: Legacy API. Switching to 'symbol'.", 'info');
+                }
+
+                // Reset the bot execution and retry the bulk trades
                 botExecuting = false;
                 botCompletedCount = 0;
+                pendingProposals.clear();
+
+                // Retry after a small delay using the original signal
+                if (retrySignal) {
+                    setTimeout(() => {
+                        addBotLog(`🔄 Retrying ${bulkCount} trades with ${apiParam}...`, 'info');
+                        triggerBulkTrades(retrySignal);
+                    }, 500);
+                }
+            } else {
+                // For other errors, just mark it as complete so we don't hang
+                pendingProposals.delete(req_id);
+                botCompletedCount++;
+                if (botCompletedCount >= bulkCount) {
+                    const totalTime = Date.now() - executionStartTime;
+                    addBotLog(`🏁 Bulk execution completed in ${totalTime}ms`, 'success');
+                    botExecuting = false;
+                    botCompletedCount = 0;
+                }
             }
             return;
         }
+
         const buyMsg = {
             buy: proposalId,
             price: proposalObj.ask_price || 0,
