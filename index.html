@@ -919,7 +919,7 @@ function triggerBulkTrades(signal) {
             req_id: req_id,
             contract_type: cType,
             currency: 'USD',
-            underlying: botMarket,  // FIXED: was symbol -> now underlying
+            symbol: botMarket,  // REVERTED to symbol (Legacy API)
             amount: botStake,
             basis: 'stake',
             duration: 1,
