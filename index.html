@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flowstate Pro + Auto Bulk Trader</title>
+    <title>Flowstate Pro + Auto Market Scanner</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -48,7 +48,7 @@
         .tick-feed-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
         .tick-feed-header { padding: 8px 14px; border-bottom: 1px solid var(--border); font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; background: rgba(0,229,255,0.03); display: flex; justify-content: space-between; }
         .tick-feed-body { padding: 6px; max-height: 160px; overflow-y: auto; }
-        .tick-row { display: grid; grid-template-columns: 55px 14px 1fr 30px; gap: 3px; padding: 2px 5px; font-family: 'Share Tech Mono', monospace; font-size: 8px; align-items: center; }
+        .tick-row { display: grid; grid-template-columns: 55px 60px 14px 1fr 30px; gap: 3px; padding: 2px 5px; font-family: 'Share Tech Mono', monospace; font-size: 8px; align-items: center; }
         .tick-direction.up { color: var(--success); } .tick-direction.down { color: var(--danger); }
         .tick-digit.matched { color: var(--accent); background: rgba(0,229,255,0.1); border-radius: 3px; }
         .section-label { font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 4px; color: var(--text2); text-transform: uppercase; margin-bottom: 6px; }
@@ -152,7 +152,7 @@
     <div class="header">
         <div class="logo-wrap">
             <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-            <div><div class="logo-text">FLOWSTATE</div><div class="logo-sub">Matches & Even/Odd Engine</div></div>
+            <div><div class="logo-text">FLOWSTATE</div><div class="logo-sub">All-Market Scanner</div></div>
         </div>
         <div class="header-actions">
             <div class="status-badge idle" id="status-badge"><div class="live-dot gray" id="status-dot"></div><span id="status-text">OFFLINE</span></div>
@@ -175,7 +175,7 @@
 
     <!-- Strategy tabs -->
     <div class="strategy-tabs">
-        <button class="strategy-tab active-matches" id="tab-matches" onclick="switchStrategy('matches')">🎯 MATCHES</button>
+        <button class="strategy-tab active-matches" id="tab-matches" onclick="switchStrategy('matches')">🎯 MATCHES / DIFFERS</button>
         <button class="strategy-tab" id="tab-evenodd" onclick="switchStrategy('evenodd')">🟣 EVEN/ODD</button>
     </div>
 
@@ -191,18 +191,18 @@
 
     <!-- Tick feed -->
     <div class="tick-feed-panel">
-        <div class="tick-feed-header"><span>📡 Live Tick Feed</span><span id="tick-count" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text2);">0 ticks</span></div>
+        <div class="tick-feed-header"><span>📡 Live Tick Feed (Best Market)</span><span id="tick-count" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text2);">0 ticks</span></div>
         <div class="tick-feed-body" id="tick-feed"></div>
     </div>
 
-    <!-- Market selection -->
-    <div class="section-label">Select Market</div>
+    <!-- Market selection (for manual viewing) -->
+    <div class="section-label">Viewing Market</div>
     <div class="market-grid" id="market-grid"></div>
 
     <!-- Main grid: signal card + right panel -->
     <div class="main-grid">
         <div class="signal-card">
-            <div class="signal-card-header"><span class="signal-card-title" id="signal-card-title">SIGNAL OUTPUT</span><span id="strategy-tag" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);padding:2px 8px;border-radius:4px;">MATCHES</span></div>
+            <div class="signal-card-header"><span class="signal-card-title" id="signal-card-title">BEST MARKET SIGNAL</span><span id="strategy-tag" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);padding:2px 8px;border-radius:4px;">MATCHES</span></div>
             <div class="signal-body" id="signal-body"></div>
         </div>
         <div class="right-panel">
@@ -238,9 +238,10 @@
                             <input type="number" id="bot-stake" value="1" min="0.35" step="0.01">
                         </div>
                         <div>
-                            <label>Market</label>
+                            <label>Market Override (Optional)</label>
                             <select id="bot-market">
-                                <option value="R_100" selected>Volatility 100</option>
+                                <option value="AUTO" selected>Auto (Best Market)</option>
+                                <option value="R_100">Volatility 100</option>
                                 <option value="R_75">Volatility 75</option>
                                 <option value="R_50">Volatility 50</option>
                                 <option value="R_25">Volatility 25</option>
@@ -269,6 +270,18 @@ const DERIV_APP_ID = '33rxAwkQtyvcvVAj38XLU';
 const BACKEND_URL = '';
 const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
+// ==================== ALL MARKETS CONFIGURATION ====================
+const ALL_MARKETS = ['R_10', 'R_25', 'R_50', 'R_75', 'R_100', '1HZ10V', '1HZ25V', '1HZ50V', '1HZ75V', '1HZ100V'];
+const MARKET_NAMES = {
+    'R_10':'Vol 10','R_25':'Vol 25','R_50':'Vol 50','R_75':'Vol 75','R_100':'Vol 100',
+    '1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'
+};
+
+function getDecimalsForMarket(sym) {
+    const m = { 'R_10':3,'R_25':3,'R_50':4,'R_75':4,'R_100':2,'1HZ10V':2,'1HZ25V':2,'1HZ50V':2,'1HZ75V':2,'1HZ100V':2 };
+    return m[sym] || 3;
+}
+
 // ==================== SELF-LEARNING STATE ====================
 let learningState = {
     matches: { total: 0, wins: 0, recent: [] },
@@ -290,7 +303,7 @@ function updateLearning(strategy, won) {
     if (s.recent.length > 50) s.recent.shift();
 }
 
-// ==================== STATISTICAL ENGINE ====================
+// ==================== STATISTICAL ENGINE (per market) ====================
 class StatisticalEngine {
     constructor() { this.reset(); }
     reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
@@ -307,7 +320,6 @@ class StatisticalEngine {
         const d = this.digits.slice(-window);
         const counts = Array(10).fill(0);
         d.forEach((digit, i) => {
-            // Exponential weighting: Newer ticks get exponentially more weight
             const alpha = 0.05;
             const weight = Math.pow(1 - alpha, d.length - 1 - i);
             counts[digit] += weight;
@@ -316,7 +328,7 @@ class StatisticalEngine {
         return counts.map(c => c/total);
     }
     calculateEntropy() {
-        if (this.digits.length < 100) return 3.32; // Max entropy for 10 digits
+        if (this.digits.length < 100) return 3.32;
         const probs = this.getWeightedFrequency(100); 
         let entropy = 0;
         for (let i = 0; i < 10; i++) {
@@ -324,7 +336,7 @@ class StatisticalEngine {
                 entropy -= probs[i] * Math.log2(probs[i]);
             }
         }
-        return entropy; // 3.32 = perfectly random, lower = strong pattern
+        return entropy;
     }
     getStreaks() {
         const streaks = Array(10).fill(this.digits.length);
@@ -345,7 +357,6 @@ class StatisticalEngine {
         const currentDigit = this.digits[n-1];
         const recent35 = this.digits.slice(-35);
         const scores = Array(10).fill(0);
-        // Use 150 ticks with EMA
         const weightedFreq = this.getWeightedFrequency(150);
         const streaks = this.getStreaks();
         const maxStreak = Math.max(...streaks, 1);
@@ -370,15 +381,9 @@ class StatisticalEngine {
         const dominanceFactor = Math.min(1, dominance * 3);
         const recentSupport = last5Counts[primary.digit] >= 2 ? 1 : 0.5;
 
-        // ---- ENTROPY & TIE-BREAKER FILTERS ----
         const entropy = this.calculateEntropy();
+        if ( (primary.score - secondary.score) / primary.score < 0.15 ) return null;
 
-        // Tie-Breaker: Reject if top score isn't 15% higher than 2nd
-        if ( (primary.score - secondary.score) / primary.score < 0.15 ) {
-            return null; 
-        }
-
-        // Dynamic Base Threshold
         let baseThreshold = 60;
         if (entropy > 3.0) baseThreshold = 78; 
         else if (entropy > 2.5) baseThreshold = 68; 
@@ -391,7 +396,6 @@ class StatisticalEngine {
         let recoveryConf = Math.round(secondary.score / (primary.score+0.01) * 80);
         recoveryConf = Math.min(85, Math.max(40, recoveryConf));
         
-        // Final gate: Confidence must be above dynamic threshold AND entropy must be low
         if (confidence < baseThreshold || entropy > 3.2) return null;
         
         return {
@@ -453,7 +457,6 @@ class StatisticalEngine {
             const range = Math.max(...scores) - Math.min(...scores) || 1;
             const digitDominance = (scores[topDominant] - avgScore) / range;
             
-            // Entropy filter for Even/Odd
             const entropy = this.calculateEntropy();
             const baseThreshold = entropy > 3.0 ? 75 : 65;
 
@@ -482,8 +485,60 @@ class StatisticalEngine {
     }
 }
 
+// ==================== MARKET ANALYZER (scans all markets) ====================
+class MarketAnalyzer {
+    constructor() {
+        this.engines = {};
+        ALL_MARKETS.forEach(market => {
+            this.engines[market] = new StatisticalEngine();
+        });
+    }
+    
+    addTick(symbol, price, decimals) {
+        if (!this.engines[symbol]) return;
+        this.engines[symbol].addTick(price, decimals);
+    }
+    
+    findBestSignal(strategy) {
+        let bestSignal = null;
+        let bestScore = -Infinity;
+        
+        for (const market of ALL_MARKETS) {
+            const engine = this.engines[market];
+            if (engine.digits.length < 40) continue;
+            
+            let signal = null;
+            if (strategy === 'matches') {
+                signal = engine.generateMatchesSignal();
+            } else {
+                signal = engine.generateEvenOddSignal();
+            }
+            
+            if (!signal) continue;
+            
+            const entropy = engine.calculateEntropy();
+            // Score: confidence is king, but lower entropy makes it more reliable
+            const score = signal.confidence - (entropy * 10);
+            
+            if (score > bestScore) {
+                bestScore = score;
+                signal.market = market;
+                signal.entropy = entropy;
+                bestSignal = signal;
+            }
+        }
+        return bestSignal;
+    }
+    
+    resetAll() {
+        ALL_MARKETS.forEach(market => {
+            this.engines[market].reset();
+        });
+    }
+}
+
 // ==================== STATE ====================
-let engine=new StatisticalEngine();
+let marketAnalyzer = new MarketAnalyzer();
 let accessToken = null;
 let ws = null;
 let wsConnected = false;
@@ -495,7 +550,7 @@ let selectedAccountId = null;
 let isConnected = false;
 let engineRunning = false;
 let currentStrategy = 'matches';
-let currentMarket = 'R_100';
+let currentMarket = 'R_100'; // for manual viewing
 let activeSignal = null;
 let prepInterval = null;
 let stats = {total:0, won:0};
@@ -510,7 +565,7 @@ let botMode = 'evenodd';
 let botRunning = false;
 let bulkCount = 10;
 let botStake = 1;
-let botMarket = 'R_100';
+let botMarket = 'AUTO'; // AUTO means use best signal market
 let botExecuting = false;
 let botCompletedCount = 0;
 let executionStartTime = 0;
@@ -804,7 +859,7 @@ async function connectWebSocket(token) {
             updateStatus('connected','SYNCED');
             updateConnectBtn('connected');
             if (!engineRunning) { engineRunning = true; updateEngineBtn(); }
-            subscribeTicks();
+            subscribeAllTicks();
             if (pingInterval) clearInterval(pingInterval);
             pingInterval = setInterval(() => {
                 if (ws && ws.readyState === WebSocket.OPEN) {
@@ -819,7 +874,7 @@ async function connectWebSocket(token) {
                 const data = JSON.parse(event.data);
                 if (data.ping) { ws.send(JSON.stringify({ pong: 1 })); return; }
                 if (data.msg_type === 'tick') {
-                    if (data.tick && data.tick.symbol === currentMarket) {
+                    if (data.tick) {
                         processTick(data.tick);
                     }
                 }
@@ -868,13 +923,11 @@ async function connectWebSocket(token) {
     }
 }
 
-function subscribeTicks() {
+function subscribeAllTicks() {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({
-        ticks: currentMarket,
-        subscribe: 1,
-        req_id: wsReqId++
-    }));
+    ALL_MARKETS.forEach(market => {
+        ws.send(JSON.stringify({ ticks: market, subscribe: 1, req_id: wsReqId++ }));
+    });
 }
 
 // ==================== BOT FUNCTIONS ====================
@@ -924,7 +977,10 @@ function triggerBulkTrades(signal) {
 
     bulkCount = parseInt(document.getElementById('bulk-count').value);
     botStake = parseFloat(document.getElementById('bot-stake').value);
-    botMarket = document.getElementById('bot-market').value;
+    
+    // Use the signal's market if AUTO is selected, otherwise use the manual override
+    const marketOverride = document.getElementById('bot-market').value;
+    botMarket = (marketOverride === 'AUTO') ? signal.market : marketOverride;
 
     if (bulkCount < 5 || bulkCount > 200) {
         addBotLog('Bulk count out of range (5-200)', 'error');
@@ -1047,17 +1103,22 @@ function handleBuyResponse(data) {
     }
 }
 
-// ==================== TICK PROCESSING ====================
+// ==================== TICK PROCESSING (all markets) ====================
 function processTick(tick) {
-    if (!tick || tick.symbol !== currentMarket) return;
-    const decimals = (() => {
-        const m = { 'R_10':3,'R_25':3,'R_50':4,'R_75':4,'R_100':2,'1HZ10V':2,'1HZ25V':2,'1HZ50V':2,'1HZ75V':2,'1HZ100V':2 };
-        return m[currentMarket] || 3;
-    })();
-    const lastDigit = engine.addTick(tick.quote, decimals);
-    currentPrice = { digit: lastDigit };
-    lastDigits.push(lastDigit);
-    if (lastDigits.length > 60) lastDigits.shift();
+    if (!tick || !tick.symbol) return;
+    
+    const symbol = tick.symbol;
+    if (!ALL_MARKETS.includes(symbol)) return; // Ignore unknown markets
+    
+    const decimals = getDecimalsForMarket(symbol);
+    const lastDigit = marketAnalyzer.addTick(symbol, tick.quote, decimals);
+    
+    // Update current market's display if this matches the user's selected view
+    if (symbol === currentMarket) {
+        currentPrice = { digit: lastDigit, market: symbol };
+        lastDigits.push(lastDigit);
+        if (lastDigits.length > 60) lastDigits.shift();
+    }
 
     if (activeSignal && activeSignal.status === 'LIVE') {
         activeSignal.elapsed++;
@@ -1080,6 +1141,7 @@ function processTick(tick) {
                 confidence: activeSignal.confidence,
                 status: activeSignal.status,
                 parity: activeSignal.strategy === 'evenodd' ? activeSignal.prediction : null,
+                market: activeSignal.market,
                 time: new Date().toLocaleTimeString()
             });
             if (won) { beep(1200,0.2); setTimeout(()=>beep(1500,0.15),200); speak('Win',1.2,1.1); }
@@ -1093,10 +1155,14 @@ function processTick(tick) {
     }
     if (activeSignal && ['PREP','WON','LOST'].includes(activeSignal.status)) return;
 
-    if (engine.digits.length >= 40 && engineRunning) {
-        let result = currentStrategy === 'matches' ? engine.generateMatchesSignal() : engine.generateEvenOddSignal();
-        if (result && result.confidence >= 60) {
-            activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
+    if (engineRunning) {
+        // Scan ALL markets for the best signal
+        const bestSignal = marketAnalyzer.findBestSignal(currentStrategy);
+        if (bestSignal && bestSignal.confidence >= 60) {
+            // Ensure the signal's market is set as the current viewing market for the tick feed
+            currentMarket = bestSignal.market;
+            
+            activeSignal = { ...bestSignal, status: 'PREP', prepTime: 15, elapsed: 0 };
             beep(880,0.3); setTimeout(()=>beep(1100,0.2),250); speak('Ready',1.1,1.0);
             let hasSaidGoTime = false;
             if (prepInterval) clearInterval(prepInterval);
@@ -1125,39 +1191,33 @@ function processTick(tick) {
 }
 
 // ==================== RENDER FUNCTIONS ====================
-const MARKET_NAMES = {
-    'R_10':'Vol 10','R_25':'Vol 25','R_50':'Vol 50','R_75':'Vol 75','R_100':'Vol 100',
-    '1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'
-};
 function renderMarkets(){
-    $('market-grid').innerHTML = Object.entries(MARKET_NAMES).map(([s,c]) =>
-        `<button class="market-btn${s===currentMarket?' active':''}" onclick="switchMarket('${s}')">${c}</button>`
+    $('market-grid').innerHTML = ALL_MARKETS.map(s =>
+        `<button class="market-btn${s===currentMarket?' active':''}" onclick="switchMarket('${s}')">${MARKET_NAMES[s]}</button>`
     ).join('');
 }
 function switchMarket(sym){
     currentMarket = sym;
-    engine.reset();
-    activeSignal = null;
-    if (prepInterval) clearInterval(prepInterval); prepInterval = null;
     renderMarkets();
-    renderSignal();
-    if (wsConnected) subscribeTicks();
+    renderTickFeed();
 }
 function renderTickFeed(){
-    const feed=$('tick-feed'), count=$('tick-count'), ticks=engine.ticks.slice(-40).reverse();
+    const feed=$('tick-feed'), count=$('tick-count');
+    const engine = marketAnalyzer.engines[currentMarket];
+    if (!engine) return;
+    
+    const ticks = engine.ticks.slice(-40).reverse();
     if (ticks.length===0){ feed.innerHTML='<div style="text-align:center;color:var(--text2);font-size:10px;">Waiting for ticks...</div>'; count.textContent='0 ticks'; return; }
     count.textContent=engine.ticks.length+' ticks';
-    const decimals = (() => {
-        const m = { 'R_10':3,'R_25':3,'R_50':4,'R_75':4,'R_100':2,'1HZ10V':2,'1HZ25V':2,'1HZ50V':2,'1HZ75V':2,'1HZ100V':2 };
-        return m[currentMarket] || 3;
-    })();
+    const decimals = getDecimalsForMarket(currentMarket);
+    
     feed.innerHTML = ticks.map((t,i)=>{
         const time=new Date(t.time).toLocaleTimeString('en-US',{hour12:false});
         const ps = t.price.toFixed(decimals);
         let dir='flat', sym='—';
         if(i<ticks.length-1){ if(t.price>ticks[i+1].price){dir='up';sym='▲';} else if(t.price<ticks[i+1].price){dir='down';sym='▼';} }
-        const matched = activeSignal && activeSignal.entryDigit === t.digit;
-        return `<div class="tick-row"><span>${time}</span><span class="tick-direction ${dir}">${sym}</span><span>${ps.slice(0,-1)}<strong style="color:var(--accent)">${ps.slice(-1)}</strong></span><span class="tick-digit${matched?' matched':''}">${t.digit}</span></div>`;
+        const matched = activeSignal && activeSignal.entryDigit === t.digit && activeSignal.market === currentMarket;
+        return `<div class="tick-row"><span>${time}</span><span style="color:var(--accent);font-size:8px;">${currentMarket}</span><span class="tick-direction ${dir}">${sym}</span><span>${ps.slice(0,-1)}<strong style="color:var(--accent)">${ps.slice(-1)}</strong></span><span class="tick-digit${matched?' matched':''}">${t.digit}</span></div>`;
     }).join('');
 }
 function renderSignal(){
@@ -1165,27 +1225,28 @@ function renderSignal(){
     if(!isConnected){ body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">🔌</div><div style="font-size:14px;">Not Connected</div></div>'; return; }
     if(!engineRunning){ body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>'; return; }
     if(!activeSignal){
-        body.innerHTML=`<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}</div>`;
+        body.innerHTML=`<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">SCANNING ALL MARKETS...<br><span style="font-size:9px;">Waiting for best signal</span></div></div>`;
         return;
     }
     const sig=activeSignal, isMatches=sig.strategy==='matches', isPrep=sig.status==='PREP', isLive=sig.status==='LIVE', isDone=sig.status==='WON'||sig.status==='LOST';
     const badgeClass=isMatches?'matches':'evenodd', badgeText=isMatches?'🎯 MATCHES':'🟣 EVEN/ODD';
+    const marketName = MARKET_NAMES[sig.market] || sig.market;
+    
     if(isDone){
         body.innerHTML=`<div class="signal-display signal-active result-display">
             <div style="font-size:60px;margin-bottom:10px;">${sig.status==='WON'?'✅':'❌'}</div>
             <div style="font-size:28px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};text-transform:uppercase;letter-spacing:2px;">${sig.status==='WON'?'WIN':'LOSS'}</div>
             <div style="font-size:14px;color:var(--text2);margin-top:10px;">
+                Market: <strong style="color:var(--gold);">${marketName}</strong> | 
                 Strategy: <strong>${isMatches?'MATCHES':'EVEN/ODD'}</strong> | 
-                Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
-                Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
-                Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryDigit}${!isMatches ? ' ('+sig.recoveryPrediction+')' : ''}</strong>
+                Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong>
             </div>
             <div style="margin-top:12px;color:var(--text2);font-size:12px;">Confidence was ${sig.confidence}%</div>
         </div>`;
         return;
     }
     body.innerHTML=`<div class="signal-display signal-active">
-        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${MARKET_NAMES[currentMarket]||''}</div>
+        <div style="font-size:14px;color:var(--gold);font-weight:700;margin-bottom:4px;">🏆 ${marketName}</div>
         <div class="strategy-badge ${badgeClass}">${badgeText}</div>
         <div class="big-signal-display">
             <div class="big-signal-label">${isPrep?'🔊 SIGNAL FOUND - READY':'🔵 TRADE WINDOW ACTIVE'}</div>
@@ -1225,7 +1286,7 @@ function renderDigitHistory(){
 function renderLog(){
     const c=$('log-list');
     if(signalLog.length===0){ c.innerHTML='<div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div>'; return; }
-    c.innerHTML=signalLog.slice(0,15).map(s=>`<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.confidence}% ${s.status==='WON'?'✅':'❌'}${s.parity ? ` (${s.parity})` : ''}</div></div><div style="font-size:8px;color:var(--muted);">${s.time}</div></div>`).join('');
+    c.innerHTML=signalLog.slice(0,15).map(s=>`<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.confidence}% ${s.status==='WON'?'✅':'❌'}${s.parity ? ` (${s.parity})` : ''}</div><div style="font-size:8px;color:var(--text2);">${s.market}</div></div><div style="font-size:8px;color:var(--muted);">${s.time}</div></div>`).join('');
 }
 function updateStats(){
     $('stat-signals').textContent=stats.total;
@@ -1241,9 +1302,9 @@ function switchStrategy(s){
     $('tab-matches').className='strategy-tab'+(s==='matches'?' active-matches':'');
     $('tab-evenodd').className='strategy-tab'+(s==='evenodd'?' active-evenodd':'');
     const tag=$('strategy-tag'), title=$('signal-card-title');
-    if(s==='matches'){ tag.textContent='MATCHES'; tag.style.color='var(--gold)'; tag.style.background='rgba(255,215,0,0.08)'; tag.style.border='1px solid rgba(255,215,0,0.25)'; title.textContent='MATCHES OUTPUT'; }
-    else{ tag.textContent='EVEN/ODD'; tag.style.color='var(--purple)'; tag.style.background='rgba(168,85,247,0.08)'; tag.style.border='1px solid rgba(168,85,247,0.25)'; title.textContent='EVEN/ODD OUTPUT'; }
-    activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; engine.reset(); renderSignal();
+    if(s==='matches'){ tag.textContent='MATCHES'; tag.style.color='var(--gold)'; tag.style.background='rgba(255,215,0,0.08)'; tag.style.border='1px solid rgba(255,215,0,0.25)'; title.textContent='BEST MARKET SIGNAL'; }
+    else{ tag.textContent='EVEN/ODD'; tag.style.color='var(--purple)'; tag.style.background='rgba(168,85,247,0.08)'; tag.style.border='1px solid rgba(168,85,247,0.25)'; title.textContent='BEST MARKET SIGNAL'; }
+    activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; renderSignal();
 }
 function toggleConnection(){ if(isConnected) disconnect(); else { const t=$('patInput').value.trim(); if(t) connectWithPAT(); else showError('Paste a PAT token first or use OAuth Login'); } }
 
@@ -1272,7 +1333,7 @@ function init(){
     }
 }
 init();
-console.log('🚀 Flowstate Pro + Auto Bulk Trader ready');
+console.log('🚀 Flowstate Pro + All-Market Scanner ready');
 </script>
 </body>
 </html>
