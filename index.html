@@ -303,15 +303,28 @@ class StatisticalEngine {
         if(this.ticks.length>2000){this.ticks.shift();this.digits.shift();}
         return lastDigit;
     }
-    getWeightedFrequency(window=35) {
+    getWeightedFrequency(window=150) {
         const d = this.digits.slice(-window);
         const counts = Array(10).fill(0);
         d.forEach((digit, i) => {
-            const weight = 1 + (i / d.length);
+            // Exponential weighting: Newer ticks get exponentially more weight
+            const alpha = 0.05;
+            const weight = Math.pow(1 - alpha, d.length - 1 - i);
             counts[digit] += weight;
         });
         const total = counts.reduce((a,b)=>a+b,0) || 1;
         return counts.map(c => c/total);
+    }
+    calculateEntropy() {
+        if (this.digits.length < 100) return 3.32; // Max entropy for 10 digits
+        const probs = this.getWeightedFrequency(100); 
+        let entropy = 0;
+        for (let i = 0; i < 10; i++) {
+            if (probs[i] > 0) {
+                entropy -= probs[i] * Math.log2(probs[i]);
+            }
+        }
+        return entropy; // 3.32 = perfectly random, lower = strong pattern
     }
     getStreaks() {
         const streaks = Array(10).fill(this.digits.length);
@@ -332,18 +345,19 @@ class StatisticalEngine {
         const currentDigit = this.digits[n-1];
         const recent35 = this.digits.slice(-35);
         const scores = Array(10).fill(0);
-        const weightedFreq = this.getWeightedFrequency(35);
+        // Use 150 ticks with EMA
+        const weightedFreq = this.getWeightedFrequency(150);
         const streaks = this.getStreaks();
         const maxStreak = Math.max(...streaks, 1);
         const transProbs = this.getTransitions(currentDigit);
-        const last5 = recent35.slice(-5);
+        const last5 = this.digits.slice(-5);
         const last5Counts = Array(10).fill(0);
         last5.forEach(d => last5Counts[d]++);
         for (let i = 0; i < 10; i++) {
-            const freqScore = weightedFreq[i] * 40;
-            const streakScore = (streaks[i] / maxStreak) * 30;
+            const freqScore = weightedFreq[i] * 50;
+            const streakScore = (streaks[i] / maxStreak) * 10;
             const transScore = transProbs[i] * 20;
-            const recentScore = (last5Counts[i] / 5) * 10;
+            const recentScore = (last5Counts[i] / 5) * 20;
             scores[i] = freqScore + streakScore + transScore + recentScore;
         }
         const sorted = scores.map((s,i)=>({digit:i,score:s})).sort((a,b)=>b.score-a.score);
@@ -355,6 +369,20 @@ class StatisticalEngine {
         const dataFactor = Math.min(1, n/500);
         const dominanceFactor = Math.min(1, dominance * 3);
         const recentSupport = last5Counts[primary.digit] >= 2 ? 1 : 0.5;
+
+        // ---- ENTROPY & TIE-BREAKER FILTERS ----
+        const entropy = this.calculateEntropy();
+
+        // Tie-Breaker: Reject if top score isn't 15% higher than 2nd
+        if ( (primary.score - secondary.score) / primary.score < 0.15 ) {
+            return null; 
+        }
+
+        // Dynamic Base Threshold
+        let baseThreshold = 60;
+        if (entropy > 3.0) baseThreshold = 78; 
+        else if (entropy > 2.5) baseThreshold = 68; 
+
         let confidence = Math.round((dominanceFactor*50 + recentSupport*30 + dataFactor*20));
         confidence = Math.max(55, Math.min(98, confidence));
         const perfFactor = getPerformanceFactor('matches');
@@ -362,14 +390,17 @@ class StatisticalEngine {
         confidence = Math.max(55, Math.min(98, confidence));
         let recoveryConf = Math.round(secondary.score / (primary.score+0.01) * 80);
         recoveryConf = Math.min(85, Math.max(40, recoveryConf));
-        if (confidence < 60) return null;
+        
+        // Final gate: Confidence must be above dynamic threshold AND entropy must be low
+        if (confidence < baseThreshold || entropy > 3.2) return null;
+        
         return {
             predictedDigit: primary.digit,
             entryDigit: primary.digit,
             recoveryDigit: secondary.digit,
             confidence: confidence,
             recoveryConfidence: recoveryConf,
-            reason: `${primary.digit} dominates (${(weightedFreq[primary.digit]*100).toFixed(0)}% freq)`,
+            reason: `${primary.digit} dominates (${(weightedFreq[primary.digit]*100).toFixed(0)}% freq, Entropy ${entropy.toFixed(2)})`,
             strategy: 'matches'
         };
     }
@@ -396,7 +427,7 @@ class StatisticalEngine {
         const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
         const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
         if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
-            const weightedFreq = this.getWeightedFrequency(35);
+            const weightedFreq = this.getWeightedFrequency(150);
             const streaks = this.getStreaks();
             const maxStreak = Math.max(...streaks, 1);
             const currentDigit = this.digits[n - 1];
@@ -405,10 +436,10 @@ class StatisticalEngine {
             last5.forEach(d => last5Counts[d]++);
             const scores = Array(10).fill(0);
             for (let i = 0; i < 10; i++) {
-                const freqScore = weightedFreq[i] * 40;
-                const streakScore = (streaks[i] / maxStreak) * 30;
+                const freqScore = weightedFreq[i] * 50;
+                const streakScore = (streaks[i] / maxStreak) * 10;
                 const transScore = transProbs[i] * 20;
-                const recentScore = (last5Counts[i] / 5) * 10;
+                const recentScore = (last5Counts[i] / 5) * 20;
                 scores[i] = freqScore + streakScore + transScore + recentScore;
             }
             const isEven = (d) => d % 2 === 0;
@@ -421,12 +452,18 @@ class StatisticalEngine {
             const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
             const range = Math.max(...scores) - Math.min(...scores) || 1;
             const digitDominance = (scores[topDominant] - avgScore) / range;
+            
+            // Entropy filter for Even/Odd
+            const entropy = this.calculateEntropy();
+            const baseThreshold = entropy > 3.0 ? 75 : 65;
+
             let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
             confidence = Math.min(98, Math.round(confidence));
             const perfFactor = getPerformanceFactor('evenodd');
             confidence = Math.round(confidence * perfFactor);
             confidence = Math.max(55, Math.min(98, confidence));
-            if (confidence < 60) return null;
+            if (confidence < baseThreshold || entropy > 3.3) return null;
+            
             const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
             const recoveryConf = Math.round((scores[topOpposite] / (scores[topDominant] + 0.01)) * 80);
             return {
@@ -437,7 +474,7 @@ class StatisticalEngine {
                 recoveryPrediction: recovery,
                 confidence: confidence,
                 recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
-                reason: `${Math.round(domRatio * 100)}% ${dominant} dominance`,
+                reason: `${Math.round(domRatio * 100)}% ${dominant} dominance, Entropy ${entropy.toFixed(2)}`,
                 strategy: 'evenodd'
             };
         }
@@ -479,7 +516,7 @@ let botCompletedCount = 0;
 let executionStartTime = 0;
 let pendingProposals = new Map();
 let retrySignal = null;
-let apiParam = 'underlying'; // This will automatically switch to 'symbol' if needed
+let apiParam = 'underlying'; 
 
 // ==================== DOM refs ====================
 function $(id){return document.getElementById(id);}
@@ -898,7 +935,7 @@ function triggerBulkTrades(signal) {
         return;
     }
 
-    retrySignal = signal; // Store the signal for retries
+    retrySignal = signal;
     botExecuting = true;
     botCompletedCount = 0;
     executionStartTime = Date.now();
@@ -907,11 +944,9 @@ function triggerBulkTrades(signal) {
 
     for (let i = 0; i < bulkCount; i++) {
         const req_id = wsReqId++;
-        // Correct contract type and barrier for even/odd
         let cType, barrier;
         if (signal.strategy === 'evenodd') {
             cType = signal.prediction === 'EVEN' ? 'DIGITEVEN' : 'DIGITODD';
-            // NO barrier needed for EVEN/ODD
         } else {
             cType = 'DIGITMATCH';
             barrier = String(signal.entryDigit);
@@ -928,10 +963,8 @@ function triggerBulkTrades(signal) {
             duration_unit: 't'
         };
 
-        // DYNAMICALLY USE THE CORRECT PROPERTY NAME
         proposalMsg[apiParam] = botMarket;
 
-        // Only add barrier for DIGITMATCH
         if (barrier) {
             proposalMsg.barrier = barrier;
         }
@@ -951,25 +984,20 @@ function handleProposalResponse(data) {
             const errorMsg = data.error?.message || 'Unknown';
             addBotLog(`Proposal error: ${errorMsg}`, 'error');
 
-            // CHECK FOR THE SPECIFIC VALIDATION ERROR
             if (errorMsg.includes("Properties not allowed")) {
-                // If the current parameter is 'symbol' but it says 'symbol' is not allowed, switch to 'underlying'
                 if (apiParam === 'symbol' && errorMsg.includes("symbol")) {
                     apiParam = 'underlying';
                     addBotLog("🔁 API version detected: New API. Switching to 'underlying'.", 'info');
                 }
-                // If the current parameter is 'underlying' but it says 'underlying' is not allowed, switch to 'symbol'
                 else if (apiParam === 'underlying' && errorMsg.includes("underlying")) {
                     apiParam = 'symbol';
                     addBotLog("🔁 API version detected: Legacy API. Switching to 'symbol'.", 'info');
                 }
 
-                // Reset the bot execution and retry the bulk trades
                 botExecuting = false;
                 botCompletedCount = 0;
                 pendingProposals.clear();
 
-                // Retry after a small delay using the original signal
                 if (retrySignal) {
                     setTimeout(() => {
                         addBotLog(`🔄 Retrying ${bulkCount} trades with ${apiParam}...`, 'info');
@@ -977,7 +1005,6 @@ function handleProposalResponse(data) {
                     }, 500);
                 }
             } else {
-                // For other errors, just mark it as complete so we don't hang
                 pendingProposals.delete(req_id);
                 botCompletedCount++;
                 if (botCompletedCount >= bulkCount) {
@@ -1020,7 +1047,7 @@ function handleBuyResponse(data) {
     }
 }
 
-// ==================== TICK PROCESSING (with learning update and bot trigger) ====================
+// ==================== TICK PROCESSING ====================
 function processTick(tick) {
     if (!tick || tick.symbol !== currentMarket) return;
     const decimals = (() => {
