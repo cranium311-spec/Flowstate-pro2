@@ -307,7 +307,6 @@ class StatisticalEngine {
         const d = this.digits.slice(-window);
         const counts = Array(10).fill(0);
         d.forEach((digit, i) => {
-            // Exponential weighting: Newer ticks get exponentially more weight
             const alpha = 0.05;
             const weight = Math.pow(1 - alpha, d.length - 1 - i);
             counts[digit] += weight;
@@ -315,8 +314,25 @@ class StatisticalEngine {
         const total = counts.reduce((a,b)=>a+b,0) || 1;
         return counts.map(c => c/total);
     }
+    getRecentFrequency(window=15) {
+        const d = this.digits.slice(-window);
+        const counts = Array(10).fill(0);
+        d.forEach(digit => counts[digit]++);
+        const total = d.length || 1;
+        return counts.map(c => c/total);
+    }
+    getLastSeenDistances() {
+        const distances = new Array(10).fill(this.digits.length);
+        for (let i = this.digits.length - 1; i >= 0; i--) {
+            const d = this.digits[i];
+            if (distances[d] === this.digits.length) {
+                distances[d] = this.digits.length - 1 - i;
+            }
+        }
+        return distances; // 0 = most recent
+    }
     calculateEntropy() {
-        if (this.digits.length < 100) return 3.32; // Max entropy for 10 digits
+        if (this.digits.length < 100) return 3.32;
         const probs = this.getWeightedFrequency(100); 
         let entropy = 0;
         for (let i = 0; i < 10; i++) {
@@ -324,15 +340,7 @@ class StatisticalEngine {
                 entropy -= probs[i] * Math.log2(probs[i]);
             }
         }
-        return entropy; // 3.32 = perfectly random, lower = strong pattern
-    }
-    getStreaks() {
-        const streaks = Array(10).fill(this.digits.length);
-        for(let i=this.digits.length-1;i>=0;i--){
-            const d=this.digits[i];
-            if(streaks[d]===this.digits.length)streaks[d]=this.digits.length-1-i;
-        }
-        return streaks;
+        return entropy;
     }
     getTransitions(from) {
         const row = this.transitionMatrix[from]||Array(10).fill(0);
@@ -343,64 +351,87 @@ class StatisticalEngine {
         const n = this.digits.length;
         if (n < 40) return null;
         const currentDigit = this.digits[n-1];
-        const recent35 = this.digits.slice(-35);
-        const scores = Array(10).fill(0);
-        // Use 150 ticks with EMA
-        const weightedFreq = this.getWeightedFrequency(150);
-        const streaks = this.getStreaks();
-        const maxStreak = Math.max(...streaks, 1);
-        const transProbs = this.getTransitions(currentDigit);
         const last5 = this.digits.slice(-5);
         const last5Counts = Array(10).fill(0);
         last5.forEach(d => last5Counts[d]++);
+
+        // Multi-timeframe frequency
+        const weightedFreq = this.getWeightedFrequency(150); // long-term decay
+        const recentFreq = this.getRecentFrequency(15);      // short-term hotness
+        const mediumFreq = this.getRecentFrequency(50);      // medium-term
+
+        // Recentness
+        const lastSeen = this.getLastSeenDistances();
+        const maxDist = Math.max(...lastSeen, 1);
+
+        // Transitions
+        const transProbs = this.getTransitions(currentDigit);
+
+        let scores = Array(10).fill(0);
         for (let i = 0; i < 10; i++) {
-            const freqScore = weightedFreq[i] * 50;
-            const streakScore = (streaks[i] / maxStreak) * 10;
-            const transScore = transProbs[i] * 20;
-            const recentScore = (last5Counts[i] / 5) * 20;
-            scores[i] = freqScore + streakScore + transScore + recentScore;
+            // Long-term weighted frequency (0..30)
+            const longTermScore = weightedFreq[i] * 30;
+            // Medium-term frequency (0..25)
+            const mediumScore = mediumFreq[i] * 25;
+            // Short-term hotness (0..25)
+            const hotScore = recentFreq[i] * 25;
+            // Recentness (last seen) - higher if seen recently (0..15)
+            const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 15;
+            // Markov transition probability (0..10)
+            const transScore = transProbs[i] * 10;
+            // Last 5 ticks bonus (0..10)
+            const last5Score = (last5Counts[i] / 5) * 10;
+
+            scores[i] = longTermScore + mediumScore + hotScore + recentnessScore + transScore + last5Score;
         }
+
         const sorted = scores.map((s,i)=>({digit:i,score:s})).sort((a,b)=>b.score-a.score);
         const primary = sorted[0];
         const secondary = sorted[1];
+
+        // Tie-breaker: primary must be significantly above second
+        if ( (primary.score - secondary.score) / primary.score < 0.15 ) {
+            return null;
+        }
+
         const avgScore = scores.reduce((a,b)=>a+b,0)/10;
         const range = Math.max(...scores)-Math.min(...scores)||1;
         const dominance = (primary.score - avgScore) / range;
-        const dataFactor = Math.min(1, n/500);
         const dominanceFactor = Math.min(1, dominance * 3);
-        const recentSupport = last5Counts[primary.digit] >= 2 ? 1 : 0.5;
 
-        // ---- ENTROPY & TIE-BREAKER FILTERS ----
-        const entropy = this.calculateEntropy();
-
-        // Tie-Breaker: Reject if top score isn't 15% higher than 2nd
-        if ( (primary.score - secondary.score) / primary.score < 0.15 ) {
-            return null; 
-        }
-
-        // Dynamic Base Threshold
-        let baseThreshold = 60;
-        if (entropy > 3.0) baseThreshold = 78; 
-        else if (entropy > 2.5) baseThreshold = 68; 
-
-        let confidence = Math.round((dominanceFactor*50 + recentSupport*30 + dataFactor*20));
+        // Confidence calculation
+        let confidence = Math.round(
+            dominance * 50 +                     // 0..50
+            (recentFreq[primary.digit] * 30) +   // 0..30
+            (mediumFreq[primary.digit] * 10) +   // 0..10
+            (last5Counts[primary.digit] >= 2 ? 10 : 0) // bonus
+        );
         confidence = Math.max(55, Math.min(98, confidence));
         const perfFactor = getPerformanceFactor('matches');
         confidence = Math.round(confidence * perfFactor);
         confidence = Math.max(55, Math.min(98, confidence));
+
+        // Entropy gate with hot-digit exception
+        const entropy = this.calculateEntropy();
+        const hotDigitFrequency = recentFreq[primary.digit];
+        const isExtremeHot = hotDigitFrequency > 0.4;
+
+        let entropyLimit = 3.2;
+        if (dominance > 0.5 && isExtremeHot) entropyLimit = 3.5;
+
+        if (confidence < 60 || entropy > entropyLimit) return null;
+
+        // Recovery digit: secondary with some confidence
         let recoveryConf = Math.round(secondary.score / (primary.score+0.01) * 80);
         recoveryConf = Math.min(85, Math.max(40, recoveryConf));
-        
-        // Final gate: Confidence must be above dynamic threshold AND entropy must be low
-        if (confidence < baseThreshold || entropy > 3.2) return null;
-        
+
         return {
             predictedDigit: primary.digit,
             entryDigit: primary.digit,
             recoveryDigit: secondary.digit,
             confidence: confidence,
             recoveryConfidence: recoveryConf,
-            reason: `${primary.digit} dominates (${(weightedFreq[primary.digit]*100).toFixed(0)}% freq, Entropy ${entropy.toFixed(2)})`,
+            reason: `${primary.digit} hot (${(hotDigitFrequency*100).toFixed(0)}% in 15, Entropy ${entropy.toFixed(2)})`,
             strategy: 'matches'
         };
     }
@@ -428,8 +459,8 @@ class StatisticalEngine {
         const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
         if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
             const weightedFreq = this.getWeightedFrequency(150);
-            const streaks = this.getStreaks();
-            const maxStreak = Math.max(...streaks, 1);
+            const lastSeen = this.getLastSeenDistances();
+            const maxDist = Math.max(...lastSeen, 1);
             const currentDigit = this.digits[n - 1];
             const transProbs = this.getTransitions(currentDigit);
             const last5Counts = Array(10).fill(0);
@@ -437,10 +468,10 @@ class StatisticalEngine {
             const scores = Array(10).fill(0);
             for (let i = 0; i < 10; i++) {
                 const freqScore = weightedFreq[i] * 50;
-                const streakScore = (streaks[i] / maxStreak) * 10;
+                const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 10;
                 const transScore = transProbs[i] * 20;
                 const recentScore = (last5Counts[i] / 5) * 20;
-                scores[i] = freqScore + streakScore + transScore + recentScore;
+                scores[i] = freqScore + recentnessScore + transScore + recentScore;
             }
             const isEven = (d) => d % 2 === 0;
             const dominantDigits = Array.from({ length: 10 }, (_, i) => i)
@@ -453,7 +484,6 @@ class StatisticalEngine {
             const range = Math.max(...scores) - Math.min(...scores) || 1;
             const digitDominance = (scores[topDominant] - avgScore) / range;
             
-            // Entropy filter for Even/Odd
             const entropy = this.calculateEntropy();
             const baseThreshold = entropy > 3.0 ? 75 : 65;
 
