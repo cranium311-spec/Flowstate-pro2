@@ -1,1041 +1,2209 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Flowstate Pro + Auto Bulk Trader</title>
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <style>
+        /* ── root ── */
         :root {
-            --bg: #030912; --panel: #0a1628; --border: #1a3a5c;
-            --accent: #00e5ff; --accent2: #ff6b35; --accent3: #39ff14; --gold: #ffd700;
-            --purple: #a855f7; --text: #c8e0f4; --text2: #6a90b0;
-            --danger: #ff2d55; --success: #39ff14; --warning: #ffba08;
+            --bg: #030912;
+            --panel: #0a1628;
+            --border: #1a3a5c;
+            --accent: #00e5ff;
+            --accent2: #ff6b35;
+            --accent3: #39ff14;
+            --gold: #ffd700;
+            --purple: #a855f7;
+            --text: #c8e0f4;
+            --text2: #6a90b0;
+            --danger: #ff2d55;
+            --success: #39ff14;
+            --warning: #ffba08;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Rajdhani', sans-serif; min-height: 100vh; overflow-x: hidden; }
-        body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
-        .container { position: relative; z-index: 2; max-width: 1400px; margin: 0 auto; padding: 14px 14px 36px; }
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
-        .logo-wrap { display: flex; align-items: center; gap: 12px; }
-        .logo-icon { width: 40px; height: 40px; border: 2px solid var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(0,229,255,0.3); background: rgba(0,229,255,0.05); }
-        .logo-text { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 900; color: var(--accent); letter-spacing: 2px; }
-        .logo-sub { font-size: 10px; color: var(--text2); letter-spacing: 3px; text-transform: uppercase; }
-        .header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .status-badge { display: flex; align-items: center; gap: 8px; border-radius: 20px; padding: 6px 14px; font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; }
-        .status-badge.connected { background: rgba(57,255,20,0.07); border: 1px solid rgba(57,255,20,0.3); color: var(--success); }
-        .status-badge.warning { background: rgba(255,186,8,0.07); border: 1px solid rgba(255,186,8,0.3); color: var(--warning); }
-        .status-badge.idle { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.12); color: var(--text2); }
-        .status-badge.error { background: rgba(255,45,85,0.07); border: 1px solid rgba(255,45,85,0.3); color: var(--danger); }
-        .live-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 1.5s infinite; }
-        .live-dot.green { background: var(--success); box-shadow: 0 0 8px var(--success); }
-        .live-dot.yellow { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
-        .live-dot.gray { background: #555; }
-        .live-dot.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
-        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .btn { padding: 8px 18px; border-radius: 20px; font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2px; cursor: pointer; text-transform: uppercase; transition: all 0.3s ease; border: 1px solid var(--border); background: var(--panel); color: var(--text2); }
-        .btn:hover { transform: translateY(-1px); }
-        .btn-connect { background: linear-gradient(135deg, #00c4e0, #0097b2); color: #030912; border: none; font-size: 10px; padding: 10px 22px; }
-        .btn-connect.connected { background: linear-gradient(135deg, #16a34a, #15803d); }
-        .btn-oauth { border: 1px solid rgba(255,215,0,0.4); color: var(--gold); background: rgba(255,215,0,0.05); font-size: 8px; padding: 6px 12px; }
-        .btn-engine { width: 100%; padding: 14px; border-radius: 12px; font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700; letter-spacing: 3px; cursor: pointer; text-transform: uppercase; border: none; text-align: center; margin-bottom: 8px; }
-        .btn-engine.start { background: linear-gradient(135deg, #16a34a, #15803d); color: white; }
-        .btn-engine.stop { background: linear-gradient(135deg, #dc2626, #991b1b); color: white; }
-        .strategy-tabs { display: flex; gap: 8px; margin-bottom: 14px; }
-        .strategy-tab { flex: 1; padding: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 10px; cursor: pointer; text-align: center; transition: all 0.25s ease; font-family: 'Orbitron', monospace; font-size: 10px; font-weight: 700; letter-spacing: 2px; }
-        .strategy-tab.active-matches { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,0.08); }
-        .strategy-tab.active-evenodd { border-color: var(--purple); color: var(--purple); background: rgba(168,85,247,0.08); }
-        .tick-feed-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 14px; overflow: hidden; }
-        .tick-feed-header { padding: 8px 14px; border-bottom: 1px solid var(--border); font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; background: rgba(0,229,255,0.03); display: flex; justify-content: space-between; }
-        .tick-feed-body { padding: 6px; max-height: 160px; overflow-y: auto; }
-        .tick-row { display: grid; grid-template-columns: 55px 14px 1fr 30px; gap: 3px; padding: 2px 5px; font-family: 'Share Tech Mono', monospace; font-size: 8px; align-items: center; }
-        .tick-direction.up { color: var(--success); } .tick-direction.down { color: var(--danger); }
-        .tick-digit.matched { color: var(--accent); background: rgba(0,229,255,0.1); border-radius: 3px; }
-        .section-label { font-family: 'Orbitron', monospace; font-size: 9px; letter-spacing: 4px; color: var(--text2); text-transform: uppercase; margin-bottom: 6px; }
-        .market-grid { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
-        .market-btn { flex: 1; min-width: 70px; padding: 7px 3px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 7px; cursor: pointer; font-family: 'Orbitron', monospace; font-size: 7px; font-weight: 700; text-align: center; transition: all 0.25s ease; }
-        .market-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.08); box-shadow: 0 0 20px rgba(0,229,255,0.3); }
-        .main-grid { display: grid; grid-template-columns: 1fr 340px; gap: 14px; }
-        @media(max-width:1000px) { .main-grid { grid-template-columns: 1fr; } }
-        .signal-card { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
-        .signal-card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: rgba(0,229,255,0.03); }
-        .signal-card-title { font-family: 'Orbitron', monospace; font-size: 10px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; }
-        .signal-body { padding: 16px; min-height: 380px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .signal-display { text-align: center; width: 100%; }
-        .signal-active { animation: signalAppear 0.5s cubic-bezier(.34,1.56,.64,1); }
-        @keyframes signalAppear { 0% { opacity: 0; transform: scale(0.85); } 100% { opacity: 1; transform: scale(1); } }
-        .big-signal-display { background: rgba(255,215,0,0.04); border: 2px solid var(--gold); border-radius: 20px; padding: 20px 16px; margin-bottom: 14px; box-shadow: 0 0 40px rgba(255,215,0,0.12); }
-        .big-signal-label { font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700; letter-spacing: 4px; color: var(--gold); text-transform: uppercase; margin-bottom: 14px; }
-        .three-digits-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
-        .digit-group { text-align: center; min-width: 75px; }
-        .digit-group .label { font-size: 8px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; font-weight: 700; }
-        .label.predicted { color: var(--accent3); } .label.entry { color: var(--accent); } .label.recovery { color: var(--accent2); }
-        .digit-group .big-num { width: 72px; height: 72px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', monospace; font-size: 38px; font-weight: 900; margin: 0 auto; }
-        .big-num.predicted-num { border: 3px solid var(--accent3); color: var(--accent3); background: rgba(57,255,20,0.06); box-shadow: 0 0 25px rgba(57,255,20,0.25); }
-        .big-num.entry-num { border: 3px solid var(--accent); color: var(--accent); background: rgba(0,229,255,0.06); box-shadow: 0 0 25px rgba(0,229,255,0.25); }
-        .big-num.recovery-num { border: 3px solid var(--accent2); color: var(--accent2); background: rgba(255,107,53,0.06); box-shadow: 0 0 25px rgba(255,107,53,0.25); }
-        .big-num.live-num { border-color: var(--accent3); animation: pulse 0.8s infinite; }
-        .arrow-divider { font-family: 'Orbitron', monospace; font-size: 16px; color: var(--muted); --muted: #3a5a7a; }
-        .big-countdown { margin-top: 14px; font-family: 'Orbitron', monospace; font-size: 40px; font-weight: 900; color: var(--accent); text-shadow: 0 0 30px rgba(0,229,255,0.6); }
-        .big-countdown.urgent { color: var(--danger); animation: pulse 0.5s infinite; }
-        .voice-alert { font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-top: 6px; }
-        .voice-alert.ready { color: var(--gold); } .voice-alert.go { color: var(--accent3); font-size: 18px; }
-        .strategy-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-family: 'Orbitron', monospace; font-size: 9px; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px; }
-        .strategy-badge.matches { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); color: var(--gold); }
-        .strategy-badge.evenodd { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); color: var(--purple); }
-        .signal-meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
-        .meta-box { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 8px 4px; text-align: center; }
-        .meta-val { font-family: 'Share Tech Mono', monospace; font-size: 14px; font-weight: 700; }
-        .meta-key { font-size: 8px; letter-spacing: 2px; color: var(--text2); text-transform: uppercase; }
-        .confidence-bar-wrap { margin-top: 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%; }
-        .conf-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
-        .conf-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent3), var(--accent), var(--gold)); transition: width 0.6s ease; }
-        .conf-fill.evenodd { background: linear-gradient(90deg, var(--accent3), var(--accent), var(--purple)); }
-        .tick-progress { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
-        .tick-dot { width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: 'Share Tech Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text2); }
-        .tick-dot.filled { border-color: var(--accent3); background: rgba(57,255,20,0.2); color: var(--accent3); }
-        .right-panel { display: flex; flex-direction: column; gap: 10px; }
-        .panel-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-        .panel-header { padding: 8px 12px; border-bottom: 1px solid var(--border); font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; background: rgba(0,229,255,0.03); }
-        .panel-body { padding: 8px 10px; }
-        .digit-history { display: flex; flex-wrap: wrap; gap: 3px; }
-        .hist-digit { width: 26px; height: 26px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-family: 'Share Tech Mono', monospace; font-size: 11px; font-weight: 700; }
-        .hist-digit.hot { background: rgba(255,107,53,0.2); border: 1px solid rgba(255,107,53,0.4); color: var(--accent2); }
-        .hist-digit.cold { background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.3); color: var(--accent); }
-        .hist-digit.neutral { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text2); }
-        .hist-digit.new-entry { animation: flashIn 0.5s ease; }
-        @keyframes flashIn { 0% { transform: scale(1.5); background: rgba(0,229,255,0.4); } 100% { transform: scale(1); } }
-        .log-list { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; }
-        .log-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 6px; font-size: 9px; }
-        .log-badge { width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', monospace; font-size: 10px; font-weight: 900; }
-        .log-badge.won { background: rgba(57,255,20,0.12); border: 1px solid rgba(57,255,20,0.3); color: var(--success); }
-        .log-badge.lost { background: rgba(255,45,85,0.12); border: 1px solid rgba(255,45,85,0.3); color: var(--danger); }
-        .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 12px; }
-        .stat-box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 6px; text-align: center; }
-        .stat-val { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 900; }
-        .stat-lbl { font-size: 7px; letter-spacing: 2px; color: var(--text2); text-transform: uppercase; }
-        .help-note { background: rgba(0,229,255,0.03); border: 1px solid rgba(0,229,255,0.1); border-radius: 8px; padding: 10px; font-size: 9px; color: var(--text2); }
-        .error-msg { background: rgba(255,45,85,0.05); border: 1px solid rgba(255,45,85,0.2); border-radius: 8px; padding: 8px 10px; font-size: 9px; color: var(--danger); margin-bottom: 8px; display: none; }
-        .token-section { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
-        .token-section input { background: var(--panel); border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 11px; min-width: 260px; flex: 1; }
-        .token-section input:focus { outline: none; border-color: var(--accent); }
-        .mode-toggle { font-size: 9px; color: var(--gold); cursor: pointer; border: 1px solid var(--gold); padding: 4px 12px; border-radius: 16px; background: transparent; font-family: 'Orbitron', monospace; font-weight: 700; }
-        .account-select { background: var(--panel); border: 1px solid var(--border); color: var(--text); padding: 6px 12px; border-radius: 20px; font-family: 'Share Tech Mono', monospace; font-size: 11px; }
-        @media(max-width:600px) { .stats-row { grid-template-columns: 1fr 1fr; } .signal-meta { grid-template-columns: 1fr 1fr; } .three-digits-row { gap: 6px; } .digit-group .big-num { width: 55px; height: 55px; font-size: 28px; } }
-        @keyframes radarPing { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
-        .result-display { animation: resultPop 0.6s ease-out; }
-        @keyframes resultPop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Rajdhani', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .container {
+            position: relative;
+            z-index: 2;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 14px 14px 36px;
+        }
+        /* ── header ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .logo-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+            background: rgba(0, 229, 255, 0.05);
+        }
+        .logo-text {
+            font-family: 'Orbitron', monospace;
+            font-size: 16px;
+            font-weight: 900;
+            color: var(--accent);
+            letter-spacing: 2px;
+        }
+        .logo-sub {
+            font-size: 10px;
+            color: var(--text2);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 2px;
+        }
+        .status-badge.connected {
+            background: rgba(57, 255, 20, 0.07);
+            border: 1px solid rgba(57, 255, 20, 0.3);
+            color: var(--success);
+        }
+        .status-badge.warning {
+            background: rgba(255, 186, 8, 0.07);
+            border: 1px solid rgba(255, 186, 8, 0.3);
+            color: var(--warning);
+        }
+        .status-badge.idle {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: var(--text2);
+        }
+        .status-badge.error {
+            background: rgba(255, 45, 85, 0.07);
+            border: 1px solid rgba(255, 45, 85, 0.3);
+            color: var(--danger);
+        }
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        .live-dot.green {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+        .live-dot.yellow {
+            background: var(--warning);
+            box-shadow: 0 0 8px var(--warning);
+        }
+        .live-dot.gray {
+            background: #555;
+        }
+        .live-dot.red {
+            background: var(--danger);
+            box-shadow: 0 0 8px var(--danger);
+        }
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        .btn {
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-family: 'Orbitron', monospace;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text2);
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn-connect {
+            background: linear-gradient(135deg, #00c4e0, #0097b2);
+            color: #030912;
+            border: none;
+            font-size: 10px;
+            padding: 10px 22px;
+        }
+        .btn-connect.connected {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+        }
+        .btn-oauth {
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            color: var(--gold);
+            background: rgba(255, 215, 0, 0.05);
+            font-size: 8px;
+            padding: 6px 12px;
+        }
+        .btn-engine {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            font-family: 'Orbitron', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            cursor: pointer;
+            text-transform: uppercase;
+            border: none;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .btn-engine.start {
+            background: linear-gradient(135deg, #16a34a, #15803d);
+            color: white;
+        }
+        .btn-engine.stop {
+            background: linear-gradient(135deg, #dc2626, #991b1b);
+            color: white;
+        }
+        .strategy-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+        .strategy-tab {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text2);
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.25s ease;
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+        .strategy-tab.active-matches {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(255, 215, 0, 0.08);
+        }
+        .strategy-tab.active-evenodd {
+            border-color: var(--purple);
+            color: var(--purple);
+            background: rgba(168, 85, 247, 0.08);
+        }
+        /* ── tick feed ── */
+        .tick-feed-panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+        .tick-feed-header {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Orbitron', monospace;
+            font-size: 8px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            background: rgba(0, 229, 255, 0.03);
+            display: flex;
+            justify-content: space-between;
+        }
+        .tick-feed-body {
+            padding: 6px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+        .tick-row {
+            display: grid;
+            grid-template-columns: 55px 14px 1fr 30px;
+            gap: 3px;
+            padding: 2px 5px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 8px;
+            align-items: center;
+        }
+        .tick-direction.up {
+            color: var(--success);
+        }
+        .tick-direction.down {
+            color: var(--danger);
+        }
+        .tick-digit.matched {
+            color: var(--accent);
+            background: rgba(0, 229, 255, 0.1);
+            border-radius: 3px;
+        }
+        .section-label {
+            font-family: 'Orbitron', monospace;
+            font-size: 9px;
+            letter-spacing: 4px;
+            color: var(--text2);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .market-grid {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .market-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 7px 3px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text2);
+            border-radius: 7px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-size: 7px;
+            font-weight: 700;
+            text-align: center;
+            transition: all 0.25s ease;
+        }
+        .market-btn.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(0, 229, 255, 0.08);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+        }
+        /* ── main grid ── */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 14px;
+        }
+        @media(max-width:1000px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .signal-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .signal-card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 229, 255, 0.03);
+        }
+        .signal-card-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+        .signal-body {
+            padding: 16px;
+            min-height: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .signal-display {
+            text-align: center;
+            width: 100%;
+        }
+        .signal-active {
+            animation: signalAppear 0.5s cubic-bezier(.34, 1.56, .64, 1);
+        }
+        @keyframes signalAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.85);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .big-signal-display {
+            background: rgba(255, 215, 0, 0.04);
+            border: 2px solid var(--gold);
+            border-radius: 20px;
+            padding: 20px 16px;
+            margin-bottom: 14px;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.12);
+        }
+        .big-signal-label {
+            font-family: 'Orbitron', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: var(--gold);
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .three-digits-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .digit-group {
+            text-align: center;
+            min-width: 75px;
+        }
+        .digit-group .label {
+            font-size: 8px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            font-weight: 700;
+        }
+        .label.predicted {
+            color: var(--accent3);
+        }
+        .label.entry {
+            color: var(--accent);
+        }
+        .label.recovery {
+            color: var(--accent2);
+        }
+        .digit-group .big-num {
+            width: 72px;
+            height: 72px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 38px;
+            font-weight: 900;
+            margin: 0 auto;
+            flex-direction: column;
+        }
+        .big-num.predicted-num {
+            border: 3px solid var(--accent3);
+            color: var(--accent3);
+            background: rgba(57, 255, 20, 0.06);
+            box-shadow: 0 0 25px rgba(57, 255, 20, 0.25);
+        }
+        .big-num.entry-num {
+            border: 3px solid var(--accent);
+            color: var(--accent);
+            background: rgba(0, 229, 255, 0.06);
+            box-shadow: 0 0 25px rgba(0, 229, 255, 0.25);
+        }
+        .big-num.recovery-num {
+            border: 3px solid var(--accent2);
+            color: var(--accent2);
+            background: rgba(255, 107, 53, 0.06);
+            box-shadow: 0 0 25px rgba(255, 107, 53, 0.25);
+        }
+        .big-num.live-num {
+            border-color: var(--accent3);
+            animation: pulse 0.8s infinite;
+        }
+        .arrow-divider {
+            font-family: 'Orbitron', monospace;
+            font-size: 16px;
+            color: #3a5a7a;
+        }
+        .big-countdown {
+            margin-top: 14px;
+            font-family: 'Orbitron', monospace;
+            font-size: 40px;
+            font-weight: 900;
+            color: var(--accent);
+            text-shadow: 0 0 30px rgba(0, 229, 255, 0.6);
+        }
+        .big-countdown.urgent {
+            color: var(--danger);
+            animation: pulse 0.5s infinite;
+        }
+        .voice-alert {
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-top: 6px;
+        }
+        .voice-alert.ready {
+            color: var(--gold);
+        }
+        .voice-alert.go {
+            color: var(--accent3);
+            font-size: 18px;
+        }
+        .strategy-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-family: 'Orbitron', monospace;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 8px;
+        }
+        .strategy-badge.matches {
+            background: rgba(255, 215, 0, 0.1);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            color: var(--gold);
+        }
+        .strategy-badge.evenodd {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            color: var(--purple);
+        }
+        .signal-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .meta-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 4px;
+            text-align: center;
+        }
+        .meta-val {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .meta-key {
+            font-size: 8px;
+            letter-spacing: 2px;
+            color: var(--text2);
+            text-transform: uppercase;
+        }
+        .confidence-bar-wrap {
+            margin-top: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            width: 100%;
+        }
+        .conf-track {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .conf-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--accent3), var(--accent), var(--gold));
+            transition: width 0.6s ease;
+        }
+        .conf-fill.evenodd {
+            background: linear-gradient(90deg, var(--accent3), var(--accent), var(--purple));
+        }
+        .tick-progress {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .tick-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text2);
+        }
+        .tick-dot.filled {
+            border-color: var(--accent3);
+            background: rgba(57, 255, 20, 0.2);
+            color: var(--accent3);
+        }
+        /* ── right panel ── */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .panel-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .panel-header {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Orbitron', monospace;
+            font-size: 8px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            background: rgba(0, 229, 255, 0.03);
+        }
+        .panel-body {
+            padding: 8px 10px;
+        }
+        .digit-history {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+        .hist-digit {
+            width: 26px;
+            height: 26px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .hist-digit.hot {
+            background: rgba(255, 107, 53, 0.2);
+            border: 1px solid rgba(255, 107, 53, 0.4);
+            color: var(--accent2);
+        }
+        .hist-digit.cold {
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            color: var(--accent);
+        }
+        .hist-digit.neutral {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            color: var(--text2);
+        }
+        .hist-digit.new-entry {
+            animation: flashIn 0.5s ease;
+        }
+        @keyframes flashIn {
+            0% {
+                transform: scale(1.5);
+                background: rgba(0, 229, 255, 0.4);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        .log-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+        .log-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 6px;
+            font-size: 9px;
+        }
+        .log-badge {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            font-weight: 900;
+        }
+        .log-badge.won {
+            background: rgba(57, 255, 20, 0.12);
+            border: 1px solid rgba(57, 255, 20, 0.3);
+            color: var(--success);
+        }
+        .log-badge.lost {
+            background: rgba(255, 45, 85, 0.12);
+            border: 1px solid rgba(255, 45, 85, 0.3);
+            color: var(--danger);
+        }
+        .stats-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .stat-box {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 6px;
+            text-align: center;
+        }
+        .stat-val {
+            font-family: 'Orbitron', monospace;
+            font-size: 16px;
+            font-weight: 900;
+        }
+        .stat-lbl {
+            font-size: 7px;
+            letter-spacing: 2px;
+            color: var(--text2);
+            text-transform: uppercase;
+        }
+        .help-note {
+            background: rgba(0, 229, 255, 0.03);
+            border: 1px solid rgba(0, 229, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 9px;
+            color: var(--text2);
+        }
+        .error-msg {
+            background: rgba(255, 45, 85, 0.05);
+            border: 1px solid rgba(255, 45, 85, 0.2);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 9px;
+            color: var(--danger);
+            margin-bottom: 8px;
+            display: none;
+        }
+        .token-section {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 8px 0;
+        }
+        .token-section input {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            min-width: 260px;
+            flex: 1;
+        }
+        .token-section input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .mode-toggle {
+            font-size: 9px;
+            color: var(--gold);
+            cursor: pointer;
+            border: 1px solid var(--gold);
+            padding: 4px 12px;
+            border-radius: 16px;
+            background: transparent;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+        }
+        .account-select {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+        }
+        @media(max-width:600px) {
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
+            }
+            .signal-meta {
+                grid-template-columns: 1fr 1fr;
+            }
+            .three-digits-row {
+                gap: 6px;
+            }
+            .digit-group .big-num {
+                width: 55px;
+                height: 55px;
+                font-size: 28px;
+            }
+        }
+        @keyframes radarPing {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+        .result-display {
+            animation: resultPop 0.6s ease-out;
+        }
+        @keyframes resultPop {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
 
-        /* Bot panel styles */
-        .bot-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-top: 10px; }
-        .bot-panel .panel-header { padding: 8px 12px; border-bottom: 1px solid var(--border); font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: 3px; color: var(--accent); text-transform: uppercase; background: rgba(0,229,255,0.03); }
-        .bot-panel .panel-body { padding: 12px; }
-        .mode-switch { display: flex; gap: 8px; margin-bottom: 10px; }
-        .mode-switch button { flex: 1; padding: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text2); border-radius: 8px; cursor: pointer; font-family: 'Orbitron', monospace; font-size: 10px; font-weight: 700; letter-spacing: 1px; transition: all 0.3s ease; }
-        .mode-switch button.active-bot { border-color: var(--gold); color: var(--gold); background: rgba(255,215,0,0.1); }
-        .bot-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-        .bot-controls label { font-size: 9px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
-        .bot-controls input, .bot-controls select { background: var(--panel); border: 1px solid var(--border); padding: 6px 8px; border-radius: 6px; color: var(--text); font-family: 'Share Tech Mono', monospace; font-size: 11px; width: 100%; }
-        .bulk-slider { grid-column: span 2; }
-        .bulk-slider input[type="range"] { width: 100%; -webkit-appearance: none; height: 4px; background: var(--border); border-radius: 2px; outline: none; }
-        .bulk-slider input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; }
-        .bot-log { max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 6px; padding: 6px; font-family: 'Share Tech Mono', monospace; font-size: 8px; }
-        .bot-log .log-entry { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
-        .bot-log .log-entry.success { color: var(--success); }
-        .bot-log .log-entry.error { color: var(--danger); }
-        .bot-log .log-entry.info { color: var(--text2); }
+        /* ── Bot panel ── */
+        .bot-panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .bot-panel .panel-header {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Orbitron', monospace;
+            font-size: 8px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            background: rgba(0, 229, 255, 0.03);
+        }
+        .bot-panel .panel-body {
+            padding: 12px;
+        }
+        .mode-switch {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .mode-switch button {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text2);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+        }
+        .mode-switch button.active-bot {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(255, 215, 0, 0.1);
+        }
+        .bot-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .bot-controls label {
+            font-size: 9px;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .bot-controls input,
+        .bot-controls select {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 6px 8px;
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            width: 100%;
+        }
+        .bulk-slider {
+            grid-column: span 2;
+        }
+        .bulk-slider input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+        }
+        .bulk-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+        .bot-log {
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            padding: 6px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 8px;
+        }
+        .bot-log .log-entry {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        .bot-log .log-entry.success {
+            color: var(--success);
+        }
+        .bot-log .log-entry.error {
+            color: var(--danger);
+        }
+        .bot-log .log-entry.info {
+            color: var(--text2);
+        }
+
+        /* ── NEW: ABILITY GUIDE PANEL ── */
+        .ability-guide-panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .ability-guide-panel .panel-header {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Orbitron', monospace;
+            font-size: 8px;
+            letter-spacing: 3px;
+            color: var(--accent);
+            text-transform: uppercase;
+            background: rgba(0, 229, 255, 0.03);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .ability-guide-panel .panel-body {
+            padding: 12px;
+        }
+        .guide-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .guide-digit-stats {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .guide-digit-stats .guide-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 8px;
+            letter-spacing: 2px;
+            color: var(--text2);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .digit-distribution {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            justify-content: center;
+        }
+        .digit-dist-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 6px;
+            min-width: 32px;
+            transition: all 0.2s ease;
+        }
+        .digit-dist-item .dval {
+            font-family: 'Orbitron', monospace;
+            font-size: 16px;
+            font-weight: 900;
+            color: var(--accent);
+        }
+        .digit-dist-item .dpct {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 8px;
+            color: var(--text2);
+        }
+        .digit-dist-item.high {
+            border-color: var(--accent3);
+            background: rgba(57, 255, 20, 0.06);
+        }
+        .digit-dist-item.low {
+            border-color: var(--danger);
+            background: rgba(255, 45, 85, 0.06);
+        }
+        .digit-dist-item .dbar {
+            width: 100%;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--border);
+            margin-top: 2px;
+            overflow: hidden;
+        }
+        .digit-dist-item .dbar .dfill {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, var(--accent3), var(--accent));
+            transition: width 0.4s ease;
+        }
+
+        .guide-evenodd {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .guide-evenodd .guide-title {
+            font-family: 'Orbitron', monospace;
+            font-size: 8px;
+            letter-spacing: 2px;
+            color: var(--text2);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .eo-row {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .eo-item {
+            text-align: center;
+        }
+        .eo-item .eo-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+        .eo-item .eo-label.even {
+            color: var(--accent3);
+        }
+        .eo-item .eo-label.odd {
+            color: var(--danger);
+        }
+        .eo-item .eo-val {
+            font-family: 'Orbitron', monospace;
+            font-size: 24px;
+            font-weight: 900;
+        }
+        .eo-item .eo-bar-wrap {
+            width: 80px;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            margin: 4px auto 0;
+            overflow: hidden;
+        }
+        .eo-item .eo-bar-wrap .eo-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        .eo-item .eo-bar-wrap .eo-fill.even-fill {
+            background: linear-gradient(90deg, var(--accent3), var(--accent));
+        }
+        .eo-item .eo-bar-wrap .eo-fill.odd-fill {
+            background: linear-gradient(90deg, var(--danger), var(--accent2));
+        }
+
+        .guide-legend {
+            grid-column: span 2;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+        }
+        .guide-legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 8px;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .guide-legend .legend-swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+        .guide-legend .legend-swatch.hot-swatch {
+            background: rgba(255, 107, 53, 0.3);
+            border-color: var(--accent2);
+        }
+        .guide-legend .legend-swatch.cold-swatch {
+            background: rgba(0, 229, 255, 0.15);
+            border-color: var(--accent);
+        }
+        .guide-legend .legend-swatch.neutral-swatch {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: var(--border);
+        }
+        .guide-legend .legend-swatch.even-swatch {
+            background: rgba(57, 255, 20, 0.15);
+            border-color: var(--accent3);
+        }
+        .guide-legend .legend-swatch.odd-swatch {
+            background: rgba(255, 45, 85, 0.15);
+            border-color: var(--danger);
+        }
+
+        .guide-status {
+            grid-column: span 2;
+            text-align: center;
+            font-size: 9px;
+            color: var(--text2);
+            padding: 4px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+        }
+        .guide-status strong {
+            color: var(--accent);
+        }
+
+        .guide-tip {
+            grid-column: span 2;
+            background: rgba(255, 215, 0, 0.04);
+            border: 1px solid rgba(255, 215, 0, 0.15);
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 8px;
+            color: var(--text2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .guide-tip .tip-icon {
+            font-size: 16px;
+        }
+        .guide-tip .tip-text {
+            flex: 1;
+        }
+        .guide-tip .tip-text strong {
+            color: var(--gold);
+        }
+
+        @media(max-width:600px) {
+            .guide-grid {
+                grid-template-columns: 1fr;
+            }
+            .guide-legend,
+            .guide-status,
+            .guide-tip {
+                grid-column: span 1;
+            }
+            .eo-row {
+                gap: 10px;
+            }
+            .eo-item .eo-bar-wrap {
+                width: 60px;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <!-- Header -->
-    <div class="header">
-        <div class="logo-wrap">
-            <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-            <div><div class="logo-text">FLOWSTATE</div><div class="logo-sub">Matches & Even/Odd Engine</div></div>
-        </div>
-        <div class="header-actions">
-            <div class="status-badge idle" id="status-badge"><div class="live-dot gray" id="status-dot"></div><span id="status-text">OFFLINE</span></div>
-            <button class="btn btn-connect" id="btn-connect" onclick="toggleConnection()">⚡ CONNECT</button>
-            <button class="btn btn-oauth" onclick="startOAuth('login')">🔑 LOGIN</button>
-            <button class="btn btn-oauth" onclick="startOAuth('signup')">📝 SIGN UP</button>
-        </div>
-    </div>
-
-    <!-- Token input + account selection + mode toggle -->
-    <div class="token-section">
-        <input type="text" id="patInput" placeholder="Paste your PAT token here (starts with pat_...)" style="flex:1;min-width:200px;">
-        <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect PAT</button>
-        <select class="account-select" id="accountSelect" style="min-width:120px;">
-            <option value="">Select account</option>
-        </select>
-        <button class="btn mode-toggle" id="modeToggleBtn" onclick="toggleMode()">MODE: <strong id="modeLabel">DEMO</strong></button>
-        <button class="btn" onclick="disconnect()" style="color:var(--danger);border-color:var(--danger);font-size:9px;padding:4px 12px;">🚫 Disconnect</button>
-    </div>
-
-    <!-- Strategy tabs -->
-    <div class="strategy-tabs">
-        <button class="strategy-tab active-matches" id="tab-matches" onclick="switchStrategy('matches')">🎯 MATCHES</button>
-        <button class="strategy-tab" id="tab-evenodd" onclick="switchStrategy('evenodd')">🟣 EVEN/ODD</button>
-    </div>
-
-    <!-- Stats row -->
-    <div class="stats-row">
-        <div class="stat-box"><div class="stat-val" style="color:var(--success)" id="stat-signals">0</div><div class="stat-lbl">Signals</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:var(--gold)" id="stat-acc">--</div><div class="stat-lbl">Win Rate</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:var(--accent)" id="stat-digit">--</div><div class="stat-lbl">Last Digit</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:var(--purple)" id="stat-evenodd">--</div><div class="stat-lbl">Even/Odd</div></div>
-    </div>
-
-    <div class="error-msg" id="error-msg"></div>
-
-    <!-- Tick feed -->
-    <div class="tick-feed-panel">
-        <div class="tick-feed-header"><span>📡 Live Tick Feed</span><span id="tick-count" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text2);">0 ticks</span></div>
-        <div class="tick-feed-body" id="tick-feed"></div>
-    </div>
-
-    <!-- Market selection -->
-    <div class="section-label">Select Market</div>
-    <div class="market-grid" id="market-grid"></div>
-
-    <!-- Main grid: signal card + right panel -->
-    <div class="main-grid">
-        <div class="signal-card">
-            <div class="signal-card-header"><span class="signal-card-title" id="signal-card-title">SIGNAL OUTPUT</span><span id="strategy-tag" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);padding:2px 8px;border-radius:4px;">MATCHES</span></div>
-            <div class="signal-body" id="signal-body"></div>
-        </div>
-        <div class="right-panel">
-            <button class="btn-engine start" id="btn-engine" onclick="toggleEngine()">▶ START ENGINE</button>
-
-            <div class="panel-card">
-                <div class="panel-header">Digit Stream</div>
-                <div class="panel-body"><div class="digit-history" id="digit-history"></div></div>
-            </div>
-
-            <div class="panel-card">
-                <div class="panel-header">Signal History</div>
-                <div class="panel-body"><div class="log-list" id="log-list"><div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div></div></div>
-            </div>
-
-            <div class="help-note"><strong>🔊 Voice Alerts:</strong><br>• "Ready" when signal found<br>• "Go Time" at countdown zero<br>• 3 digits: Predicted, Entry, Recovery</div>
-
-            <!-- Auto Bulk Trader Panel -->
-            <div class="bot-panel">
-                <div class="panel-header">🤖 Auto Bulk Trader</div>
-                <div class="panel-body">
-                    <div class="mode-switch">
-                        <button id="bot-mode-evenodd" class="active-bot" onclick="setBotMode('evenodd')">EVEN/ODD</button>
-                        <button id="bot-mode-matches" onclick="setBotMode('matches')">MATCHES</button>
-                    </div>
-                    <div class="bot-controls">
-                        <div class="bulk-slider">
-                            <label>Bulk Trades: <span id="bulk-count-display">10</span></label>
-                            <input type="range" id="bulk-count" min="5" max="200" value="10" oninput="document.getElementById('bulk-count-display').textContent=this.value">
-                        </div>
-                        <div>
-                            <label>Stake per trade</label>
-                            <input type="number" id="bot-stake" value="1" min="0.35" step="0.01">
-                        </div>
-                        <div>
-                            <label>Market</label>
-                            <select id="bot-market">
-                                <option value="R_100" selected>Volatility 100</option>
-                                <option value="R_75">Volatility 75</option>
-                                <option value="R_50">Volatility 50</option>
-                                <option value="R_25">Volatility 25</option>
-                                <option value="R_10">Volatility 10</option>
-                                <option value="1HZ100V">Vol 100 (1s)</option>
-                                <option value="1HZ75V">Vol 75 (1s)</option>
-                                <option value="1HZ50V">Vol 50 (1s)</option>
-                                <option value="1HZ25V">Vol 25 (1s)</option>
-                                <option value="1HZ10V">Vol 10 (1s)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button class="btn-engine start" id="bot-start-btn" onclick="toggleBot()">▶ START BOT</button>
-                    <div class="bot-log" id="bot-log">
-                        <div class="log-entry info">Bot idle</div>
-                    </div>
+    <div class="container">
+        <!-- ─── HEADER ─── -->
+        <div class="header">
+            <div class="logo-wrap">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="logo-text">FLOWSTATE</div>
+                    <div class="logo-sub">Matches &amp; Even/Odd Engine</div>
                 </div>
             </div>
+            <div class="header-actions">
+                <div class="status-badge idle" id="status-badge">
+                    <div class="live-dot gray" id="status-dot"></div>
+                    <span id="status-text">OFFLINE</span>
+                </div>
+                <button class="btn btn-connect" id="btn-connect" onclick="toggleConnection()">⚡ CONNECT</button>
+                <button class="btn btn-oauth" onclick="startOAuth('login')">🔑 LOGIN</button>
+                <button class="btn btn-oauth" onclick="startOAuth('signup')">📝 SIGN UP</button>
+            </div>
         </div>
+
+        <!-- ─── TOKEN SECTION ─── -->
+        <div class="token-section">
+            <input type="text" id="patInput" placeholder="Paste your PAT token here (starts with pat_...)" style="flex:1;min-width:200px;" />
+            <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect PAT</button>
+            <select class="account-select" id="accountSelect" style="min-width:120px;">
+                <option value="">Select account</option>
+            </select>
+            <button class="btn mode-toggle" id="modeToggleBtn" onclick="toggleMode()">MODE: <strong id="modeLabel">DEMO</strong></button>
+            <button class="btn" onclick="disconnect()" style="color:var(--danger);border-color:var(--danger);font-size:9px;padding:4px 12px;">🚫 Disconnect</button>
+        </div>
+
+        <!-- ─── STRATEGY TABS ─── -->
+        <div class="strategy-tabs">
+            <button class="strategy-tab active-matches" id="tab-matches" onclick="switchStrategy('matches')">🎯 MATCHES</button>
+            <button class="strategy-tab" id="tab-evenodd" onclick="switchStrategy('evenodd')">🟣 EVEN/ODD</button>
+        </div>
+
+        <!-- ─── STATS ROW ─── -->
+        <div class="stats-row">
+            <div class="stat-box"><div class="stat-val" style="color:var(--success)" id="stat-signals">0</div><div class="stat-lbl">Signals</div></div>
+            <div class="stat-box"><div class="stat-val" style="color:var(--gold)" id="stat-acc">--</div><div class="stat-lbl">Win Rate</div></div>
+            <div class="stat-box"><div class="stat-val" style="color:var(--accent)" id="stat-digit">--</div><div class="stat-lbl">Last Digit</div></div>
+            <div class="stat-box"><div class="stat-val" style="color:var(--purple)" id="stat-evenodd">--</div><div class="stat-lbl">Even/Odd</div></div>
+        </div>
+
+        <div class="error-msg" id="error-msg"></div>
+
+        <!-- ─── TICK FEED ─── -->
+        <div class="tick-feed-panel">
+            <div class="tick-feed-header"><span>📡 Live Tick Feed</span><span id="tick-count" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text2);">0 ticks</span></div>
+            <div class="tick-feed-body" id="tick-feed"></div>
+        </div>
+
+        <!-- ─── MARKET SELECTION ─── -->
+        <div class="section-label">Select Market</div>
+        <div class="market-grid" id="market-grid"></div>
+
+        <!-- ─── MAIN GRID ─── -->
+        <div class="main-grid">
+            <!-- left: signal card -->
+            <div class="signal-card">
+                <div class="signal-card-header">
+                    <span class="signal-card-title" id="signal-card-title">SIGNAL OUTPUT</span>
+                    <span id="strategy-tag" style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--gold);background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);padding:2px 8px;border-radius:4px;">MATCHES</span>
+                </div>
+                <div class="signal-body" id="signal-body"></div>
+            </div>
+
+            <!-- right panel -->
+            <div class="right-panel">
+                <button class="btn-engine start" id="btn-engine" onclick="toggleEngine()">▶ START ENGINE</button>
+
+                <!-- digit stream -->
+                <div class="panel-card">
+                    <div class="panel-header">Digit Stream</div>
+                    <div class="panel-body"><div class="digit-history" id="digit-history"></div></div>
+                </div>
+
+                <!-- signal history -->
+                <div class="panel-card">
+                    <div class="panel-header">Signal History</div>
+                    <div class="panel-body"><div class="log-list" id="log-list"><div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div></div></div>
+                </div>
+
+                <!-- help note -->
+                <div class="help-note"><strong>🔊 Voice Alerts:</strong><br />• "Ready" when signal found<br />• "Go Time" at countdown zero<br />• 3 digits: Predicted, Entry, Recovery</div>
+
+                <!-- ─── AUTO BULK TRADER ─── -->
+                <div class="bot-panel">
+                    <div class="panel-header">🤖 Auto Bulk Trader</div>
+                    <div class="panel-body">
+                        <div class="mode-switch">
+                            <button id="bot-mode-evenodd" class="active-bot" onclick="setBotMode('evenodd')">EVEN/ODD</button>
+                            <button id="bot-mode-matches" onclick="setBotMode('matches')">MATCHES</button>
+                        </div>
+                        <div class="bot-controls">
+                            <div class="bulk-slider">
+                                <label>Bulk Trades: <span id="bulk-count-display">10</span></label>
+                                <input type="range" id="bulk-count" min="5" max="200" value="10" oninput="document.getElementById('bulk-count-display').textContent=this.value" />
+                            </div>
+                            <div>
+                                <label>Stake per trade</label>
+                                <input type="number" id="bot-stake" value="1" min="0.35" step="0.01" />
+                            </div>
+                            <div>
+                                <label>Market</label>
+                                <select id="bot-market">
+                                    <option value="R_100" selected>Volatility 100</option>
+                                    <option value="R_75">Volatility 75</option>
+                                    <option value="R_50">Volatility 50</option>
+                                    <option value="R_25">Volatility 25</option>
+                                    <option value="R_10">Volatility 10</option>
+                                    <option value="1HZ100V">Vol 100 (1s)</option>
+                                    <option value="1HZ75V">Vol 75 (1s)</option>
+                                    <option value="1HZ50V">Vol 50 (1s)</option>
+                                    <option value="1HZ25V">Vol 25 (1s)</option>
+                                    <option value="1HZ10V">Vol 10 (1s)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn-engine start" id="bot-start-btn" onclick="toggleBot()">▶ START BOT</button>
+                        <div class="bot-log" id="bot-log">
+                            <div class="log-entry info">Bot idle</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ─── NEW: ABILITY GUIDE ─── -->
+                <div class="ability-guide-panel">
+                    <div class="panel-header">
+                        <span>📊 Ability Guide</span>
+                        <span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--text2);" id="guide-update-time">updating…</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="guide-grid" id="guide-grid">
+                            <!-- digit distribution -->
+                            <div class="guide-digit-stats">
+                                <div class="guide-title">🔢 Digit Frequency</div>
+                                <div class="digit-distribution" id="digit-distribution">
+                                    <!-- rendered by JS -->
+                                </div>
+                            </div>
+                            <!-- even/odd -->
+                            <div class="guide-evenodd">
+                                <div class="guide-title">⚖️ Even / Odd Split</div>
+                                <div class="eo-row" id="eo-row">
+                                    <div class="eo-item">
+                                        <div class="eo-label even">Even</div>
+                                        <div class="eo-val" style="color:var(--accent3)" id="eo-even-val">0%</div>
+                                        <div class="eo-bar-wrap"><div class="eo-fill even-fill" id="eo-even-bar" style="width:0%"></div></div>
+                                    </div>
+                                    <div class="eo-item">
+                                        <div class="eo-label odd">Odd</div>
+                                        <div class="eo-val" style="color:var(--danger)" id="eo-odd-val">0%</div>
+                                        <div class="eo-bar-wrap"><div class="eo-fill odd-fill" id="eo-odd-bar" style="width:0%"></div></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- legend -->
+                            <div class="guide-legend">
+                                <span class="legend-item"><span class="legend-swatch hot-swatch"></span> Hot (≥4)</span>
+                                <span class="legend-item"><span class="legend-swatch cold-swatch"></span> Cold (2-3)</span>
+                                <span class="legend-item"><span class="legend-swatch neutral-swatch"></span> Neutral (0-1)</span>
+                                <span class="legend-item"><span class="legend-swatch even-swatch"></span> Even</span>
+                                <span class="legend-item"><span class="legend-swatch odd-swatch"></span> Odd</span>
+                            </div>
+                            <!-- status -->
+                            <div class="guide-status" id="guide-status">
+                                <span>📈 <strong id="guide-sample-size">0</strong> ticks analyzed • </span>
+                                <span id="guide-entropy">Entropy: --</span>
+                            </div>
+                            <!-- tip -->
+                            <div class="guide-tip">
+                                <span class="tip-icon">💡</span>
+                                <span class="tip-text"><strong>Ability Guide:</strong> <span id="guide-tip-text">Watch the distribution to spot over‑represented digits. Higher frequency = higher probability in the next tick.</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ─── END ABILITY GUIDE ─── -->
+
+            </div>
+            <!-- end right panel -->
+        </div>
+        <!-- end main grid -->
     </div>
-</div>
+    <!-- end container -->
 
-<script>
-// ==================== FLOWSTATE PRO + AUTO BULK TRADER ====================
-const DERIV_APP_ID = '34h5thRsVU9aLKUJjJLYh';  // Updated App ID
-const BACKEND_URL = '';
-const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
+    <script>
+        // ============================================================
+        //  FLOWSTATE PRO + AUTO BULK TRADER  +  ABILITY GUIDE
+        // ============================================================
 
-// ==================== SELF-LEARNING STATE ====================
-let learningState = {
-    matches: { total: 0, wins: 0, recent: [] },
-    evenodd: { total: 0, wins: 0, recent: [] }
-};
+        const DERIV_APP_ID = '34h5thRsVU9aLKUJjJLYh';
+        const BACKEND_URL = '';
+        const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
-function getPerformanceFactor(strategy) {
-    const s = learningState[strategy];
-    if (s.total === 0) return 1.0;
-    const winRate = s.wins / s.total;
-    return 0.7 + (winRate * 0.6);
-}
-
-function updateLearning(strategy, won) {
-    const s = learningState[strategy];
-    s.total++;
-    if (won) s.wins++;
-    s.recent.push(won);
-    if (s.recent.length > 50) s.recent.shift();
-}
-
-// ==================== STATISTICAL ENGINE ====================
-class StatisticalEngine {
-    constructor() { this.reset(); }
-    reset() { this.ticks=[]; this.digits=[]; this.transitionMatrix=Array.from({length:10},()=>Array(10).fill(0)); }
-    addTick(price, decimals) {
-        const priceStr = price.toFixed(decimals);
-        const lastDigit = parseInt(priceStr.slice(-1));
-        if (this.digits.length > 0) this.transitionMatrix[this.digits[this.digits.length-1]][lastDigit]++;
-        this.ticks.push({price,digit:lastDigit,time:Date.now()});
-        this.digits.push(lastDigit);
-        if(this.ticks.length>2000){this.ticks.shift();this.digits.shift();}
-        return lastDigit;
-    }
-    getWeightedFrequency(window=150) {
-        const d = this.digits.slice(-window);
-        const counts = Array(10).fill(0);
-        d.forEach((digit, i) => {
-            const alpha = 0.05;
-            const weight = Math.pow(1 - alpha, d.length - 1 - i);
-            counts[digit] += weight;
-        });
-        const total = counts.reduce((a,b)=>a+b,0) || 1;
-        return counts.map(c => c/total);
-    }
-    getRecentFrequency(window=15) {
-        const d = this.digits.slice(-window);
-        const counts = Array(10).fill(0);
-        d.forEach(digit => counts[digit]++);
-        const total = d.length || 1;
-        return counts.map(c => c/total);
-    }
-    getLastSeenDistances() {
-        const distances = new Array(10).fill(this.digits.length);
-        for (let i = this.digits.length - 1; i >= 0; i--) {
-            const d = this.digits[i];
-            if (distances[d] === this.digits.length) {
-                distances[d] = this.digits.length - 1 - i;
-            }
-        }
-        return distances; // 0 = most recent
-    }
-    calculateEntropy() {
-        if (this.digits.length < 100) return 3.32;
-        const probs = this.getWeightedFrequency(100); 
-        let entropy = 0;
-        for (let i = 0; i < 10; i++) {
-            if (probs[i] > 0) {
-                entropy -= probs[i] * Math.log2(probs[i]);
-            }
-        }
-        return entropy;
-    }
-    getTransitions(from) {
-        const row = this.transitionMatrix[from]||Array(10).fill(0);
-        const total = row.reduce((a,b)=>a+b,0)||1;
-        return row.map(x=>x/total);
-    }
-    generateMatchesSignal() {
-        const n = this.digits.length;
-        if (n < 40) return null;
-        const currentDigit = this.digits[n-1];
-        const last5 = this.digits.slice(-5);
-        const last5Counts = Array(10).fill(0);
-        last5.forEach(d => last5Counts[d]++);
-
-        // Multi-timeframe frequency
-        const weightedFreq = this.getWeightedFrequency(150); // long-term decay
-        const recentFreq = this.getRecentFrequency(15);      // short-term hotness
-        const mediumFreq = this.getRecentFrequency(50);      // medium-term
-
-        // Recentness
-        const lastSeen = this.getLastSeenDistances();
-        const maxDist = Math.max(...lastSeen, 1);
-
-        // Transitions
-        const transProbs = this.getTransitions(currentDigit);
-
-        let scores = Array(10).fill(0);
-        for (let i = 0; i < 10; i++) {
-            // Long-term weighted frequency (0..30)
-            const longTermScore = weightedFreq[i] * 30;
-            // Medium-term frequency (0..25)
-            const mediumScore = mediumFreq[i] * 25;
-            // Short-term hotness (0..25)
-            const hotScore = recentFreq[i] * 25;
-            // Recentness (last seen) - higher if seen recently (0..15)
-            const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 15;
-            // Markov transition probability (0..10)
-            const transScore = transProbs[i] * 10;
-            // Last 5 ticks bonus (0..10)
-            const last5Score = (last5Counts[i] / 5) * 10;
-
-            scores[i] = longTermScore + mediumScore + hotScore + recentnessScore + transScore + last5Score;
-        }
-
-        const sorted = scores.map((s,i)=>({digit:i,score:s})).sort((a,b)=>b.score-a.score);
-        const primary = sorted[0];
-        const secondary = sorted[1];
-
-        // Tie-breaker: primary must be significantly above second
-        if ( (primary.score - secondary.score) / primary.score < 0.15 ) {
-            return null;
-        }
-
-        const avgScore = scores.reduce((a,b)=>a+b,0)/10;
-        const range = Math.max(...scores)-Math.min(...scores)||1;
-        const dominance = (primary.score - avgScore) / range;
-        const dominanceFactor = Math.min(1, dominance * 3);
-
-        // Confidence calculation
-        let confidence = Math.round(
-            dominance * 50 +                     // 0..50
-            (recentFreq[primary.digit] * 30) +   // 0..30
-            (mediumFreq[primary.digit] * 10) +   // 0..10
-            (last5Counts[primary.digit] >= 2 ? 10 : 0) // bonus
-        );
-        confidence = Math.max(55, Math.min(98, confidence));
-        const perfFactor = getPerformanceFactor('matches');
-        confidence = Math.round(confidence * perfFactor);
-        confidence = Math.max(55, Math.min(98, confidence));
-
-        // Entropy gate with hot-digit exception
-        const entropy = this.calculateEntropy();
-        const hotDigitFrequency = recentFreq[primary.digit];
-        const isExtremeHot = hotDigitFrequency > 0.4;
-
-        let entropyLimit = 3.2;
-        if (dominance > 0.5 && isExtremeHot) entropyLimit = 3.5;
-
-        if (confidence < 60 || entropy > entropyLimit) return null;
-
-        // Recovery digit: secondary with some confidence
-        let recoveryConf = Math.round(secondary.score / (primary.score+0.01) * 80);
-        recoveryConf = Math.min(85, Math.max(40, recoveryConf));
-
-        return {
-            predictedDigit: primary.digit,
-            entryDigit: primary.digit,
-            recoveryDigit: secondary.digit,
-            confidence: confidence,
-            recoveryConfidence: recoveryConf,
-            reason: `${primary.digit} hot (${(hotDigitFrequency*100).toFixed(0)}% in 15, Entropy ${entropy.toFixed(2)})`,
-            strategy: 'matches'
+        // ─── SELF-LEARNING STATE ───
+        let learningState = {
+            matches: { total: 0, wins: 0, recent: [] },
+            evenodd: { total: 0, wins: 0, recent: [] }
         };
-    }
-    generateEvenOddSignal() {
-        const n = this.digits.length;
-        if (n < 40) return null;
-        const recent35 = this.digits.slice(-35);
-        let evens = 0, odds = 0;
-        recent35.forEach((d, i) => {
-            const weight = 1 + (i / recent35.length);
-            if (d % 2 === 0) evens += weight;
-            else odds += weight;
-        });
-        const total = evens + odds;
-        const evenRatio = evens / total;
-        const oddRatio = odds / total;
-        const dominant = evenRatio >= oddRatio ? 'EVEN' : 'ODD';
-        const domRatio = Math.max(evenRatio, oddRatio);
-        const subRatio = Math.min(evenRatio, oddRatio);
-        const ratioDominance = domRatio - subRatio;
-        const last5 = recent35.slice(-5);
-        const lastEvens = last5.filter(d => d % 2 === 0).length;
-        const lastOdds = last5.filter(d => d % 2 !== 0).length;
-        const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
-        const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
-        if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
-            const weightedFreq = this.getWeightedFrequency(150);
-            const lastSeen = this.getLastSeenDistances();
-            const maxDist = Math.max(...lastSeen, 1);
-            const currentDigit = this.digits[n - 1];
-            const transProbs = this.getTransitions(currentDigit);
-            const last5Counts = Array(10).fill(0);
-            last5.forEach(d => last5Counts[d]++);
-            const scores = Array(10).fill(0);
-            for (let i = 0; i < 10; i++) {
-                const freqScore = weightedFreq[i] * 50;
-                const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 10;
-                const transScore = transProbs[i] * 20;
-                const recentScore = (last5Counts[i] / 5) * 20;
-                scores[i] = freqScore + recentnessScore + transScore + recentScore;
+
+        function getPerformanceFactor(strategy) {
+            const s = learningState[strategy];
+            if (s.total === 0) return 1.0;
+            const winRate = s.wins / s.total;
+            return 0.7 + (winRate * 0.6);
+        }
+
+        function updateLearning(strategy, won) {
+            const s = learningState[strategy];
+            s.total++;
+            if (won) s.wins++;
+            s.recent.push(won);
+            if (s.recent.length > 50) s.recent.shift();
+        }
+
+        // ─── STATISTICAL ENGINE ───
+        class StatisticalEngine {
+            constructor() { this.reset(); }
+            reset() { this.ticks = [];
+                this.digits = [];
+                this.transitionMatrix = Array.from({ length: 10 }, () => Array(10).fill(0)); }
+            addTick(price, decimals) {
+                const priceStr = price.toFixed(decimals);
+                const lastDigit = parseInt(priceStr.slice(-1));
+                if (this.digits.length > 0) this.transitionMatrix[this.digits[this.digits.length - 1]][lastDigit]++;
+                this.ticks.push({ price, digit: lastDigit, time: Date.now() });
+                this.digits.push(lastDigit);
+                if (this.ticks.length > 2000) { this.ticks.shift();
+                    this.digits.shift(); }
+                return lastDigit;
             }
-            const isEven = (d) => d % 2 === 0;
-            const dominantDigits = Array.from({ length: 10 }, (_, i) => i)
-                .filter(d => (dominant === 'EVEN' ? isEven(d) : !isEven(d)));
-            const oppositeDigits = Array.from({ length: 10 }, (_, i) => i)
-                .filter(d => (dominant === 'EVEN' ? !isEven(d) : isEven(d)));
-            const topDominant = dominantDigits.sort((a, b) => scores[b] - scores[a])[0];
-            const topOpposite = oppositeDigits.sort((a, b) => scores[b] - scores[a])[0];
-            const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
-            const range = Math.max(...scores) - Math.min(...scores) || 1;
-            const digitDominance = (scores[topDominant] - avgScore) / range;
-            
-            const entropy = this.calculateEntropy();
-            const baseThreshold = entropy > 3.0 ? 75 : 65;
+            getWeightedFrequency(window = 150) {
+                const d = this.digits.slice(-window);
+                const counts = Array(10).fill(0);
+                d.forEach((digit, i) => {
+                    const alpha = 0.05;
+                    const weight = Math.pow(1 - alpha, d.length - 1 - i);
+                    counts[digit] += weight;
+                });
+                const total = counts.reduce((a, b) => a + b, 0) || 1;
+                return counts.map(c => c / total);
+            }
+            getRecentFrequency(window = 15) {
+                const d = this.digits.slice(-window);
+                const counts = Array(10).fill(0);
+                d.forEach(digit => counts[digit]++);
+                const total = d.length || 1;
+                return counts.map(c => c / total);
+            }
+            getLastSeenDistances() {
+                const distances = new Array(10).fill(this.digits.length);
+                for (let i = this.digits.length - 1; i >= 0; i--) {
+                    const d = this.digits[i];
+                    if (distances[d] === this.digits.length) {
+                        distances[d] = this.digits.length - 1 - i;
+                    }
+                }
+                return distances;
+            }
+            calculateEntropy() {
+                if (this.digits.length < 100) return 3.32;
+                const probs = this.getWeightedFrequency(100);
+                let entropy = 0;
+                for (let i = 0; i < 10; i++) {
+                    if (probs[i] > 0) {
+                        entropy -= probs[i] * Math.log2(probs[i]);
+                    }
+                }
+                return entropy;
+            }
+            getTransitions(from) {
+                const row = this.transitionMatrix[from] || Array(10).fill(0);
+                const total = row.reduce((a, b) => a + b, 0) || 1;
+                return row.map(x => x / total);
+            }
+            generateMatchesSignal() {
+                const n = this.digits.length;
+                if (n < 40) return null;
+                const currentDigit = this.digits[n - 1];
+                const last5 = this.digits.slice(-5);
+                const last5Counts = Array(10).fill(0);
+                last5.forEach(d => last5Counts[d]++);
 
-            let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
-            confidence = Math.min(98, Math.round(confidence));
-            const perfFactor = getPerformanceFactor('evenodd');
-            confidence = Math.round(confidence * perfFactor);
-            confidence = Math.max(55, Math.min(98, confidence));
-            if (confidence < baseThreshold || entropy > 3.3) return null;
-            
-            const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
-            const recoveryConf = Math.round((scores[topOpposite] / (scores[topDominant] + 0.01)) * 80);
-            return {
-                predictedDigit: topDominant,
-                entryDigit: topDominant,
-                recoveryDigit: topOpposite,
-                prediction: dominant,
-                recoveryPrediction: recovery,
-                confidence: confidence,
-                recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
-                reason: `${Math.round(domRatio * 100)}% ${dominant} dominance, Entropy ${entropy.toFixed(2)}`,
-                strategy: 'evenodd'
-            };
+                const weightedFreq = this.getWeightedFrequency(150);
+                const recentFreq = this.getRecentFrequency(15);
+                const mediumFreq = this.getRecentFrequency(50);
+                const lastSeen = this.getLastSeenDistances();
+                const maxDist = Math.max(...lastSeen, 1);
+                const transProbs = this.getTransitions(currentDigit);
+
+                let scores = Array(10).fill(0);
+                for (let i = 0; i < 10; i++) {
+                    const longTermScore = weightedFreq[i] * 30;
+                    const mediumScore = mediumFreq[i] * 25;
+                    const hotScore = recentFreq[i] * 25;
+                    const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 15;
+                    const transScore = transProbs[i] * 10;
+                    const last5Score = (last5Counts[i] / 5) * 10;
+                    scores[i] = longTermScore + mediumScore + hotScore + recentnessScore + transScore + last5Score;
+                }
+
+                const sorted = scores.map((s, i) => ({ digit: i, score: s })).sort((a, b) => b.score - a.score);
+                const primary = sorted[0];
+                const secondary = sorted[1];
+
+                if ((primary.score - secondary.score) / primary.score < 0.15) return null;
+
+                const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
+                const range = Math.max(...scores) - Math.min(...scores) || 1;
+                const dominance = (primary.score - avgScore) / range;
+                const dominanceFactor = Math.min(1, dominance * 3);
+
+                let confidence = Math.round(dominance * 50 + (recentFreq[primary.digit] * 30) + (mediumFreq[primary
+                    .digit] * 10) + (last5Counts[primary.digit] >= 2 ? 10 : 0));
+                confidence = Math.max(55, Math.min(98, confidence));
+                const perfFactor = getPerformanceFactor('matches');
+                confidence = Math.round(confidence * perfFactor);
+                confidence = Math.max(55, Math.min(98, confidence));
+
+                const entropy = this.calculateEntropy();
+                const hotDigitFrequency = recentFreq[primary.digit];
+                const isExtremeHot = hotDigitFrequency > 0.4;
+                let entropyLimit = 3.2;
+                if (dominance > 0.5 && isExtremeHot) entropyLimit = 3.5;
+
+                if (confidence < 60 || entropy > entropyLimit) return null;
+
+                let recoveryConf = Math.round(secondary.score / (primary.score + 0.01) * 80);
+                recoveryConf = Math.min(85, Math.max(40, recoveryConf));
+
+                return {
+                    predictedDigit: primary.digit,
+                    entryDigit: primary.digit,
+                    recoveryDigit: secondary.digit,
+                    confidence: confidence,
+                    recoveryConfidence: recoveryConf,
+                    reason: `${primary.digit} hot (${(hotDigitFrequency*100).toFixed(0)}% in 15, Entropy ${entropy.toFixed(2)})`,
+                    strategy: 'matches'
+                };
+            }
+            generateEvenOddSignal() {
+                const n = this.digits.length;
+                if (n < 40) return null;
+                const recent35 = this.digits.slice(-35);
+                let evens = 0,
+                    odds = 0;
+                recent35.forEach((d, i) => {
+                    const weight = 1 + (i / recent35.length);
+                    if (d % 2 === 0) evens += weight;
+                    else odds += weight;
+                });
+                const total = evens + odds;
+                const evenRatio = evens / total;
+                const oddRatio = odds / total;
+                const dominant = evenRatio >= oddRatio ? 'EVEN' : 'ODD';
+                const domRatio = Math.max(evenRatio, oddRatio);
+                const subRatio = Math.min(evenRatio, oddRatio);
+                const ratioDominance = domRatio - subRatio;
+                const last5 = recent35.slice(-5);
+                const lastEvens = last5.filter(d => d % 2 === 0).length;
+                const lastOdds = last5.filter(d => d % 2 !== 0).length;
+                const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
+                const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
+                if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
+                    const weightedFreq = this.getWeightedFrequency(150);
+                    const lastSeen = this.getLastSeenDistances();
+                    const maxDist = Math.max(...lastSeen, 1);
+                    const currentDigit = this.digits[n - 1];
+                    const transProbs = this.getTransitions(currentDigit);
+                    const last5Counts = Array(10).fill(0);
+                    last5.forEach(d => last5Counts[d]++);
+                    const scores = Array(10).fill(0);
+                    for (let i = 0; i < 10; i++) {
+                        const freqScore = weightedFreq[i] * 50;
+                        const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 10;
+                        const transScore = transProbs[i] * 20;
+                        const recentScore = (last5Counts[i] / 5) * 20;
+                        scores[i] = freqScore + recentnessScore + transScore + recentScore;
+                    }
+                    const isEven = (d) => d % 2 === 0;
+                    const dominantDigits = Array.from({ length: 10 }, (_, i) => i)
+                        .filter(d => (dominant === 'EVEN' ? isEven(d) : !isEven(d)));
+                    const oppositeDigits = Array.from({ length: 10 }, (_, i) => i)
+                        .filter(d => (dominant === 'EVEN' ? !isEven(d) : isEven(d)));
+                    const topDominant = dominantDigits.sort((a, b) => scores[b] - scores[a])[0];
+                    const topOpposite = oppositeDigits.sort((a, b) => scores[b] - scores[a])[0];
+                    const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
+                    const range = Math.max(...scores) - Math.min(...scores) || 1;
+                    const digitDominance = (scores[topDominant] - avgScore) / range;
+
+                    const entropy = this.calculateEntropy();
+                    const baseThreshold = entropy > 3.0 ? 75 : 65;
+
+                    let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
+                    confidence = Math.min(98, Math.round(confidence));
+                    const perfFactor = getPerformanceFactor('evenodd');
+                    confidence = Math.round(confidence * perfFactor);
+                    confidence = Math.max(55, Math.min(98, confidence));
+                    if (confidence < baseThreshold || entropy > 3.3) return null;
+
+                    const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
+                    const recoveryConf = Math.round((scores[topOpposite] / (scores[topDominant] + 0.01)) * 80);
+                    return {
+                        predictedDigit: topDominant,
+                        entryDigit: topDominant,
+                        recoveryDigit: topOpposite,
+                        prediction: dominant,
+                        recoveryPrediction: recovery,
+                        confidence: confidence,
+                        recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
+                        reason: `${Math.round(domRatio * 100)}% ${dominant} dominance, Entropy ${entropy.toFixed(2)}`,
+                        strategy: 'evenodd'
+                    };
+                }
+                return null;
+            }
         }
-        return null;
-    }
-}
 
-// ==================== STATE ====================
-let engine=new StatisticalEngine();
-let accessToken = null;
-let ws = null;
-let wsConnected = false;
-let wsReqId = 1;
-let manualDisconnect = false;
-let pingInterval = null;
-let MODE = 'DEMO';
-let selectedAccountId = null;
-let isConnected = false;
-let engineRunning = false;
-let currentStrategy = 'matches';
-let currentMarket = 'R_100';
-let activeSignal = null;
-let prepInterval = null;
-let stats = {total:0, won:0};
-let signalLog = [];
-let lastDigits = [];
-let currentPrice = null;
-let voiceSynth = null;
-let audioCtx = null;
+        // ─── STATE ───
+        let engine = new StatisticalEngine();
+        let accessToken = null;
+        let ws = null;
+        let wsConnected = false;
+        let wsReqId = 1;
+        let manualDisconnect = false;
+        let pingInterval = null;
+        let MODE = 'DEMO';
+        let selectedAccountId = null;
+        let isConnected = false;
+        let engineRunning = false;
+        let currentStrategy = 'matches';
+        let currentMarket = 'R_100';
+        let activeSignal = null;
+        let prepInterval = null;
+        let stats = { total: 0, won: 0 };
+        let signalLog = [];
+        let lastDigits = [];
+        let currentPrice = null;
+        let voiceSynth = null;
+        let audioCtx = null;
 
-// Bot state
-let botMode = 'evenodd';
-let botRunning = false;
-let bulkCount = 10;
-let botStake = 1;
-let botMarket = 'R_100';
-let botExecuting = false;
-let botCompletedCount = 0;
-let executionStartTime = 0;
-let pendingProposals = new Map();
-let retrySignal = null;
-let apiParam = 'underlying'; 
+        // bot state
+        let botMode = 'evenodd';
+        let botRunning = false;
+        let bulkCount = 10;
+        let botStake = 1;
+        let botMarket = 'R_100';
+        let botExecuting = false;
+        let botCompletedCount = 0;
+        let executionStartTime = 0;
+        let pendingProposals = new Map();
+        let retrySignal = null;
+        let apiParam = 'underlying';
 
-// ==================== DOM refs ====================
-function $(id){return document.getElementById(id);}
-function showError(m){const e=$('error-msg');e.textContent='❌ '+m;e.style.display='block';setTimeout(()=>{e.style.display='none';},6000);}
-function hideError(){$('error-msg').style.display='none';}
+        // ─── DOM refs ───
+        function $(id) { return document.getElementById(id); }
 
-// ==================== AUDIO / VOICE ====================
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
-function initVoice(){if(!voiceSynth)voiceSynth=window.speechSynthesis;}
-function speak(text,rate=1.0,pitch=1.0){
-    if(!voiceSynth)initVoice();if(!voiceSynth)return;
-    voiceSynth.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=rate;u.pitch=pitch;u.volume=0.8;
-    const voices=voiceSynth.getVoices(),ev=voices.find(v=>v.lang.startsWith('en')&&v.name.includes('Male'))||voices.find(v=>v.lang.startsWith('en'))||voices[0];
-    if(ev)u.voice=ev;voiceSynth.speak(u);
-}
-function beep(f=880,d=0.25,v=0.2){if(!audioCtx)return;try{if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.setValueAtTime(f,audioCtx.currentTime);g.gain.setValueAtTime(v,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+d);o.start();o.stop(audioCtx.currentTime+d);}catch(e){}}
+        function showError(m) { const e = $('error-msg');
+            e.textContent = '❌ ' + m;
+            e.style.display = 'block';
+            setTimeout(() => { e.style.display = 'none'; }, 6000); }
 
-// ==================== UI ====================
-function updateStatus(type,text){
-    const b=$('status-badge'),d=$('status-dot');b.className='status-badge';d.className='live-dot';
-    if(type==='connected'){b.classList.add('connected');d.classList.add('green');}
-    else if(type==='connecting'){b.classList.add('warning');d.classList.add('yellow');}
-    else if(type==='error'){b.classList.add('error');d.classList.add('red');}
-    else{b.classList.add('idle');d.classList.add('gray');}
-    $('status-text').textContent=text;
-}
-function updateConnectBtn(state){
-    const b=$('btn-connect');
-    if(state==='connected'){b.textContent='✅ CONNECTED';b.classList.add('connected');b.disabled=false;}
-    else if(state==='connecting'){b.textContent='⏳ CONNECTING...';b.disabled=true;}
-    else{b.textContent='⚡ CONNECT';b.classList.remove('connected');b.disabled=false;}
-}
-function updateEngineBtn(){
-    const b=$('btn-engine');
-    if(engineRunning){b.textContent='■ STOP ENGINE';b.className='btn-engine stop';}
-    else{b.textContent='▶ START ENGINE';b.className='btn-engine start';}
-}
+        function hideError() { $('error-msg').style.display = 'none'; }
 
-// ==================== ACCOUNT FETCHING ====================
-async function fetchAccounts(token) {
-    try {
-        const resp = await fetch(`${BACKEND_URL}/api/accounts?token=${encodeURIComponent(token)}&appId=${DERIV_APP_ID}`);
-        if (!resp.ok) {
-            const text = await resp.text();
-            throw new Error(`HTTP ${resp.status}: ${text.substring(0,100)}`);
+        // ─── AUDIO / VOICE ───
+        function initAudio() { if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)(); }
+
+        function initVoice() { if (!voiceSynth) voiceSynth = window.speechSynthesis; }
+
+        function speak(text, rate = 1.0, pitch = 1.0) {
+            if (!voiceSynth) initVoice();
+            if (!voiceSynth) return;
+            voiceSynth.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.rate = rate;
+            u.pitch = pitch;
+            u.volume = 0.8;
+            const voices = voiceSynth.getVoices(),
+                ev = voices.find(v => v.lang.startsWith('en') && v.name.includes('Male')) || voices.find(v => v.lang
+                    .startsWith('en')) || voices[0];
+            if (ev) u.voice = ev;
+            voiceSynth.speak(u);
         }
-        const data = await resp.json();
-        const accountsArray = data.accounts?.data || data.accounts || data.data || data;
-        return Array.isArray(accountsArray) ? accountsArray : [];
-    } catch (e) {
-        console.error('Fetch accounts error:', e);
-        showError('Accounts fetch: ' + e.message);
-        return [];
-    }
-}
 
-function populateAccountSelect(accounts) {
-    const sel = $('accountSelect');
-    sel.innerHTML = '<option value="">Select account</option>';
-    accounts.forEach(acc => {
-        const opt = document.createElement('option');
-        opt.value = acc.account_id || acc.accountId;
-        const label = `${acc.account_id || acc.accountId} (${acc.currency || 'USD'}) - ${acc.balance || 0}`;
-        opt.textContent = label;
-        sel.appendChild(opt);
-    });
-    if (accounts.length > 0) {
-        const demo = accounts.find(a => (a.account_id || a.accountId || '').startsWith('DOT'));
-        const selected = demo || accounts[0];
-        const id = selected.account_id || selected.accountId;
-        sel.value = id;
-        selectedAccountId = id;
-    } else {
-        showError('No accounts found – please check your token scopes.');
-    }
-}
+        function beep(f = 880, d = 0.25, v = 0.2) {
+            if (!audioCtx) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const o = audioCtx.createOscillator(),
+                    g = audioCtx.createGain();
+                o.connect(g);
+                g.connect(audioCtx.destination);
+                o.frequency.setValueAtTime(f, audioCtx.currentTime);
+                g.gain.setValueAtTime(v, audioCtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d);
+                o.start();
+                o.stop(audioCtx.currentTime + d);
+            } catch (e) {}
+        }
 
-// ==================== TOKEN & AUTH ====================
-function toggleMode(){
-    MODE = (MODE === 'DEMO') ? 'REAL' : 'DEMO';
-    $('modeLabel').textContent = MODE;
-    if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
-    else hideError();
-    if (accessToken && ws) {
-        if (ws) { ws.onclose = null; ws.close(); }
-        wsConnected = false;
-        setTimeout(() => connectWebSocket(accessToken), 500);
-    }
-}
+        // ─── UI helpers ───
+        function updateStatus(type, text) {
+            const b = $('status-badge'),
+                d = $('status-dot');
+            b.className = 'status-badge';
+            d.className = 'live-dot';
+            if (type === 'connected') { b.classList.add('connected');
+                d.classList.add('green'); } else if (type === 'connecting') { b.classList.add('warning');
+                d.classList.add('yellow'); } else if (type === 'error') { b.classList.add('error');
+                d.classList.add('red'); } else { b.classList.add('idle');
+                d.classList.add('gray'); }
+            $('status-text').textContent = text;
+        }
 
-function connectWithPAT(){
-    const token = $('patInput').value.trim();
-    if (!token) { showError('Please paste a PAT token'); return; }
-    if (!token.startsWith('pat_')) { showError('Token should start with "pat_"'); return; }
-    accessToken = token;
-    localStorage.setItem('flowstate_token', token);
-    hideError();
-    fetchAndConnect(token);
-}
+        function updateConnectBtn(state) {
+            const b = $('btn-connect');
+            if (state === 'connected') { b.textContent = '✅ CONNECTED';
+                b.classList.add('connected');
+                b.disabled = false; } else if (state === 'connecting') { b.textContent = '⏳ CONNECTING...';
+                b.disabled = true; } else { b.textContent = '⚡ CONNECT';
+                b.classList.remove('connected');
+                b.disabled = false; }
+        }
 
-async function fetchAndConnect(token) {
-    const accounts = await fetchAccounts(token);
-    if (accounts.length === 0) {
-        showError('No accounts found. Ensure token has proper scopes.');
-        return;
-    }
-    populateAccountSelect(accounts);
-    const sel = $('accountSelect');
-    if (sel.value) {
-        selectedAccountId = sel.value;
-    } else {
-        selectedAccountId = accounts[0].account_id || accounts[0].accountId;
-        sel.value = selectedAccountId;
-    }
-    connectWebSocket(token);
-}
+        function updateEngineBtn() {
+            const b = $('btn-engine');
+            if (engineRunning) { b.textContent = '■ STOP ENGINE';
+                b.className = 'btn-engine stop'; } else { b.textContent = '▶ START ENGINE';
+                b.className = 'btn-engine start'; }
+        }
 
-function loadStoredToken(){
-    const token = localStorage.getItem('flowstate_token');
-    if (token) {
-        accessToken = token;
-        $('patInput').value = token;
-        fetchAccounts(token).then(accounts => {
+        // ─── ACCOUNT FETCHING ───
+        async function fetchAccounts(token) {
+            try {
+                const resp = await fetch(`${BACKEND_URL}/api/accounts?token=${encodeURIComponent(token)}&appId=${DERIV_APP_ID}`);
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    throw new Error(`HTTP ${resp.status}: ${text.substring(0,100)}`);
+                }
+                const data = await resp.json();
+                const accountsArray = data.accounts?.data || data.accounts || data.data || data;
+                return Array.isArray(accountsArray) ? accountsArray : [];
+            } catch (e) {
+                console.error('Fetch accounts error:', e);
+                showError('Accounts fetch: ' + e.message);
+                return [];
+            }
+        }
+
+        function populateAccountSelect(accounts) {
+            const sel = $('accountSelect');
+            sel.innerHTML = '<option value="">Select account</option>';
+            accounts.forEach(acc => {
+                const opt = document.createElement('option');
+                opt.value = acc.account_id || acc.accountId;
+                const label = `${acc.account_id || acc.accountId} (${acc.currency || 'USD'}) - ${acc.balance || 0}`;
+                opt.textContent = label;
+                sel.appendChild(opt);
+            });
             if (accounts.length > 0) {
-                populateAccountSelect(accounts);
-                const sel = $('accountSelect');
-                if (sel.value) selectedAccountId = sel.value;
+                const demo = accounts.find(a => (a.account_id || a.accountId || '').startsWith('DOT'));
+                const selected = demo || accounts[0];
+                const id = selected.account_id || selected.accountId;
+                sel.value = id;
+                selectedAccountId = id;
+            } else {
+                showError('No accounts found – please check your token scopes.');
             }
-        });
-        return true;
-    }
-    return false;
-}
-
-function disconnect(){
-    manualDisconnect = true;
-    if (pingInterval) clearInterval(pingInterval);
-    if (ws) { try { ws.close(); } catch(e){} }
-    ws = null;
-    wsConnected = false;
-    isConnected = false;
-    accessToken = null;
-    localStorage.removeItem('flowstate_token');
-    updateStatus('idle','OFFLINE');
-    updateConnectBtn('offline');
-    renderSignal();
-}
-
-// ==================== OAUTH 2.0 with PKCE ====================
-function generatePKCE() {
-    const array = new Uint8Array(64);
-    crypto.getRandomValues(array);
-    const codeVerifier = Array.from(array)
-        .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
-        .join('');
-    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier))
-        .then(hash => {
-            const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
-                .replace(/\+/g, '-')
-                .replace(/\//g, '_')
-                .replace(/=+$/, '');
-            return { codeVerifier, codeChallenge: challenge };
-        });
-}
-
-function startOAuth(action) {
-    generatePKCE().then(({ codeVerifier, codeChallenge }) => {
-        const state = crypto.getRandomValues(new Uint8Array(16))
-            .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
-        sessionStorage.setItem('pkce_code_verifier', codeVerifier);
-        sessionStorage.setItem('oauth_state', state);
-        const params = new URLSearchParams({
-            response_type: 'code',
-            client_id: DERIV_APP_ID,
-            redirect_uri: REDIRECT_URI,
-            scope: 'trade account_manage application_read payment',
-            state: state,
-            code_challenge: codeChallenge,
-            code_challenge_method: 'S256'
-        });
-        if (action === 'signup') {
-            params.append('prompt', 'registration');
         }
-        window.location.href = `https://auth.deriv.com/oauth2/auth?${params.toString()}`;
-    });
-}
 
-function handleOAuthCallback() {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const state = params.get('state');
-    const error = params.get('error');
-    if (error) {
-        showError(`OAuth error: ${error}`);
-        return;
-    }
-    if (code && state) {
-        const storedState = sessionStorage.getItem('oauth_state');
-        if (state !== storedState) {
-            showError('State mismatch – possible CSRF attack');
-            return;
+        // ─── TOKEN & AUTH ───
+        function toggleMode() {
+            MODE = (MODE === 'DEMO') ? 'REAL' : 'DEMO';
+            $('modeLabel').textContent = MODE;
+            if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
+            else hideError();
+            if (accessToken && ws) {
+                if (ws) { ws.onclose = null;
+                    ws.close(); }
+                wsConnected = false;
+                setTimeout(() => connectWebSocket(accessToken), 500);
+            }
         }
-        const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
-        if (!codeVerifier) {
-            showError('Missing code verifier');
-            return;
+
+        function connectWithPAT() {
+            const token = $('patInput').value.trim();
+            if (!token) { showError('Please paste a PAT token'); return; }
+            if (!token.startsWith('pat_')) { showError('Token should start with "pat_"'); return; }
+            accessToken = token;
+            localStorage.setItem('flowstate_token', token);
+            hideError();
+            fetchAndConnect(token);
         }
-        fetch(`${BACKEND_URL}/api/exchange-oauth-code`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                code: code,
-                code_verifier: codeVerifier,
-                redirect_uri: REDIRECT_URI
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                showError('Token exchange failed: ' + data.error);
+
+        async function fetchAndConnect(token) {
+            const accounts = await fetchAccounts(token);
+            if (accounts.length === 0) {
+                showError('No accounts found. Ensure token has proper scopes.');
                 return;
             }
-            if (data.access_token) {
-                accessToken = data.access_token;
-                localStorage.setItem('flowstate_token', accessToken);
-                sessionStorage.removeItem('pkce_code_verifier');
-                sessionStorage.removeItem('oauth_state');
-                window.history.replaceState({}, document.title, window.location.pathname);
-                fetchAndConnect(accessToken);
+            populateAccountSelect(accounts);
+            const sel = $('accountSelect');
+            if (sel.value) {
+                selectedAccountId = sel.value;
+            } else {
+                selectedAccountId = accounts[0].account_id || accounts[0].accountId;
+                sel.value = selectedAccountId;
             }
-        })
-        .catch(err => {
-            showError('Backend exchange error: ' + err.message);
-        });
-    }
-}
-
-// ==================== WEBSOCKET CONNECTION ====================
-async function connectWebSocket(token) {
-    manualDisconnect = false;
-    if (!selectedAccountId) {
-        showError('Please select an account first');
-        return;
-    }
-    updateStatus('connecting','CONNECTING...');
-    updateConnectBtn('connecting');
-    hideError();
-
-    try {
-        const response = await fetch(`${BACKEND_URL}/api/get-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                token: token,
-                accountId: selectedAccountId,
-                appId: DERIV_APP_ID
-            })
-        });
-
-        const rawText = await response.text();
-        let data;
-        try {
-            data = JSON.parse(rawText);
-        } catch (e) {
-            throw new Error(`Server returned non‑JSON: ${rawText.substring(0, 200)}`);
+            connectWebSocket(token);
         }
 
-        if (!response.ok) {
-            const errorMsg = data.error || data.raw || rawText.substring(0, 200);
-            throw new Error(errorMsg);
-        }
-
-        if (!data.url) {
-            throw new Error(`No WebSocket URL returned. Response: ${rawText.substring(0, 200)}`);
-        }
-
-        console.log('🔗 Connecting via OTP URL:', data.url);
-
-        ws = new WebSocket(data.url);
-
-        ws.onopen = function() {
-            console.log('✅ WebSocket open');
-            wsConnected = true;
-            isConnected = true;
-            updateStatus('connected','SYNCED');
-            updateConnectBtn('connected');
-            if (!engineRunning) { engineRunning = true; updateEngineBtn(); }
-            subscribeTicks();
-            if (pingInterval) clearInterval(pingInterval);
-            pingInterval = setInterval(() => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ ping: 1 }));
-                }
-            }, 30000);
-            renderSignal();
-        };
-
-        ws.onmessage = function(event) {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.ping) { ws.send(JSON.stringify({ pong: 1 })); return; }
-                if (data.msg_type === 'tick') {
-                    if (data.tick && data.tick.symbol === currentMarket) {
-                        processTick(data.tick);
+        function loadStoredToken() {
+            const token = localStorage.getItem('flowstate_token');
+            if (token) {
+                accessToken = token;
+                $('patInput').value = token;
+                fetchAccounts(token).then(accounts => {
+                    if (accounts.length > 0) {
+                        populateAccountSelect(accounts);
+                        const sel = $('accountSelect');
+                        if (sel.value) selectedAccountId = sel.value;
                     }
-                }
-                if (data.error) {
-                    showError('API Error: ' + data.error.message);
-                    if (data.error.code === 'InvalidToken' || data.error.code === 'AuthorizationFailed') {
-                        showError('❌ Invalid token — please reconnect');
-                        disconnect();
-                    }
-                }
-                // Bot trade response handling
-                if (data.msg_type === 'proposal') {
-                    handleProposalResponse(data);
-                }
-                if (data.msg_type === 'buy') {
-                    handleBuyResponse(data);
-                }
-            } catch(e) { console.warn('WS parse error', e); }
-        };
+                });
+                return true;
+            }
+            return false;
+        }
 
-        ws.onerror = function(err) {
-            console.error('WS error:', err);
-            updateStatus('error','ERROR');
-            showError('WebSocket error – check console');
-        };
-
-        ws.onclose = function() {
+        function disconnect() {
+            manualDisconnect = true;
             if (pingInterval) clearInterval(pingInterval);
+            if (ws) { try { ws.close(); } catch (e) {} }
+            ws = null;
             wsConnected = false;
             isConnected = false;
-            updateStatus('error','RECONNECTING...');
-            updateConnectBtn('connecting');
-            if (accessToken && !manualDisconnect) {
-                setTimeout(() => connectWebSocket(accessToken), 3000);
-            } else {
-                updateStatus('idle','OFFLINE');
-                updateConnectBtn('offline');
-                renderSignal();
+            accessToken = null;
+            localStorage.removeItem('flowstate_token');
+            updateStatus('idle', 'OFFLINE');
+            updateConnectBtn('offline');
+            renderSignal();
+            renderAbilityGuide();
+        }
+
+        // ─── OAUTH 2.0 with PKCE ───
+        function generatePKCE() {
+            const array = new Uint8Array(64);
+            crypto.getRandomValues(array);
+            const codeVerifier = Array.from(array)
+                .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
+                .join('');
+            return crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier))
+                .then(hash => {
+                    const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_')
+                        .replace(/=+$/, '');
+                    return { codeVerifier, codeChallenge: challenge };
+                });
+        }
+
+        function startOAuth(action) {
+            generatePKCE().then(({ codeVerifier, codeChallenge }) => {
+                const state = crypto.getRandomValues(new Uint8Array(16))
+                    .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+                sessionStorage.setItem('pkce_code_verifier', codeVerifier);
+                sessionStorage.setItem('oauth_state', state);
+                const params = new URLSearchParams({
+                    response_type: 'code',
+                    client_id: DERIV_APP_ID,
+                    redirect_uri: REDIRECT_URI,
+                    scope: 'trade account_manage application_read payment',
+                    state: state,
+                    code_challenge: codeChallenge,
+                    code_challenge_method: 'S256'
+                });
+                if (action === 'signup') {
+                    params.append('prompt', 'registration');
+                }
+                window.location.href = `https://auth.deriv.com/oauth2/auth?${params.toString()}`;
+            });
+        }
+
+        function handleOAuthCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const state = params.get('state');
+            const error = params.get('error');
+            if (error) {
+                showError('OAuth error: ' + error);
+                return;
             }
-        };
-    } catch (err) {
-        console.error('Connection error:', err);
-        showError('WebSocket connection failed: ' + err.message);
-        updateStatus('error','FAILED');
-        updateConnectBtn('offline');
-    }
-}
-
-function subscribeTicks() {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({
-        ticks: currentMarket,
-        subscribe: 1,
-        req_id: wsReqId++
-    }));
-}
-
-// ==================== BOT FUNCTIONS ====================
-function setBotMode(mode) {
-    botMode = mode;
-    document.getElementById('bot-mode-evenodd').classList.toggle('active-bot', mode === 'evenodd');
-    document.getElementById('bot-mode-matches').classList.toggle('active-bot', mode === 'matches');
-    addBotLog(`Bot mode set to ${mode.toUpperCase()}`, 'info');
-}
-
-function toggleBot() {
-    botRunning = !botRunning;
-    const btn = document.getElementById('bot-start-btn');
-    if (botRunning) {
-        btn.textContent = '■ STOP BOT';
-        btn.className = 'btn-engine stop';
-        addBotLog('Bot started', 'info');
-    } else {
-        btn.textContent = '▶ START BOT';
-        btn.className = 'btn-engine start';
-        addBotLog('Bot stopped', 'info');
-    }
-}
-
-function addBotLog(message, type = 'info') {
-    const logDiv = document.getElementById('bot-log');
-    const entry = document.createElement('div');
-    entry.className = `log-entry ${type}`;
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-    entry.textContent = `[${time}] ${message}`;
-    logDiv.prepend(entry);
-    while (logDiv.children.length > 50) {
-        logDiv.removeChild(logDiv.lastChild);
-    }
-}
-
-function triggerBulkTrades(signal) {
-    if (!botRunning) return;
-    if (signal.strategy !== botMode) {
-        addBotLog(`Ignoring ${signal.strategy} signal (bot mode: ${botMode})`, 'info');
-        return;
-    }
-    if (botExecuting) {
-        addBotLog('Already executing a bulk order, skipping', 'error');
-        return;
-    }
-
-    bulkCount = parseInt(document.getElementById('bulk-count').value);
-    botStake = parseFloat(document.getElementById('bot-stake').value);
-    botMarket = document.getElementById('bot-market').value;
-
-    if (bulkCount < 5 || bulkCount > 200) {
-        addBotLog('Bulk count out of range (5-200)', 'error');
-        return;
-    }
-    if (botStake <= 0) {
-        addBotLog('Invalid stake', 'error');
-        return;
-    }
-
-    retrySignal = signal;
-    botExecuting = true;
-    botCompletedCount = 0;
-    executionStartTime = Date.now();
-    pendingProposals.clear();
-    addBotLog(`🚀 Executing ${bulkCount} trades (${signal.strategy}) on ${botMarket} at stake ${botStake}`, 'info');
-
-    for (let i = 0; i < bulkCount; i++) {
-        const req_id = wsReqId++;
-        let cType, barrier;
-        if (signal.strategy === 'evenodd') {
-            cType = signal.prediction === 'EVEN' ? 'DIGITEVEN' : 'DIGITODD';
-        } else {
-            cType = 'DIGITMATCH';
-            barrier = String(signal.entryDigit);
+            if (code && state) {
+                const storedState = sessionStorage.getItem('oauth_state');
+                if (state !== storedState) {
+                    showError('State mismatch – possible CSRF attack');
+                    return;
+                }
+                const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+                if (!codeVerifier) {
+                    showError('Missing code verifier');
+                    return;
+                }
+                fetch(`${BACKEND_URL}/api/exchange-oauth-code`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code: code,
+                            code_verifier: codeVerifier,
+                            redirect_uri: REDIRECT_URI
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) {
+                            showError('Token exchange failed: ' + data.error);
+                            return;
+                        }
+                        if (data.access_token) {
+                            accessToken = data.access_token;
+                            localStorage.setItem('flowstate_token', accessToken);
+                            sessionStorage.removeItem('pkce_code_verifier');
+                            sessionStorage.removeItem('oauth_state');
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            fetchAndConnect(accessToken);
+                        }
+                    })
+                    .catch(err => {
+                        showError('Backend exchange error: ' + err.message);
+                    });
+            }
         }
 
-        const proposalMsg = {
-            proposal: 1,
-            req_id: req_id,
-            contract_type: cType,
-            currency: 'USD',
-            amount: botStake,
-            basis: 'stake',
-            duration: 1,
-            duration_unit: 't'
-        };
+        // ─── WEBSOCKET CONNECTION ───
+        async function connectWebSocket(token) {
+            manualDisconnect = false;
+            if (!selectedAccountId) {
+                showError('Please select an account first');
+                return;
+            }
+            updateStatus('connecting', 'CONNECTING...');
+            updateConnectBtn('connecting');
+            hideError();
 
-        proposalMsg[apiParam] = botMarket;
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/get-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: token,
+                        accountId: selectedAccountId,
+                        appId: DERIV_APP_ID
+                    })
+                });
 
-        if (barrier) {
-            proposalMsg.barrier = barrier;
+                const rawText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (e) {
+                    throw new Error(`Server returned non‑JSON: ${rawText.substring(0, 200)}`);
+                }
+
+                if (!response.ok) {
+                    const errorMsg = data.error || data.raw || rawText.substring(0, 200);
+                    throw new Error(errorMsg);
+                }
+
+                if (!data.url) {
+                    throw new Error(`No WebSocket URL returned. Response: ${rawText.substring(0, 200)}`);
+                }
+
+                console.log('🔗 Connecting via OTP URL:', data.url);
+
+                ws = new WebSocket(data.url);
+
+                ws.onopen = function() {
+                    console.log('✅ WebSocket open');
+                    wsConnected = true;
+                    isConnected = true;
+                    updateStatus('connected', 'SYNCED');
+                    updateConnectBtn('connected');
+                    if (!engineRunning) { engineRunning = true;
+                        updateEngineBtn(); }
+                    subscribeTicks();
+                    if (pingInterval) clearInterval(pingInterval);
+                    pingInterval = setInterval(() => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ ping: 1 }));
+                        }
+                    }, 30000);
+                    renderSignal();
+                    renderAbilityGuide();
+                };
+
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.ping) { ws.send(JSON.stringify({ pong: 1 })); return; }
+                        if (data.msg_type === 'tick') {
+                            if (data.tick && data.tick.symbol === currentMarket) {
+                                processTick(data.tick);
+                            }
+                        }
+                        if (data.error) {
+                            showError('API Error: ' + data.error.message);
+                            if (data.error.code === 'InvalidToken' || data.error.code === 'AuthorizationFailed') {
+                                showError('❌ Invalid token — please reconnect');
+                                disconnect();
+                            }
+                        }
+                        if (data.msg_type === 'proposal') {
+                            handleProposalResponse(data);
+                        }
+                        if (data.msg_type === 'buy') {
+                            handleBuyResponse(data);
+                        }
+                    } catch (e) { console.warn('WS parse error', e); }
+                };
+
+                ws.onerror = function(err) {
+                    console.error('WS error:', err);
+                    updateStatus('error', 'ERROR');
+                    showError('WebSocket error – check console');
+                };
+
+                ws.onclose = function() {
+                    if (pingInterval) clearInterval(pingInterval);
+                    wsConnected = false;
+                    isConnected = false;
+                    updateStatus('error', 'RECONNECTING...');
+                    updateConnectBtn('connecting');
+                    if (accessToken && !manualDisconnect) {
+                        setTimeout(() => connectWebSocket(accessToken), 3000);
+                    } else {
+                        updateStatus('idle', 'OFFLINE');
+                        updateConnectBtn('offline');
+                        renderSignal();
+                        renderAbilityGuide();
+                    }
+                };
+            } catch (err) {
+                console.error('Connection error:', err);
+                showError('WebSocket connection failed: ' + err.message);
+                updateStatus('error', 'FAILED');
+                updateConnectBtn('offline');
+            }
         }
 
-        pendingProposals.set(req_id, { count: i + 1, signal: signal });
-        ws.send(JSON.stringify(proposalMsg));
-    }
-}
+        function subscribeTicks() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({
+                ticks: currentMarket,
+                subscribe: 1,
+                req_id: wsReqId++
+            }));
+        }
 
-function handleProposalResponse(data) {
-    if (data.msg_type === 'proposal') {
-        const req_id = data.req_id;
-        const proposalObj = data.proposal;
-        const proposalId = proposalObj?.id;
+        // ─── BOT FUNCTIONS ───
+        function setBotMode(mode) {
+            botMode = mode;
+            document.getElementById('bot-mode-evenodd').classList.toggle('active-bot', mode === 'evenodd');
+            document.getElementById('bot-mode-matches').classList.toggle('active-bot', mode === 'matches');
+            addBotLog(`Bot mode set to ${mode.toUpperCase()}`, 'info');
+        }
 
-        if (!proposalId) {
-            const errorMsg = data.error?.message || 'Unknown';
-            addBotLog(`Proposal error: ${errorMsg}`, 'error');
-
-            if (errorMsg.includes("Properties not allowed")) {
-                if (apiParam === 'symbol' && errorMsg.includes("symbol")) {
-                    apiParam = 'underlying';
-                    addBotLog("🔁 API version detected: New API. Switching to 'underlying'.", 'info');
-                }
-                else if (apiParam === 'underlying' && errorMsg.includes("underlying")) {
-                    apiParam = 'symbol';
-                    addBotLog("🔁 API version detected: Legacy API. Switching to 'symbol'.", 'info');
-                }
-
-                botExecuting = false;
-                botCompletedCount = 0;
-                pendingProposals.clear();
-
-                if (retrySignal) {
-                    setTimeout(() => {
-                        addBotLog(`🔄 Retrying ${bulkCount} trades with ${apiParam}...`, 'info');
-                        triggerBulkTrades(retrySignal);
-                    }, 500);
-                }
+        function toggleBot() {
+            botRunning = !botRunning;
+            const btn = document.getElementById('bot-start-btn');
+            if (botRunning) {
+                btn.textContent = '■ STOP BOT';
+                btn.className = 'btn-engine stop';
+                addBotLog('Bot started', 'info');
             } else {
-                pendingProposals.delete(req_id);
+                btn.textContent = '▶ START BOT';
+                btn.className = 'btn-engine start';
+                addBotLog('Bot stopped', 'info');
+            }
+        }
+
+        function addBotLog(message, type = 'info') {
+            const logDiv = document.getElementById('bot-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            entry.textContent = `[${time}] ${message}`;
+            logDiv.prepend(entry);
+            while (logDiv.children.length > 50) {
+                logDiv.removeChild(logDiv.lastChild);
+            }
+        }
+
+        function triggerBulkTrades(signal) {
+            if (!botRunning) return;
+            if (signal.strategy !== botMode) {
+                addBotLog(`Ignoring ${signal.strategy} signal (bot mode: ${botMode})`, 'info');
+                return;
+            }
+            if (botExecuting) {
+                addBotLog('Already executing a bulk order, skipping', 'error');
+                return;
+            }
+
+            bulkCount = parseInt(document.getElementById('bulk-count').value);
+            botStake = parseFloat(document.getElementById('bot-stake').value);
+            botMarket = document.getElementById('bot-market').value;
+
+            if (bulkCount < 5 || bulkCount > 200) {
+                addBotLog('Bulk count out of range (5-200)', 'error');
+                return;
+            }
+            if (botStake <= 0) {
+                addBotLog('Invalid stake', 'error');
+                return;
+            }
+
+            retrySignal = signal;
+            botExecuting = true;
+            botCompletedCount = 0;
+            executionStartTime = Date.now();
+            pendingProposals.clear();
+            addBotLog(`🚀 Executing ${bulkCount} trades (${signal.strategy}) on ${botMarket} at stake ${botStake}`, 'info');
+
+            for (let i = 0; i < bulkCount; i++) {
+                const req_id = wsReqId++;
+                let cType, barrier;
+                if (signal.strategy === 'evenodd') {
+                    cType = signal.prediction === 'EVEN' ? 'DIGITEVEN' : 'DIGITODD';
+                } else {
+                    cType = 'DIGITMATCH';
+                    barrier = String(signal.entryDigit);
+                }
+
+                const proposalMsg = {
+                    proposal: 1,
+                    req_id: req_id,
+                    contract_type: cType,
+                    currency: 'USD',
+                    amount: botStake,
+                    basis: 'stake',
+                    duration: 1,
+                    duration_unit: 't'
+                };
+
+                proposalMsg[apiParam] = botMarket;
+
+                if (barrier) {
+                    proposalMsg.barrier = barrier;
+                }
+
+                pendingProposals.set(req_id, { count: i + 1, signal: signal });
+                ws.send(JSON.stringify(proposalMsg));
+            }
+        }
+
+        function handleProposalResponse(data) {
+            if (data.msg_type === 'proposal') {
+                const req_id = data.req_id;
+                const proposalObj = data.proposal;
+                const proposalId = proposalObj?.id;
+
+                if (!proposalId) {
+                    const errorMsg = data.error?.message || 'Unknown';
+                    addBotLog(`Proposal error: ${errorMsg}`, 'error');
+
+                    if (errorMsg.includes("Properties not allowed")) {
+                        if (apiParam === 'symbol' && errorMsg.includes("symbol")) {
+                            apiParam = 'underlying';
+                            addBotLog("🔁 API version detected: New API. Switching to 'underlying'.", 'info');
+                        } else if (apiParam === 'underlying' && errorMsg.includes("underlying")) {
+                            apiParam = 'symbol';
+                            addBotLog("🔁 API version detected: Legacy API. Switching to 'symbol'.", 'info');
+                        }
+
+                        botExecuting = false;
+                        botCompletedCount = 0;
+                        pendingProposals.clear();
+
+                        if (retrySignal) {
+                            setTimeout(() => {
+                                addBotLog(`🔄 Retrying ${bulkCount} trades with ${apiParam}...`, 'info');
+                                triggerBulkTrades(retrySignal);
+                            }, 500);
+                        }
+                    } else {
+                        pendingProposals.delete(req_id);
+                        botCompletedCount++;
+                        if (botCompletedCount >= bulkCount) {
+                            const totalTime = Date.now() - executionStartTime;
+                            addBotLog(`🏁 Bulk execution completed in ${totalTime}ms`, 'success');
+                            botExecuting = false;
+                            botCompletedCount = 0;
+                        }
+                    }
+                    return;
+                }
+
+                const buyMsg = {
+                    buy: proposalId,
+                    price: proposalObj.ask_price || 0,
+                    req_id: wsReqId++
+                };
+                ws.send(JSON.stringify(buyMsg));
+                if (pendingProposals.has(req_id)) {
+                    pendingProposals.get(req_id).proposalId = proposalId;
+                }
+                addBotLog(`Proposal ${req_id} received, buying...`, 'info');
+            }
+        }
+
+        function handleBuyResponse(data) {
+            if (data.msg_type === 'buy') {
+                if (data.buy) {
+                    addBotLog(`✅ Buy successful for contract ${data.buy.contract_id}`, 'success');
+                } else if (data.error) {
+                    addBotLog(`❌ Buy failed: ${data.error.message}`, 'error');
+                }
                 botCompletedCount++;
                 if (botCompletedCount >= bulkCount) {
                     const totalTime = Date.now() - executionStartTime;
@@ -1044,265 +2212,395 @@ function handleProposalResponse(data) {
                     botCompletedCount = 0;
                 }
             }
-            return;
         }
 
-        const buyMsg = {
-            buy: proposalId,
-            price: proposalObj.ask_price || 0,
-            req_id: wsReqId++
-        };
-        ws.send(JSON.stringify(buyMsg));
-        if (pendingProposals.has(req_id)) {
-            pendingProposals.get(req_id).proposalId = proposalId;
-        }
-        addBotLog(`Proposal ${req_id} received, buying...`, 'info');
-    }
-}
+        // ─── TICK PROCESSING ───
+        function processTick(tick) {
+            if (!tick || tick.symbol !== currentMarket) return;
+            const decimals = (() => {
+                const m = { 'R_10': 3, 'R_25': 3, 'R_50': 4, 'R_75': 4, 'R_100': 2, '1HZ10V': 2, '1HZ25V': 2, '1HZ50V': 2,
+                    '1HZ75V': 2, '1HZ100V': 2 };
+                return m[currentMarket] || 3;
+            })();
+            const lastDigit = engine.addTick(tick.quote, decimals);
+            currentPrice = { digit: lastDigit };
+            lastDigits.push(lastDigit);
+            if (lastDigits.length > 60) lastDigits.shift();
 
-function handleBuyResponse(data) {
-    if (data.msg_type === 'buy') {
-        if (data.buy) {
-            addBotLog(`✅ Buy successful for contract ${data.buy.contract_id}`, 'success');
-        } else if (data.error) {
-            addBotLog(`❌ Buy failed: ${data.error.message}`, 'error');
-        }
-        botCompletedCount++;
-        if (botCompletedCount >= bulkCount) {
-            const totalTime = Date.now() - executionStartTime;
-            addBotLog(`🏁 Bulk execution completed in ${totalTime}ms`, 'success');
-            botExecuting = false;
-            botCompletedCount = 0;
-        }
-    }
-}
+            // update ability guide on every tick
+            renderAbilityGuide();
 
-// ==================== TICK PROCESSING ====================
-function processTick(tick) {
-    if (!tick || tick.symbol !== currentMarket) return;
-    const decimals = (() => {
-        const m = { 'R_10':3,'R_25':3,'R_50':4,'R_75':4,'R_100':2,'1HZ10V':2,'1HZ25V':2,'1HZ50V':2,'1HZ75V':2,'1HZ100V':2 };
-        return m[currentMarket] || 3;
-    })();
-    const lastDigit = engine.addTick(tick.quote, decimals);
-    currentPrice = { digit: lastDigit };
-    lastDigits.push(lastDigit);
-    if (lastDigits.length > 60) lastDigits.shift();
-
-    if (activeSignal && activeSignal.status === 'LIVE') {
-        activeSignal.elapsed++;
-        if (activeSignal.elapsed >= 5) {
-            let won = false;
-            if (activeSignal.strategy === 'matches') {
-                won = lastDigit === activeSignal.entryDigit || lastDigit === activeSignal.recoveryDigit;
-            } else {
-                const predEven = activeSignal.prediction === 'EVEN';
-                const recEven = activeSignal.recoveryPrediction === 'EVEN';
-                const isEven = lastDigit % 2 === 0;
-                won = (predEven && isEven) || (!predEven && !isEven) || (recEven && isEven) || (!recEven && !isEven);
-            }
-            activeSignal.status = won ? 'WON' : 'LOST';
-            stats.total++; if (won) stats.won++;
-            updateLearning(activeSignal.strategy, won);
-            signalLog.unshift({
-                entryDigit: activeSignal.entryDigit,
-                recoveryDigit: activeSignal.recoveryDigit || activeSignal.recoveryPrediction,
-                confidence: activeSignal.confidence,
-                status: activeSignal.status,
-                parity: activeSignal.strategy === 'evenodd' ? activeSignal.prediction : null,
-                time: new Date().toLocaleTimeString()
-            });
-            if (won) { beep(1200,0.2); setTimeout(()=>beep(1500,0.15),200); speak('Win',1.2,1.1); }
-            else { beep(300,0.5); speak('Lost',1.0,0.9); }
-            renderSignal(); renderLog(); updateStats();
-            setTimeout(() => { activeSignal = null; renderSignal(); }, 8000);
-            return;
-        }
-        renderSignal();
-        return;
-    }
-    if (activeSignal && ['PREP','WON','LOST'].includes(activeSignal.status)) return;
-
-    if (engine.digits.length >= 40 && engineRunning) {
-        let result = currentStrategy === 'matches' ? engine.generateMatchesSignal() : engine.generateEvenOddSignal();
-        if (result && result.confidence >= 60) {
-            activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
-            beep(880,0.3); setTimeout(()=>beep(1100,0.2),250); speak('Ready',1.1,1.0);
-            let hasSaidGoTime = false;
-            if (prepInterval) clearInterval(prepInterval);
-            prepInterval = setInterval(() => {
-                if (!activeSignal || activeSignal.status !== 'PREP') { clearInterval(prepInterval); prepInterval = null; return; }
-                activeSignal.prepTime--;
+            if (activeSignal && activeSignal.status === 'LIVE') {
+                activeSignal.elapsed++;
+                if (activeSignal.elapsed >= 5) {
+                    let won = false;
+                    if (activeSignal.strategy === 'matches') {
+                        won = lastDigit === activeSignal.entryDigit || lastDigit === activeSignal.recoveryDigit;
+                    } else {
+                        const predEven = activeSignal.prediction === 'EVEN';
+                        const recEven = activeSignal.recoveryPrediction === 'EVEN';
+                        const isEven = lastDigit % 2 === 0;
+                        won = (predEven && isEven) || (!predEven && !isEven) || (recEven && isEven) || (!recEven && !
+                        isEven);
+                    }
+                    activeSignal.status = won ? 'WON' : 'LOST';
+                    stats.total++;
+                    if (won) stats.won++;
+                    updateLearning(activeSignal.strategy, won);
+                    signalLog.unshift({
+                        entryDigit: activeSignal.entryDigit,
+                        recoveryDigit: activeSignal.recoveryDigit || activeSignal.recoveryPrediction,
+                        confidence: activeSignal.confidence,
+                        status: activeSignal.status,
+                        parity: activeSignal.strategy === 'evenodd' ? activeSignal.prediction : null,
+                        time: new Date().toLocaleTimeString()
+                    });
+                    if (won) { beep(1200, 0.2);
+                        setTimeout(() => beep(1500, 0.15), 200);
+                        speak('Win', 1.2, 1.1); } else { beep(300, 0.5);
+                        speak('Lost', 1.0, 0.9); }
+                    renderSignal();
+                    renderLog();
+                    updateStats();
+                    setTimeout(() => { activeSignal = null;
+                        renderSignal(); }, 8000);
+                    return;
+                }
                 renderSignal();
-                if (activeSignal.prepTime <= 5) beep(600,0.1);
-                if (activeSignal.prepTime <= 0) {
-                    activeSignal.status = 'LIVE';
-                    activeSignal.elapsed = 0;
-                    clearInterval(prepInterval); prepInterval = null;
-                    beep(1500,0.15);
-                    if (!hasSaidGoTime) { speak('Go time',1.3,1.2); hasSaidGoTime = true; }
-                    // *** AUTO BULK TRADER TRIGGER ***
-                    triggerBulkTrades(activeSignal);
+                return;
+            }
+            if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
+
+            if (engine.digits.length >= 40 && engineRunning) {
+                let result = currentStrategy === 'matches' ? engine.generateMatchesSignal() : engine.generateEvenOddSignal();
+                if (result && result.confidence >= 60) {
+                    activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
+                    beep(880, 0.3);
+                    setTimeout(() => beep(1100, 0.2), 250);
+                    speak('Ready', 1.1, 1.0);
+                    let hasSaidGoTime = false;
+                    if (prepInterval) clearInterval(prepInterval);
+                    prepInterval = setInterval(() => {
+                        if (!activeSignal || activeSignal.status !== 'PREP') { clearInterval(prepInterval);
+                            prepInterval = null; return; }
+                        activeSignal.prepTime--;
+                        renderSignal();
+                        if (activeSignal.prepTime <= 5) beep(600, 0.1);
+                        if (activeSignal.prepTime <= 0) {
+                            activeSignal.status = 'LIVE';
+                            activeSignal.elapsed = 0;
+                            clearInterval(prepInterval);
+                            prepInterval = null;
+                            beep(1500, 0.15);
+                            if (!hasSaidGoTime) { speak('Go time', 1.3, 1.2);
+                                hasSaidGoTime = true; }
+                            triggerBulkTrades(activeSignal);
+                            renderSignal();
+                        }
+                    }, 1000);
                     renderSignal();
                 }
-            }, 1000);
-            renderSignal();
+            }
+            renderTickFeed();
+            renderDigitHistory();
+            updateStats();
         }
-    }
-    renderTickFeed();
-    renderDigitHistory();
-    updateStats();
-}
 
-// ==================== RENDER FUNCTIONS ====================
-const MARKET_NAMES = {
-    'R_10':'Vol 10','R_25':'Vol 25','R_50':'Vol 50','R_75':'Vol 75','R_100':'Vol 100',
-    '1HZ10V':'Vol 10 (1s)','1HZ25V':'Vol 25 (1s)','1HZ50V':'Vol 50 (1s)','1HZ75V':'Vol 75 (1s)','1HZ100V':'Vol 100 (1s)'
-};
-function renderMarkets(){
-    $('market-grid').innerHTML = Object.entries(MARKET_NAMES).map(([s,c]) =>
-        `<button class="market-btn${s===currentMarket?' active':''}" onclick="switchMarket('${s}')">${c}</button>`
-    ).join('');
-}
-function switchMarket(sym){
-    currentMarket = sym;
-    engine.reset();
-    activeSignal = null;
-    if (prepInterval) clearInterval(prepInterval); prepInterval = null;
-    renderMarkets();
-    renderSignal();
-    if (wsConnected) subscribeTicks();
-}
-function renderTickFeed(){
-    const feed=$('tick-feed'), count=$('tick-count'), ticks=engine.ticks.slice(-40).reverse();
-    if (ticks.length===0){ feed.innerHTML='<div style="text-align:center;color:var(--text2);font-size:10px;">Waiting for ticks...</div>'; count.textContent='0 ticks'; return; }
-    count.textContent=engine.ticks.length+' ticks';
-    const decimals = (() => {
-        const m = { 'R_10':3,'R_25':3,'R_50':4,'R_75':4,'R_100':2,'1HZ10V':2,'1HZ25V':2,'1HZ50V':2,'1HZ75V':2,'1HZ100V':2 };
-        return m[currentMarket] || 3;
-    })();
-    feed.innerHTML = ticks.map((t,i)=>{
-        const time=new Date(t.time).toLocaleTimeString('en-US',{hour12:false});
-        const ps = t.price.toFixed(decimals);
-        let dir='flat', sym='—';
-        if(i<ticks.length-1){ if(t.price>ticks[i+1].price){dir='up';sym='▲';} else if(t.price<ticks[i+1].price){dir='down';sym='▼';} }
-        const matched = activeSignal && activeSignal.entryDigit === t.digit;
-        return `<div class="tick-row"><span>${time}</span><span class="tick-direction ${dir}">${sym}</span><span>${ps.slice(0,-1)}<strong style="color:var(--accent)">${ps.slice(-1)}</strong></span><span class="tick-digit${matched?' matched':''}">${t.digit}</span></div>`;
-    }).join('');
-}
-function renderSignal(){
-    const body=$('signal-body');
-    if(!isConnected){ body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">🔌</div><div style="font-size:14px;">Not Connected</div></div>'; return; }
-    if(!engineRunning){ body.innerHTML='<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>'; return; }
-    if(!activeSignal){
-        body.innerHTML=`<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}</div>`;
-        return;
-    }
-    const sig=activeSignal, isMatches=sig.strategy==='matches', isPrep=sig.status==='PREP', isLive=sig.status==='LIVE', isDone=sig.status==='WON'||sig.status==='LOST';
-    const badgeClass=isMatches?'matches':'evenodd', badgeText=isMatches?'🎯 MATCHES':'🟣 EVEN/ODD';
-    if(isDone){
-        body.innerHTML=`<div class="signal-display signal-active result-display">
-            <div style="font-size:60px;margin-bottom:10px;">${sig.status==='WON'?'✅':'❌'}</div>
-            <div style="font-size:28px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};text-transform:uppercase;letter-spacing:2px;">${sig.status==='WON'?'WIN':'LOSS'}</div>
-            <div style="font-size:14px;color:var(--text2);margin-top:10px;">
-                Strategy: <strong>${isMatches?'MATCHES':'EVEN/ODD'}</strong> | 
-                Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
-                Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
-                Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryDigit}${!isMatches ? ' ('+sig.recoveryPrediction+')' : ''}</strong>
-            </div>
-            <div style="margin-top:12px;color:var(--text2);font-size:12px;">Confidence was ${sig.confidence}%</div>
-        </div>`;
-        return;
-    }
-    body.innerHTML=`<div class="signal-display signal-active">
-        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${MARKET_NAMES[currentMarket]||''}</div>
-        <div class="strategy-badge ${badgeClass}">${badgeText}</div>
-        <div class="big-signal-display">
-            <div class="big-signal-label">${isPrep?'🔊 SIGNAL FOUND - READY':'🔵 TRADE WINDOW ACTIVE'}</div>
-            <div class="three-digits-row">
-                <div class="digit-group">
-                    <div class="label predicted">🔮 Predicted</div>
-                    <div class="big-num predicted-num ${isLive?'live-num':''}">${isMatches ? sig.predictedDigit : sig.predictedDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
-                </div>
-                <div class="arrow-divider">→</div>
-                <div class="digit-group">
-                    <div class="label entry">🎯 Entry</div>
-                    <div class="big-num entry-num ${isLive?'live-num':''}">${isMatches ? sig.entryDigit : sig.entryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
-                </div>
-                <div class="arrow-divider">VS</div>
-                <div class="digit-group">
-                    <div class="label recovery">💡 Recovery</div>
-                    <div class="big-num recovery-num">${isMatches ? sig.recoveryDigit : sig.recoveryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.recoveryPrediction+')' : ''}</span></div>
-                </div>
-            </div>
-            ${isPrep?`<div class="big-countdown${sig.prepTime<=5?' urgent':''}">⏱ 00:${String(sig.prepTime).padStart(2,'0')}</div><div class="voice-alert${sig.prepTime<=5?' go':' ready'}">${sig.prepTime<=5?'⚡ GO TIME! ⚡':'🔊 READY'}</div>`:''}
-            ${isLive?`<div class="tick-progress" style="margin-top:14px;">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:8px;">Trade <strong>${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> NOW</div>`:''}
-        </div>
-        <div class="signal-meta"><div class="meta-box"><div class="meta-val" style="color:var(--gold)">${sig.confidence}%</div><div class="meta-key">Confidence</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent)">${sig.reason}</div><div class="meta-key">Pattern</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent2)">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Timer':'Ticks'}</div></div></div>
-        <div class="confidence-bar-wrap"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:var(--text2);">Signal Strength</span><span style="color:var(--gold);font-weight:700;">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill${isMatches?'':' evenodd'}" style="width:${sig.confidence}%;"></div></div></div>
-    </div>`;
-}
-function renderDigitHistory(){
-    const c=$('digit-history');
-    if(lastDigits.length===0){ c.innerHTML='<div style="color:var(--text2);font-size:10px;">Waiting...</div>'; return; }
-    const freq={}; lastDigits.forEach(d=>freq[d]=(freq[d]||0)+1);
-    c.innerHTML=lastDigits.slice(-24).map((d,i)=>{
-        let cls='neutral'; const cnt=freq[d]||0;
-        if(cnt>=4) cls='hot'; else if(cnt>=2) cls='cold';
-        return `<div class="hist-digit ${cls}${i===lastDigits.slice(-24).length-1?' new-entry':''}">${d}</div>`;
-    }).join('');
-}
-function renderLog(){
-    const c=$('log-list');
-    if(signalLog.length===0){ c.innerHTML='<div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div>'; return; }
-    c.innerHTML=signalLog.slice(0,15).map(s=>`<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.confidence}% ${s.status==='WON'?'✅':'❌'}${s.parity ? ` (${s.parity})` : ''}</div></div><div style="font-size:8px;color:var(--muted);">${s.time}</div></div>`).join('');
-}
-function updateStats(){
-    $('stat-signals').textContent=stats.total;
-    $('stat-acc').textContent=stats.total>0?Math.round((stats.won/stats.total)*100)+'%':'--';
-    $('stat-digit').textContent=currentPrice?currentPrice.digit:'--';
-    $('stat-evenodd').textContent=currentPrice?(currentPrice.digit%2===0?'EVEN':'ODD'):'--';
-}
+        // ─── ABILITY GUIDE RENDER ───
+        function renderAbilityGuide() {
+            const container = document.getElementById('digit-distribution');
+            const digits = engine.digits;
+            const n = digits.length;
 
-// ==================== ENGINE CONTROL ====================
-function toggleEngine(){ engineRunning=!engineRunning; updateEngineBtn(); if(engineRunning){ if(!isConnected) showError('Connect first'); else renderSignal(); } else { activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; renderSignal(); } }
-function switchStrategy(s){
-    currentStrategy=s;
-    $('tab-matches').className='strategy-tab'+(s==='matches'?' active-matches':'');
-    $('tab-evenodd').className='strategy-tab'+(s==='evenodd'?' active-evenodd':'');
-    const tag=$('strategy-tag'), title=$('signal-card-title');
-    if(s==='matches'){ tag.textContent='MATCHES'; tag.style.color='var(--gold)'; tag.style.background='rgba(255,215,0,0.08)'; tag.style.border='1px solid rgba(255,215,0,0.25)'; title.textContent='MATCHES OUTPUT'; }
-    else{ tag.textContent='EVEN/ODD'; tag.style.color='var(--purple)'; tag.style.background='rgba(168,85,247,0.08)'; tag.style.border='1px solid rgba(168,85,247,0.25)'; title.textContent='EVEN/ODD OUTPUT'; }
-    activeSignal=null; if(prepInterval)clearInterval(prepInterval); prepInterval=null; engine.reset(); renderSignal();
-}
-function toggleConnection(){ if(isConnected) disconnect(); else { const t=$('patInput').value.trim(); if(t) connectWithPAT(); else showError('Paste a PAT token first or use OAuth Login'); } }
+            // update sample size
+            document.getElementById('guide-sample-size').textContent = n;
+            document.getElementById('guide-update-time').textContent = new Date().toLocaleTimeString();
 
-// ==================== INIT ====================
-function initBot(){
-    setBotMode('evenodd');
-    document.getElementById('bulk-count').addEventListener('input', function() {
-        bulkCount = parseInt(this.value);
-        document.getElementById('bulk-count-display').textContent = bulkCount;
-    });
-}
+            // entropy
+            let entropy = '--';
+            if (n >= 40) {
+                entropy = engine.calculateEntropy().toFixed(2);
+            }
+            document.getElementById('guide-entropy').textContent = `Entropy: ${entropy}`;
 
-function init(){
-    renderMarkets();
-    renderSignal();
-    updateStats();
-    renderDigitHistory();
-    renderLog();
-    updateStatus('idle','OFFLINE');
-    updateEngineBtn();
-    const loaded = loadStoredToken();
-    handleOAuthCallback();
-    initBot();
-    if (!loaded) {
-        showError('No token found. Please login with OAuth or paste a PAT.');
-    }
-}
-init();
-console.log('🚀 Flowstate Pro + Auto Bulk Trader ready');
-</script>
+            if (n === 0) {
+                container.innerHTML =
+                    '<div style="color:var(--text2);font-size:10px;text-align:center;padding:8px;">No ticks yet</div>';
+                document.getElementById('eo-even-val').textContent = '0%';
+                document.getElementById('eo-odd-val').textContent = '0%';
+                document.getElementById('eo-even-bar').style.width = '0%';
+                document.getElementById('eo-odd-bar').style.width = '0%';
+                return;
+            }
+
+            // digit frequency (last 150)
+            const freq = Array(10).fill(0);
+            const sample = digits.slice(-150);
+            sample.forEach(d => freq[d]++);
+            const total = sample.length || 1;
+
+            // build digit distribution
+            let html = '';
+            const maxFreq = Math.max(...freq, 1);
+            for (let i = 0; i < 10; i++) {
+                const pct = (freq[i] / total * 100);
+                const barPct = (freq[i] / maxFreq * 100);
+                let cls = 'digit-dist-item';
+                if (freq[i] >= 4) cls += ' high';
+                else if (freq[i] >= 2) cls += ' low';
+                html += `<div class="${cls}">
+                            <div class="dval">${i}</div>
+                            <div class="dpct">${pct.toFixed(1)}%</div>
+                            <div class="dbar"><div class="dfill" style="width:${barPct}%;"></div></div>
+                        </div>`;
+            }
+            container.innerHTML = html;
+
+            // even/odd
+            let evens = 0,
+                odds = 0;
+            sample.forEach(d => { if (d % 2 === 0) evens++;
+                else odds++; });
+            const evenPct = (evens / total * 100);
+            const oddPct = (odds / total * 100);
+            document.getElementById('eo-even-val').textContent = evenPct.toFixed(1) + '%';
+            document.getElementById('eo-odd-val').textContent = oddPct.toFixed(1) + '%';
+            document.getElementById('eo-even-bar').style.width = evenPct + '%';
+            document.getElementById('eo-odd-bar').style.width = oddPct + '%';
+
+            // dynamic tip
+            const tip = document.getElementById('guide-tip-text');
+            const maxDigit = freq.indexOf(Math.max(...freq));
+            const minDigit = freq.indexOf(Math.min(...freq));
+            if (n >= 40) {
+                const entropyVal = engine.calculateEntropy();
+                if (entropyVal < 2.5) {
+                    tip.textContent =
+                        `🔮 Low entropy (${entropyVal.toFixed(2)}) — strong pattern detected. Digit ${maxDigit} is over‑represented at ${(freq[maxDigit]/total*100).toFixed(1)}%.`;
+                } else if (entropyVal > 3.2) {
+                    tip.textContent =
+                        `🌊 High entropy (${entropyVal.toFixed(2)}) — market is chaotic. Wait for signals with confidence > 70%.`;
+                } else {
+                    tip.textContent =
+                        `📊 Balanced entropy (${entropyVal.toFixed(2)}). Even/Odd split: ${evenPct.toFixed(0)}% / ${oddPct.toFixed(0)}%. Digit ${maxDigit} is the current hotspot.`;
+                }
+            } else {
+                tip.textContent = `📈 Collecting data... ${n}/40 ticks needed for reliable analysis.`;
+            }
+        }
+
+        // ─── RENDER FUNCTIONS ───
+        const MARKET_NAMES = {
+            'R_10': 'Vol 10',
+            'R_25': 'Vol 25',
+            'R_50': 'Vol 50',
+            'R_75': 'Vol 75',
+            'R_100': 'Vol 100',
+            '1HZ10V': 'Vol 10 (1s)',
+            '1HZ25V': 'Vol 25 (1s)',
+            '1HZ50V': 'Vol 50 (1s)',
+            '1HZ75V': 'Vol 75 (1s)',
+            '1HZ100V': 'Vol 100 (1s)'
+        };
+
+        function renderMarkets() {
+            $('market-grid').innerHTML = Object.entries(MARKET_NAMES).map(([s, c]) =>
+                `<button class="market-btn${s===currentMarket?' active':''}" onclick="switchMarket('${s}')">${c}</button>`
+            ).join('');
+        }
+
+        function switchMarket(sym) {
+            currentMarket = sym;
+            engine.reset();
+            activeSignal = null;
+            if (prepInterval) clearInterval(prepInterval);
+            prepInterval = null;
+            renderMarkets();
+            renderSignal();
+            renderAbilityGuide();
+            if (wsConnected) subscribeTicks();
+        }
+
+        function renderTickFeed() {
+            const feed = $('tick-feed'),
+                count = $('tick-count'),
+                ticks = engine.ticks.slice(-40).reverse();
+            if (ticks.length === 0) { feed.innerHTML =
+                    '<div style="text-align:center;color:var(--text2);font-size:10px;">Waiting for ticks...</div>';
+                count.textContent = '0 ticks'; return; }
+            count.textContent = engine.ticks.length + ' ticks';
+            const decimals = (() => {
+                const m = { 'R_10': 3, 'R_25': 3, 'R_50': 4, 'R_75': 4, 'R_100': 2, '1HZ10V': 2, '1HZ25V': 2, '1HZ50V': 2,
+                    '1HZ75V': 2, '1HZ100V': 2 };
+                return m[currentMarket] || 3;
+            })();
+            feed.innerHTML = ticks.map((t, i) => {
+                const time = new Date(t.time).toLocaleTimeString('en-US', { hour12: false });
+                const ps = t.price.toFixed(decimals);
+                let dir = 'flat',
+                    sym = '—';
+                if (i < ticks.length - 1) { if (t.price > ticks[i + 1].price) { dir = 'up';
+                        sym = '▲'; } else if (t.price < ticks[i + 1].price) { dir = 'down';
+                        sym = '▼'; } }
+                const matched = activeSignal && activeSignal.entryDigit === t.digit;
+                return `<div class="tick-row"><span>${time}</span><span class="tick-direction ${dir}">${sym}</span><span>${ps.slice(0,-1)}<strong style="color:var(--accent)">${ps.slice(-1)}</strong></span><span class="tick-digit${matched?' matched':''}">${t.digit}</span></div>`;
+            }).join('');
+        }
+
+        function renderSignal() {
+            const body = $('signal-body');
+            if (!isConnected) { body.innerHTML =
+                    '<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">🔌</div><div style="font-size:14px;">Not Connected</div></div>';
+                return; }
+            if (!engineRunning) { body.innerHTML =
+                    '<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>';
+                return; }
+            if (!activeSignal) {
+                body.innerHTML =
+                    `<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}</div>`;
+                return;
+            }
+            const sig = activeSignal,
+                isMatches = sig.strategy === 'matches',
+                isPrep = sig.status === 'PREP',
+                isLive = sig.status === 'LIVE',
+                isDone = sig.status === 'WON' || sig.status === 'LOST';
+            const badgeClass = isMatches ? 'matches' : 'evenodd',
+                badgeText = isMatches ? '🎯 MATCHES' : '🟣 EVEN/ODD';
+            if (isDone) {
+                body.innerHTML = `<div class="signal-display signal-active result-display">
+                            <div style="font-size:60px;margin-bottom:10px;">${sig.status==='WON'?'✅':'❌'}</div>
+                            <div style="font-size:28px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};text-transform:uppercase;letter-spacing:2px;">${sig.status==='WON'?'WIN':'LOSS'}</div>
+                            <div style="font-size:14px;color:var(--text2);margin-top:10px;">
+                                Strategy: <strong>${isMatches?'MATCHES':'EVEN/ODD'}</strong> | 
+                                Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
+                                Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
+                                Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryDigit}${!isMatches ? ' ('+sig.recoveryPrediction+')' : ''}</strong>
+                            </div>
+                            <div style="margin-top:12px;color:var(--text2);font-size:12px;">Confidence was ${sig.confidence}%</div>
+                        </div>`;
+                return;
+            }
+            body.innerHTML = `<div class="signal-display signal-active">
+                        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${MARKET_NAMES[currentMarket]||''}</div>
+                        <div class="strategy-badge ${badgeClass}">${badgeText}</div>
+                        <div class="big-signal-display">
+                            <div class="big-signal-label">${isPrep?'🔊 SIGNAL FOUND - READY':'🔵 TRADE WINDOW ACTIVE'}</div>
+                            <div class="three-digits-row">
+                                <div class="digit-group">
+                                    <div class="label predicted">🔮 Predicted</div>
+                                    <div class="big-num predicted-num ${isLive?'live-num':''}">${isMatches ? sig.predictedDigit : sig.predictedDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
+                                </div>
+                                <div class="arrow-divider">→</div>
+                                <div class="digit-group">
+                                    <div class="label entry">🎯 Entry</div>
+                                    <div class="big-num entry-num ${isLive?'live-num':''}">${isMatches ? sig.entryDigit : sig.entryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
+                                </div>
+                                <div class="arrow-divider">VS</div>
+                                <div class="digit-group">
+                                    <div class="label recovery">💡 Recovery</div>
+                                    <div class="big-num recovery-num">${isMatches ? sig.recoveryDigit : sig.recoveryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.recoveryPrediction+')' : ''}</span></div>
+                                </div>
+                            </div>
+                            ${isPrep?`<div class="big-countdown${sig.prepTime<=5?' urgent':''}">⏱ 00:${String(sig.prepTime).padStart(2,'0')}</div><div class="voice-alert${sig.prepTime<=5?' go':' ready'}">${sig.prepTime<=5?'⚡ GO TIME! ⚡':'🔊 READY'}</div>`:''}
+                            ${isLive?`<div class="tick-progress" style="margin-top:14px;">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:8px;">Trade <strong>${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> NOW</div>`:''}
+                        </div>
+                        <div class="signal-meta"><div class="meta-box"><div class="meta-val" style="color:var(--gold)">${sig.confidence}%</div><div class="meta-key">Confidence</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent)">${sig.reason}</div><div class="meta-key">Pattern</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent2)">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Timer':'Ticks'}</div></div></div>
+                        <div class="confidence-bar-wrap"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:var(--text2);">Signal Strength</span><span style="color:var(--gold);font-weight:700;">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill${isMatches?'':' evenodd'}" style="width:${sig.confidence}%;"></div></div></div>
+                    </div>`;
+        }
+
+        function renderDigitHistory() {
+            const c = $('digit-history');
+            if (lastDigits.length === 0) { c.innerHTML = '<div style="color:var(--text2);font-size:10px;">Waiting...</div>'; return; }
+            const freq = {};
+            lastDigits.forEach(d => freq[d] = (freq[d] || 0) + 1);
+            c.innerHTML = lastDigits.slice(-24).map((d, i) => {
+                let cls = 'neutral';
+                const cnt = freq[d] || 0;
+                if (cnt >= 4) cls = 'hot';
+                else if (cnt >= 2) cls = 'cold';
+                return `<div class="hist-digit ${cls}${i===lastDigits.slice(-24).length-1?' new-entry':''}">${d}</div>`;
+            }).join('');
+        }
+
+        function renderLog() {
+            const c = $('log-list');
+            if (signalLog.length === 0) { c.innerHTML =
+                    '<div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div>'; return; }
+            c.innerHTML = signalLog.slice(0, 15).map(s =>
+                `<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.confidence}% ${s.status==='WON'?'✅':'❌'}${s.parity ? ` (${s.parity})` : ''}</div></div><div style="font-size:8px;color:#3a5a7a;">${s.time}</div></div>`
+            ).join('');
+        }
+
+        function updateStats() {
+            $('stat-signals').textContent = stats.total;
+            $('stat-acc').textContent = stats.total > 0 ? Math.round((stats.won / stats.total) * 100) + '%' : '--';
+            $('stat-digit').textContent = currentPrice ? currentPrice.digit : '--';
+            $('stat-evenodd').textContent = currentPrice ? (currentPrice.digit % 2 === 0 ? 'EVEN' : 'ODD') : '--';
+        }
+
+        // ─── ENGINE CONTROL ───
+        function toggleEngine() { engineRunning = !engineRunning;
+            updateEngineBtn(); if (engineRunning) { if (!isConnected) showError('Connect first');
+                else renderSignal(); } else { activeSignal = null; if (prepInterval) clearInterval(prepInterval);
+                prepInterval = null;
+                renderSignal(); } }
+
+        function switchStrategy(s) {
+            currentStrategy = s;
+            $('tab-matches').className = 'strategy-tab' + (s === 'matches' ? ' active-matches' : '');
+            $('tab-evenodd').className = 'strategy-tab' + (s === 'evenodd' ? ' active-evenodd' : '');
+            const tag = $('strategy-tag'),
+                title = $('signal-card-title');
+            if (s === 'matches') { tag.textContent = 'MATCHES';
+                tag.style.color = 'var(--gold)';
+                tag.style.background = 'rgba(255,215,0,0.08)';
+                tag.style.border = '1px solid rgba(255,215,0,0.25)';
+                title.textContent = 'MATCHES OUTPUT'; } else { tag.textContent = 'EVEN/ODD';
+                tag.style.color = 'var(--purple)';
+                tag.style.background = 'rgba(168,85,247,0.08)';
+                tag.style.border = '1px solid rgba(168,85,247,0.25)';
+                title.textContent = 'EVEN/ODD OUTPUT'; }
+            activeSignal = null;
+            if (prepInterval) clearInterval(prepInterval);
+            prepInterval = null;
+            engine.reset();
+            renderSignal();
+            renderAbilityGuide();
+        }
+
+        function toggleConnection() { if (isConnected) disconnect();
+            else { const t = $('patInput').value.trim(); if (t) connectWithPAT();
+                else showError('Paste a PAT token first or use OAuth Login'); } }
+
+        // ─── INIT ───
+        function initBot() {
+            setBotMode('evenodd');
+            document.getElementById('bulk-count').addEventListener('input', function() {
+                bulkCount = parseInt(this.value);
+                document.getElementById('bulk-count-display').textContent = bulkCount;
+            });
+        }
+
+        function init() {
+            renderMarkets();
+            renderSignal();
+            updateStats();
+            renderDigitHistory();
+            renderLog();
+            updateStatus('idle', 'OFFLINE');
+            updateEngineBtn();
+            const loaded = loadStoredToken();
+            handleOAuthCallback();
+            initBot();
+            renderAbilityGuide();
+            if (!loaded) {
+                showError('No token found. Please login with OAuth or paste a PAT.');
+            }
+        }
+        init();
+        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready');
+    </script>
 </body>
 </html>
