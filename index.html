@@ -21,7 +21,6 @@
             --danger: #ff2d55;
             --success: #39ff14;
             --warning: #ffba08;
-            --chart-bg: rgba(10, 22, 40, 0.7);
         }
         * {
             margin: 0;
@@ -418,18 +417,6 @@
         }
         .chart-panel .chart-stats .stat-chip .num {
             font-size: 15px;
-        }
-        .chart-panel .chart-empty {
-            text-align: center;
-            padding: 32px 12px;
-            color: var(--text2);
-            font-size: 12px;
-            letter-spacing: 2px;
-        }
-        .chart-panel .chart-empty .icon {
-            font-size: 32px;
-            display: block;
-            margin-bottom: 8px;
         }
 
         /* ─── Main Grid ─── */
@@ -859,22 +846,16 @@
             color: var(--text);
             font-family: 'Share Tech Mono', monospace;
             font-size: 11px;
-            min-width: 260px;
+            min-width: 200px;
             flex: 1;
         }
         .token-section input:focus {
             outline: none;
             border-color: var(--accent);
         }
-        .account-select {
-            background: var(--panel);
-            border: 1px solid var(--border);
-            color: var(--text);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 11px;
-            display: none; /* PAT token uses default account */
+        .token-section .app-id-input {
+            min-width: 180px;
+            flex: 0.7;
         }
 
         /* ─── Bot Panel ─── */
@@ -1010,6 +991,10 @@
                 font-size: 9px;
                 padding: 3px 10px;
             }
+            .token-section .app-id-input {
+                min-width: 120px;
+                flex: 1;
+            }
         }
 
         /* ─── Animations ─── */
@@ -1055,8 +1040,9 @@
             </div>
         </div>
 
-        <!-- ===== TOKEN ===== -->
+        <!-- ===== TOKEN + APP ID ===== -->
         <div class="token-section">
+            <input type="text" id="appIdInput" class="app-id-input" placeholder="App ID" value="34h5thRsVU9aLKUJjJLYh" style="min-width:180px;">
             <input type="text" id="patInput" placeholder="Paste your PAT token (starts with pat_)" style="flex:1;min-width:200px;">
             <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect</button>
             <button class="btn mode-toggle" id="modeToggleBtn" onclick="toggleMode()">MODE: <strong id="modeLabel">DEMO</strong></button>
@@ -1178,11 +1164,18 @@
     <script>
         // ====================================================================
         //  FLOWSTATE PRO + AUTO BULK TRADER + DIGIT DISTRIBUTION CHART
-        //  DIRECT WEBSOCKET WITH PAT TOKEN (NO BACKEND REQUIRED)
+        //  DIRECT WEBSOCKET WITH PAT TOKEN + CUSTOM APP ID
         // ====================================================================
 
-        const DERIV_APP_ID = '34h5thRsVU9aLKUJjJLYh';
-        const WS_URL = `wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`;
+        // ─── DOM refs ───
+        function $(id) { return document.getElementById(id); }
+
+        function showError(m) { const e = $('error-msg');
+            e.textContent = '❌ ' + m;
+            e.style.display = 'block';
+            setTimeout(() => { e.style.display = 'none'; }, 8000); }
+
+        function hideError() { $('error-msg').style.display = 'none'; }
 
         // ─── Self-learning state ───
         let learningState = {
@@ -1414,6 +1407,8 @@
         let voiceSynth = null;
         let audioCtx = null;
         let isAuthorized = false;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 5;
 
         // ─── Bot state ───
         let botMode = 'evenodd';
@@ -1427,16 +1422,6 @@
         let pendingProposals = new Map();
         let retrySignal = null;
         let apiParam = 'underlying';
-
-        // ─── DOM refs ───
-        function $(id) { return document.getElementById(id); }
-
-        function showError(m) { const e = $('error-msg');
-            e.textContent = '❌ ' + m;
-            e.style.display = 'block';
-            setTimeout(() => { e.style.display = 'none'; }, 6000); }
-
-        function hideError() { $('error-msg').style.display = 'none'; }
 
         // ─── Audio / Voice ───
         function initAudio() { if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)(); }
@@ -1507,7 +1492,7 @@
 
         // ─── OAuth notice ───
         function showOAuthNotice() {
-            showError('OAuth requires a backend. Please use PAT token directly (paste it in the input and click Connect).');
+            showError('OAuth requires a backend. Please use PAT token directly (paste it and click Connect).');
         }
 
         // ─── Token & Connect ───
@@ -1525,14 +1510,20 @@
             accessToken = token;
             localStorage.setItem('flowstate_token', token);
             hideError();
-            connectWebSocket(token);
+            // Read App ID from input
+            const appId = $('appIdInput').value.trim();
+            if (!appId) { showError('Please enter a valid App ID'); return; }
+            localStorage.setItem('flowstate_app_id', appId);
+            connectWebSocket(token, appId);
         }
 
         function loadStoredToken() {
             const token = localStorage.getItem('flowstate_token');
+            const appId = localStorage.getItem('flowstate_app_id') || '34h5thRsVU9aLKUJjJLYh';
             if (token && token.startsWith('pat_')) {
                 accessToken = token;
                 $('patInput').value = token;
+                $('appIdInput').value = appId;
                 return true;
             }
             return false;
@@ -1555,26 +1546,27 @@
             if (prepInterval) clearInterval(prepInterval);
             prepInterval = null;
             activeSignal = null;
+            reconnectAttempts = 0;
         }
 
-        // ─── Direct WebSocket with PAT ───
-        function connectWebSocket(token) {
+        // ─── Direct WebSocket with PAT + Custom App ID ───
+        function connectWebSocket(token, appId) {
             manualDisconnect = false;
             updateStatus('connecting', 'CONNECTING...');
             updateConnectBtn('connecting');
             hideError();
 
-            // Close any existing connection
             if (ws) {
                 try { ws.close(); } catch (e) {}
                 ws = null;
             }
 
-            ws = new WebSocket(WS_URL);
+            const wsUrl = `wss://ws.binaryws.com/websockets/v3?app_id=${appId}`;
+            console.log('Connecting to:', wsUrl);
+            ws = new WebSocket(wsUrl);
 
             ws.onopen = function() {
                 console.log('WebSocket open, sending authorize...');
-                // Send authorize with PAT token
                 ws.send(JSON.stringify({
                     authorize: token,
                     req_id: wsReqId++
@@ -1584,15 +1576,10 @@
             ws.onmessage = function(event) {
                 try {
                     const data = JSON.parse(event.data);
-                    // console.log('WS message:', data);
-
-                    // Handle ping
                     if (data.ping) {
                         ws.send(JSON.stringify({ pong: 1 }));
                         return;
                     }
-
-                    // Handle authorization response
                     if (data.msg_type === 'authorize') {
                         if (data.error) {
                             showError('Authorization failed: ' + data.error.message);
@@ -1607,12 +1594,10 @@
                         wsConnected = true;
                         updateStatus('connected', 'SYNCED');
                         updateConnectBtn('connected');
-                        // Start engine automatically
+                        reconnectAttempts = 0;
                         if (!engineRunning) { engineRunning = true;
                             updateEngineBtn(); }
-                        // Subscribe to ticks for current market
                         subscribeTicks();
-                        // Set ping interval
                         if (pingInterval) clearInterval(pingInterval);
                         pingInterval = setInterval(() => {
                             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1623,16 +1608,12 @@
                         updateDigitChart();
                         return;
                     }
-
-                    // Handle tick messages
                     if (data.msg_type === 'tick') {
                         if (data.tick && data.tick.symbol === currentMarket) {
                             processTick(data.tick);
                         }
                         return;
                     }
-
-                    // Handle errors
                     if (data.error) {
                         showError('API Error: ' + data.error.message);
                         if (data.error.code === 'InvalidToken' || data.error.code === 'AuthorizationFailed') {
@@ -1641,8 +1622,6 @@
                         }
                         return;
                     }
-
-                    // Bot responses
                     if (data.msg_type === 'proposal') {
                         handleProposalResponse(data);
                         return;
@@ -1651,7 +1630,6 @@
                         handleBuyResponse(data);
                         return;
                     }
-
                 } catch (e) {
                     console.warn('WS parse error', e);
                 }
@@ -1660,21 +1638,29 @@
             ws.onerror = function(err) {
                 console.error('WS error:', err);
                 updateStatus('error', 'ERROR');
-                showError('WebSocket error – check console');
+                showError('WebSocket error – check console and App ID');
             };
 
-            ws.onclose = function() {
+            ws.onclose = function(event) {
                 if (pingInterval) clearInterval(pingInterval);
                 wsConnected = false;
                 isConnected = false;
                 isAuthorized = false;
-                updateStatus('error', 'RECONNECTING...');
-                updateConnectBtn('connecting');
-                if (accessToken && !manualDisconnect) {
-                    setTimeout(() => connectWebSocket(accessToken), 3000);
+                updateStatus('error', 'DISCONNECTED');
+                updateConnectBtn('offline');
+                if (accessToken && !manualDisconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                    reconnectAttempts++;
+                    const delay = Math.min(3000 * reconnectAttempts, 15000);
+                    console.log(`Reconnecting in ${delay/1000}s (attempt ${reconnectAttempts})`);
+                    setTimeout(() => {
+                        const appId = $('appIdInput').value.trim();
+                        connectWebSocket(accessToken, appId);
+                    }, delay);
+                } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                    showError('Max reconnect attempts reached. Please check your App ID and network.');
+                    updateStatus('error', 'FAILED');
                 } else {
                     updateStatus('idle', 'OFFLINE');
-                    updateConnectBtn('offline');
                     renderSignal();
                     updateDigitChart();
                 }
@@ -1871,7 +1857,6 @@
             lastDigits.push(lastDigit);
             if (lastDigits.length > 60) lastDigits.shift();
 
-            // Update chart on every tick
             updateDigitChart();
 
             if (activeSignal && activeSignal.status === 'LIVE') {
@@ -2343,17 +2328,17 @@
 
             const loaded = loadStoredToken();
             if (loaded) {
-                // Auto-connect if token exists
+                // Auto-connect after a short delay
                 setTimeout(() => connectWithPAT(), 500);
             } else {
-                showError('No PAT token found. Please paste your token and click Connect.');
+                showError('No PAT token found. Paste your token and click Connect.');
             }
 
             initBot();
             updateDigitChart();
             window.addEventListener('resize', handleChartResize);
 
-            console.log('🚀 Flowstate Pro + Auto Bulk Trader + Digit Chart ready (direct WS)');
+            console.log('🚀 Flowstate Pro + Auto Bulk Trader + Digit Chart ready (custom App ID)');
         }
 
         init();
