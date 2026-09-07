@@ -1367,12 +1367,13 @@
     <script>
         // ============================================================
         //  FLOWSTATE PRO + AUTO BULK TRADER  +  ABILITY GUIDE
-        //  (Standalone — works with Deriv WebSocket API directly)
-        //  Matches Engine now uses Python-inspired statistical logic.
+        //  Updated for Deriv Options API (REST + OTP WebSocket)
         // ============================================================
 
-        const DERIV_APP_ID = '34h5thRsVU9aLKUJjJLYh';
-        const DERIV_WS_URL = `wss://ws.deriv.com/websockets/v3?app_id=${DERIV_APP_ID}`;
+        // ─── API CONFIGURATION ───
+        const REST_BASE_URL = 'https://api.derivws.com';
+        // For PAT auth: set your Deriv App ID here (required header)
+        const DERIV_APP_ID_HEADER = 'YOUR_APP_ID'; // Replace with your actual App ID if using PAT
 
         // ─── PYTHON MATCHES ENGINE CONSTANTS ───
         const PYTHON_WINDOW_SIZE = 100;
@@ -1405,7 +1406,6 @@
         class StatisticalEngine {
             constructor() {
                 this.reset();
-                // Python-style parameters
                 this.windowSize = PYTHON_WINDOW_SIZE;
                 this.alpha = PYTHON_ALPHA;
                 this.payoutMultiplier = PYTHON_PAYOUT_MULTIPLIER;
@@ -1473,20 +1473,18 @@
                 return row.map(x => x / total);
             }
 
-            // ─── NEW: Python-inspired Matches Signal Generator ───
+            // ─── Python-inspired Matches Signal Generator ───
             generateMatchesSignalPython() {
                 const n = this.digits.length;
-                if (n < 20) return null;   // need some data
+                if (n < 20) return null;
 
                 const windowDigits = this.digits.slice(-this.windowSize);
                 const totalWindow = windowDigits.length;
                 if (totalWindow === 0) return null;
 
-                // Frequency counts
                 const freqCounts = Array(10).fill(0);
                 windowDigits.forEach(d => freqCounts[d]++);
 
-                // Transition counts within window
                 const transCounts = Array.from({ length: 10 }, () => Array(10).fill(0));
                 const transTotals = Array(10).fill(0);
                 for (let i = 1; i < windowDigits.length; i++) {
@@ -1499,13 +1497,10 @@
                 const lastDigit = windowDigits[windowDigits.length - 1];
                 const threshold = 1.0 / this.payoutMultiplier + this.margin;
 
-                // Compute probabilities
                 const probs = new Array(10);
                 for (let d = 0; d < 10; d++) {
-                    // Smoothed frequency probability
                     const p_freq = (freqCounts[d] + this.alpha) / (totalWindow + 10 * this.alpha);
                     let p = p_freq;
-                    // If enough transitions from lastDigit, use transition probability
                     if (transTotals[lastDigit] > 20) {
                         const p_trans = (transCounts[lastDigit][d] + this.alpha) / (transTotals[lastDigit] + 10 * this.alpha);
                         p = p_trans;
@@ -1513,7 +1508,6 @@
                     probs[d] = p;
                 }
 
-                // Find best and second best
                 let bestDigit = 0, secondDigit = 1;
                 if (probs[0] < probs[1]) { bestDigit = 1; secondDigit = 0; }
                 for (let d = 2; d < 10; d++) {
@@ -1528,15 +1522,12 @@
                 const bestProb = probs[bestDigit];
                 if (bestProb <= threshold) return null;
 
-                // Compute confidence (map linearly from threshold to 1 -> 55 to 98)
                 let confidence = Math.round(((bestProb - threshold) / (1 - threshold)) * 43 + 55);
                 confidence = Math.max(55, Math.min(98, confidence));
-                // Apply self-learning performance factor
                 const perfFactor = getPerformanceFactor('matches');
                 confidence = Math.round(confidence * perfFactor);
                 confidence = Math.max(55, Math.min(98, confidence));
 
-                // Recovery confidence based on second best prob
                 const secondProb = probs[secondDigit];
                 let recoveryConf = Math.min(85, Math.round(secondProb * 100));
                 recoveryConf = Math.max(40, recoveryConf);
@@ -1552,15 +1543,6 @@
                     reason: `Prob ${(bestProb*100).toFixed(1)}% vs threshold ${(threshold*100).toFixed(1)}% (Entropy ${entropy.toFixed(2)})`,
                     strategy: 'matches'
                 };
-            }
-
-            // Keep the original complex method for reference (not used now)
-            generateMatchesSignal() {
-                // Old implementation remains for potential fallback
-                const n = this.digits.length;
-                if (n < 40) return null;
-                // ... (original code)
-                return null;
             }
 
             generateEvenOddSignal() {
@@ -1649,7 +1631,7 @@
         let wsReqId = 1;
         let manualDisconnect = false;
         let pingInterval = null;
-        let MODE = 'DEMO';
+        let MODE = 'DEMO'; // 'DEMO' or 'REAL'
         let selectedAccountId = null;
         let isConnected = false;
         let engineRunning = false;
@@ -1676,7 +1658,7 @@
         let executionStartTime = 0;
         let pendingProposals = new Map();
         let retrySignal = null;
-        let apiParam = 'underlying';
+        let apiParam = 'underlying'; // might change to 'symbol' depending on API
 
         // ─── DOM refs ───
         function $(id) { return document.getElementById(id); }
@@ -1690,9 +1672,7 @@
 
         // ─── AUDIO / VOICE ───
         function initAudio() { if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)(); }
-
         function initVoice() { if (!voiceSynth) voiceSynth = window.speechSynthesis; }
-
         function speak(text, rate = 1.0, pitch = 1.0) {
             if (!voiceSynth) initVoice();
             if (!voiceSynth) return;
@@ -1755,74 +1735,38 @@
                 b.className = 'btn-engine start'; }
         }
 
-        // ─── ACCOUNT FETCHING (via Deriv API) ───
-        function fetchAccountsViaWS(token) {
-            return new Promise((resolve, reject) => {
-                const tempWs = new WebSocket(DERIV_WS_URL);
-                let resolved = false;
-
-                const timeout = setTimeout(() => {
-                    if (!resolved) {
-                        resolved = true;
-                        tempWs.close();
-                        reject(new Error('Timeout fetching accounts'));
-                    }
-                }, 10000);
-
-                tempWs.onopen = function() {
-                    tempWs.send(JSON.stringify({ authorize: token, req_id: wsReqId++ }));
-                };
-
-                tempWs.onmessage = function(event) {
-                    try {
-                        const data = JSON.parse(event.data);
-                        if (data.msg_type === 'authorize') {
-                            if (data.error) {
-                                resolved = true;
-                                clearTimeout(timeout);
-                                tempWs.close();
-                                reject(new Error(data.error.message || 'Authorization failed'));
-                                return;
-                            }
-                            // Send account_list request
-                            tempWs.send(JSON.stringify({ account_list: 1, req_id: wsReqId++ }));
-                        }
-                        if (data.account_list) {
-                            resolved = true;
-                            clearTimeout(timeout);
-                            tempWs.close();
-                            const accounts = data.account_list || [];
-                            resolve(accounts);
-                        }
-                        if (data.error) {
-                            resolved = true;
-                            clearTimeout(timeout);
-                            tempWs.close();
-                            reject(new Error(data.error.message || 'Unknown error'));
-                        }
-                    } catch (e) {
-                        // ignore parse errors
-                    }
-                };
-
-                tempWs.onerror = function() {
-                    if (!resolved) {
-                        resolved = true;
-                        clearTimeout(timeout);
-                        reject(new Error('WebSocket error'));
-                    }
-                };
-
-                tempWs.onclose = function() {
-                    if (!resolved) {
-                        resolved = true;
-                        clearTimeout(timeout);
-                        reject(new Error('Connection closed'));
-                    }
-                };
-            });
+        // ─── REST API FUNCTIONS (NEW) ───
+        async function fetchAccountsREST(token) {
+            const headers = { 'Authorization': `Bearer ${token}` };
+            if (token.startsWith('pat_')) {
+                headers['Deriv-App-ID'] = DERIV_APP_ID_HEADER;
+            }
+            const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts`, { headers });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || data.errors?.[0]?.message || 'Failed to fetch accounts');
+            }
+            // The actual response may be under data.accounts or data.accounts (depending on API version)
+            return data.accounts || data.data?.accounts || [];
         }
 
+        async function requestOtp(token, accountId) {
+            const headers = { 'Authorization': `Bearer ${token}` };
+            if (token.startsWith('pat_')) {
+                headers['Deriv-App-ID'] = DERIV_APP_ID_HEADER;
+            }
+            const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts/${accountId}/otp`, {
+                method: 'POST',
+                headers
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || data.errors?.[0]?.message || 'Failed to get OTP');
+            }
+            return data.data?.url; // e.g., wss://api.derivws.com/trading/v1/options/ws/demo?otp=...
+        }
+
+        // ─── POPULATE ACCOUNT SELECT ───
         function populateAccountSelect(accounts) {
             const sel = $('accountSelect');
             sel.innerHTML = '<option value="">Select account</option>';
@@ -1842,56 +1786,71 @@
                 const id = selected.account_id || selected.accountId || selected.loginid || selected.account;
                 if (id) { sel.value = id;
                     selectedAccountId = id; }
-            } else {
-                showError('No accounts found – please check your token scopes.');
             }
         }
 
-        // ─── TOKEN & AUTH ───
-        function toggleMode() {
-            MODE = (MODE === 'DEMO') ? 'REAL' : 'DEMO';
-            $('modeLabel').textContent = MODE;
-            if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
-            else hideError();
-            if (accessToken && ws) {
-                if (ws) { ws.onclose = null;
-                    ws.close(); }
-                wsConnected = false;
-                isAuthorized = false;
-                setTimeout(() => connectWebSocket(accessToken), 500);
-            }
-        }
-
-        function connectWithPAT() {
+        // ─── CONNECTION FLOW ───
+        async function connectWithPAT() {
             const token = $('patInput').value.trim();
             if (!token) { showError('Please paste a PAT token'); return; }
             if (!token.startsWith('pat_')) { showError('Token should start with "pat_"'); return; }
             accessToken = token;
             localStorage.setItem('flowstate_token', token);
             hideError();
-            fetchAndConnect(token);
-        }
-
-        async function fetchAndConnect(token) {
+            updateStatus('connecting', 'FETCHING ACCOUNTS...');
+            updateConnectBtn('connecting');
             try {
-                const accounts = await fetchAccountsViaWS(token);
+                const accounts = await fetchAccountsREST(token);
                 if (accounts.length === 0) {
                     showError('No accounts found. Ensure token has proper scopes.');
+                    updateStatus('error', 'NO ACCOUNTS');
+                    updateConnectBtn('offline');
                     return;
                 }
                 populateAccountSelect(accounts);
-                const sel = $('accountSelect');
-                if (sel.value) {
-                    selectedAccountId = sel.value;
-                } else {
-                    const first = accounts[0];
-                    selectedAccountId = first.account_id || first.accountId || first.loginid || first.account;
-                    if (selectedAccountId) sel.value = selectedAccountId;
+                // Use selected account (or first)
+                const accountId = selectedAccountId || accounts[0].account_id || accounts[0].accountId || accounts[0].loginid || accounts[0].account;
+                if (!accountId) {
+                    showError('Could not determine account ID.');
+                    updateStatus('error', 'ACCOUNT ERROR');
+                    updateConnectBtn('offline');
+                    return;
                 }
-                connectWebSocket(token);
+                selectedAccountId = accountId;
+                updateStatus('connecting', 'REQUESTING OTP...');
+                const wsUrl = await requestOtp(token, accountId);
+                if (!wsUrl) {
+                    showError('Failed to obtain WebSocket URL (no OTP).');
+                    updateStatus('error', 'OTP FAILED');
+                    updateConnectBtn('offline');
+                    return;
+                }
+                // Connect to the new WebSocket
+                connectWebSocket(wsUrl);
             } catch (err) {
-                showError('Account fetch failed: ' + err.message);
+                console.error(err);
+                showError('Connection failed: ' + err.message);
                 updateStatus('error', 'AUTH FAILED');
+                updateConnectBtn('offline');
+            }
+        }
+
+        function toggleMode() {
+            MODE = (MODE === 'DEMO') ? 'REAL' : 'DEMO';
+            $('modeLabel').textContent = MODE;
+            if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
+            else hideError();
+            // Reconnect with current token and account
+            if (accessToken && selectedAccountId) {
+                disconnect(false); // close but keep token
+                setTimeout(async () => {
+                    try {
+                        const wsUrl = await requestOtp(accessToken, selectedAccountId);
+                        connectWebSocket(wsUrl);
+                    } catch (e) {
+                        showError('Reconnection failed: ' + e.message);
+                    }
+                }, 500);
             }
         }
 
@@ -1900,7 +1859,8 @@
             if (token) {
                 accessToken = token;
                 $('patInput').value = token;
-                fetchAccountsViaWS(token).then(accounts => {
+                // Just fetch accounts to populate select, but do not auto-connect
+                fetchAccountsREST(token).then(accounts => {
                     if (accounts.length > 0) {
                         populateAccountSelect(accounts);
                         const sel = $('accountSelect');
@@ -1912,7 +1872,7 @@
             return false;
         }
 
-        function disconnect() {
+        function disconnect(clearToken = true) {
             manualDisconnect = true;
             if (pingInterval) clearInterval(pingInterval);
             if (ws) { try { ws.close(); } catch (e) {} }
@@ -1920,16 +1880,19 @@
             wsConnected = false;
             isConnected = false;
             isAuthorized = false;
-            accessToken = null;
-            localStorage.removeItem('flowstate_token');
+            if (clearToken) {
+                accessToken = null;
+                localStorage.removeItem('flowstate_token');
+                $('patInput').value = '';
+            }
             updateStatus('idle', 'OFFLINE');
             updateConnectBtn('offline');
             renderSignal();
             renderAbilityGuide();
         }
 
-        // ─── WEBSOCKET CONNECTION (Direct to Deriv) ───
-        function connectWebSocket(token) {
+        // ─── WEBSOCKET CONNECTION ───
+        function connectWebSocket(wsUrl) {
             manualDisconnect = false;
             updateStatus('connecting', 'CONNECTING...');
             updateConnectBtn('connecting');
@@ -1940,49 +1903,33 @@
                 ws = null;
             }
 
-            ws = new WebSocket(DERIV_WS_URL);
+            ws = new WebSocket(wsUrl);
 
             ws.onopen = function() {
-                console.log('🔗 WebSocket open, authorizing...');
-                // Send authorize with PAT token
-                ws.send(JSON.stringify({
-                    authorize: token,
-                    req_id: wsReqId++
-                }));
+                console.log('🔗 WebSocket connected');
+                wsConnected = true;
+                isConnected = true;
+                isAuthorized = true; // OTP already authenticated
+                updateStatus('connected', 'SYNCED');
+                updateConnectBtn('connected');
+                if (!engineRunning) { engineRunning = true;
+                    updateEngineBtn(); }
+                subscribeTicks();
+                if (pingInterval) clearInterval(pingInterval);
+                pingInterval = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ ping: 1 }));
+                    }
+                }, 30000);
+                renderSignal();
+                renderAbilityGuide();
+                console.log('✅ Connected and subscribed');
             };
 
             ws.onmessage = function(event) {
                 try {
                     const data = JSON.parse(event.data);
                     if (data.ping) { ws.send(JSON.stringify({ pong: 1 })); return; }
-                    if (data.msg_type === 'authorize') {
-                        if (data.error) {
-                            showError('Authorization failed: ' + data.error.message);
-                            updateStatus('error', 'AUTH FAILED');
-                            updateConnectBtn('offline');
-                            isAuthorized = false;
-                            return;
-                        }
-                        isAuthorized = true;
-                        wsConnected = true;
-                        isConnected = true;
-                        updateStatus('connected', 'SYNCED');
-                        updateConnectBtn('connected');
-                        if (!engineRunning) { engineRunning = true;
-                            updateEngineBtn(); }
-                        // Subscribe to ticks
-                        subscribeTicks();
-                        if (pingInterval) clearInterval(pingInterval);
-                        pingInterval = setInterval(() => {
-                            if (ws && ws.readyState === WebSocket.OPEN) {
-                                ws.send(JSON.stringify({ ping: 1 }));
-                            }
-                        }, 30000);
-                        renderSignal();
-                        renderAbilityGuide();
-                        console.log('✅ Authorized successfully');
-                        return;
-                    }
                     if (data.msg_type === 'tick') {
                         if (data.tick && data.tick.symbol === currentMarket) {
                             processTick(data.tick);
@@ -2026,10 +1973,6 @@
                             return;
                         }
                         showError('API Error: ' + data.error.message);
-                        if (data.error.code === 'InvalidToken' || data.error.code === 'AuthorizationFailed') {
-                            showError('❌ Invalid token — please reconnect');
-                            disconnect();
-                        }
                     }
                     if (data.msg_type === 'proposal') {
                         handleProposalResponse(data);
@@ -2042,9 +1985,9 @@
 
             ws.onerror = function(err) {
                 console.error('WS error:', err);
-                if (!isAuthorized) {
+                if (!wsConnected) {
                     updateStatus('error', 'CONN ERROR');
-                    showError('WebSocket connection error. Check your token and network.');
+                    showError('WebSocket connection error. Check your network and token.');
                 }
             };
 
@@ -2056,7 +1999,18 @@
                 updateStatus('error', 'RECONNECTING...');
                 updateConnectBtn('connecting');
                 if (accessToken && !manualDisconnect) {
-                    setTimeout(() => connectWebSocket(accessToken), 3000);
+                    // Re‑authenticate by re‑requesting OTP and reconnecting
+                    setTimeout(async () => {
+                        try {
+                            const wsUrl = await requestOtp(accessToken, selectedAccountId);
+                            connectWebSocket(wsUrl);
+                        } catch (e) {
+                            updateStatus('idle', 'OFFLINE');
+                            updateConnectBtn('offline');
+                            renderSignal();
+                            renderAbilityGuide();
+                        }
+                    }, 3000);
                 } else {
                     updateStatus('idle', 'OFFLINE');
                     updateConnectBtn('offline');
@@ -2067,7 +2021,7 @@
         }
 
         function subscribeTicks() {
-            if (!ws || ws.readyState !== WebSocket.OPEN || !isAuthorized) return;
+            if (!ws || ws.readyState !== WebSocket.OPEN) return;
             ws.send(JSON.stringify({
                 ticks: currentMarket,
                 subscribe: 1,
@@ -2075,7 +2029,7 @@
             }));
         }
 
-        // ─── BOT FUNCTIONS ───
+        // ─── BOT FUNCTIONS (unchanged, but may need API adjustments) ───
         function setBotMode(mode) {
             botMode = mode;
             document.getElementById('bot-mode-evenodd').classList.toggle('active-bot', mode === 'evenodd');
@@ -2308,7 +2262,6 @@
             if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
 
             if (engine.digits.length >= 40 && engineRunning) {
-                // Use Python-inspired method for matches
                 let result = currentStrategy === 'matches' ? engine.generateMatchesSignalPython() : engine.generateEvenOddSignal();
                 if (result && result.confidence >= 60) {
                     activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
@@ -2448,7 +2401,7 @@
             renderMarkets();
             renderSignal();
             renderAbilityGuide();
-            if (wsConnected && isAuthorized) subscribeTicks();
+            if (wsConnected) subscribeTicks();
         }
 
         function renderTickFeed() {
@@ -2479,7 +2432,7 @@
 
         function renderSignal() {
             const body = $('signal-body');
-            if (!isConnected || !isAuthorized) { body.innerHTML =
+            if (!isConnected) { body.innerHTML =
                     '<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">🔌</div><div style="font-size:14px;">Not Connected</div></div>';
                 return; }
             if (!engineRunning) { body.innerHTML =
@@ -2627,14 +2580,13 @@
             if (!loaded) {
                 showError('No token found. Please paste a PAT token to connect.');
             }
-            // Pre-fetch voices
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.getVoices();
                 window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
             }
         }
         init();
-        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready (Matches engine now Python-style)');
+        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready (Options API + OTP)');
     </script>
 </body>
 </html>
