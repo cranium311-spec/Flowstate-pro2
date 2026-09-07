@@ -737,7 +737,7 @@
             color: var(--text);
             font-family: 'Share Tech Mono', monospace;
             font-size: 11px;
-            min-width: 260px;
+            min-width: 200px;
             flex: 1;
         }
         .token-section input:focus {
@@ -1198,7 +1198,8 @@
 
         <!-- ─── TOKEN SECTION ─── -->
         <div class="token-section">
-            <input type="text" id="patInput" placeholder="Paste your access token (PAT or OAuth2)" style="flex:1;min-width:200px;" />
+            <input type="text" id="patInput" placeholder="Access token (PAT or OAuth2)" style="flex:2;min-width:200px;" />
+            <input type="text" id="appIdInput" placeholder="Deriv App ID (for PAT)" style="flex:1;min-width:120px;" />
             <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect</button>
             <select class="account-select" id="accountSelect" style="min-width:120px;">
                 <option value="">Select account</option>
@@ -1368,7 +1369,7 @@
         // ============================================================
         //  FLOWSTATE PRO + AUTO BULK TRADER  +  ABILITY GUIDE
         //  Updated for Deriv Options API (REST + OTP WebSocket)
-        //  Uses Bearer token only (no Deriv-App-ID)
+        //  Includes Deriv-App-ID header for PAT tokens
         // ============================================================
 
         const REST_BASE_URL = 'https://api.derivws.com';
@@ -1624,6 +1625,7 @@
         // ─── STATE ───
         let engine = new StatisticalEngine();
         let accessToken = null;
+        let derivAppId = localStorage.getItem('flowstate_app_id') || '';
         let ws = null;
         let wsConnected = false;
         let wsReqId = 1;
@@ -1750,13 +1752,20 @@
 
         async function fetchAccountsREST(token) {
             const headers = { 'Authorization': `Bearer ${token}` };
+            if (token.startsWith('pat_')) {
+                if (!derivAppId) throw new Error('Deriv App ID is required for PAT tokens. Please enter it.');
+                headers['Deriv-App-ID'] = derivAppId;
+            }
             const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts`, { headers });
-            const data = await handleApiResponse(response);
-            return data.accounts || data.data?.accounts || [];
+            return await handleApiResponse(response);
         }
 
         async function requestOtp(token, accountId) {
             const headers = { 'Authorization': `Bearer ${token}` };
+            if (token.startsWith('pat_')) {
+                if (!derivAppId) throw new Error('Deriv App ID is required for PAT tokens. Please enter it.');
+                headers['Deriv-App-ID'] = derivAppId;
+            }
             const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts/${accountId}/otp`, {
                 method: 'POST',
                 headers
@@ -1791,9 +1800,15 @@
         // ─── CONNECTION FLOW ───
         async function connectWithPAT() {
             const token = $('patInput').value.trim();
+            derivAppId = $('appIdInput').value.trim();
+            if (token.startsWith('pat_') && !derivAppId) {
+                showError('Deriv App ID is required for PAT tokens. Please enter it.');
+                return;
+            }
             if (!token) { showError('Please paste an access token'); return; }
             accessToken = token;
             localStorage.setItem('flowstate_token', token);
+            if (derivAppId) localStorage.setItem('flowstate_app_id', derivAppId);
             hideError();
             updateStatus('connecting', 'FETCHING ACCOUNTS...');
             updateConnectBtn('connecting');
@@ -1851,6 +1866,9 @@
 
         function loadStoredToken() {
             const token = localStorage.getItem('flowstate_token');
+            const appId = localStorage.getItem('flowstate_app_id');
+            if (appId) { derivAppId = appId;
+                $('appIdInput').value = appId; }
             if (token) {
                 accessToken = token;
                 $('patInput').value = token;
@@ -1878,6 +1896,7 @@
                 accessToken = null;
                 localStorage.removeItem('flowstate_token');
                 $('patInput').value = '';
+                // Don't clear app ID from input, but keep in localStorage
             }
             updateStatus('idle', 'OFFLINE');
             updateConnectBtn('offline');
@@ -2578,7 +2597,7 @@
             }
         }
         init();
-        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready (Bearer only)');
+        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready (Bearer + App ID)');
     </script>
 </body>
 </html>
