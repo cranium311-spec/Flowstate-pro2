@@ -1199,13 +1199,14 @@
         <!-- ─── TOKEN SECTION ─── -->
         <div class="token-section">
             <input type="text" id="patInput" placeholder="Access token (PAT or OAuth2)" style="flex:2;min-width:200px;" />
-            <input type="text" id="appIdInput" placeholder="Deriv App ID (for PAT)" style="flex:1;min-width:120px;" />
+            <input type="text" id="appIdInput" placeholder="Deriv App ID (for PAT only)" style="flex:1;min-width:120px;" />
             <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect</button>
             <select class="account-select" id="accountSelect" style="min-width:120px;">
                 <option value="">Select account</option>
             </select>
             <button class="btn mode-toggle" id="modeToggleBtn" onclick="toggleMode()">MODE: <strong id="modeLabel">DEMO</strong></button>
             <button class="btn" onclick="disconnect()" style="color:var(--danger);border-color:var(--danger);font-size:9px;padding:4px 12px;">🚫 Disconnect</button>
+            <button class="btn" onclick="clearCredentials()" style="color:var(--warning);border-color:var(--warning);font-size:9px;padding:4px 12px;">🗑 Clear</button>
         </div>
 
         <!-- ─── STRATEGY TABS ─── -->
@@ -1670,6 +1671,18 @@
 
         function hideError() { $('error-msg').style.display = 'none'; }
 
+        function clearCredentials() {
+            localStorage.removeItem('flowstate_token');
+            localStorage.removeItem('flowstate_app_id');
+            accessToken = null;
+            derivAppId = '';
+            $('patInput').value = '';
+            $('appIdInput').value = '';
+            $('accountSelect').innerHTML = '<option value="">Select account</option>';
+            disconnect();
+            showError('Credentials cleared');
+        }
+
         // ─── AUDIO / VOICE ───
         function initAudio() { if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)(); }
         function initVoice() { if (!voiceSynth) voiceSynth = window.speechSynthesis; }
@@ -1756,8 +1769,12 @@
                 if (!derivAppId) throw new Error('Deriv App ID is required for PAT tokens. Please enter it.');
                 headers['Deriv-App-ID'] = derivAppId;
             }
+            console.log('Fetching accounts with headers:', headers);
             const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts`, { headers });
-            return await handleApiResponse(response);
+            const data = await handleApiResponse(response);
+            // Ensure we always return an array
+            const accounts = data.accounts || data.data?.accounts || [];
+            return Array.isArray(accounts) ? accounts : [];
         }
 
         async function requestOtp(token, accountId) {
@@ -1814,8 +1831,8 @@
             updateConnectBtn('connecting');
             try {
                 const accounts = await fetchAccountsREST(token);
-                if (accounts.length === 0) {
-                    showError('No accounts found. Ensure token has proper scopes.');
+                if (!Array.isArray(accounts) || accounts.length === 0) {
+                    showError('No valid accounts found. Check token scopes.');
                     updateStatus('error', 'NO ACCOUNTS');
                     updateConnectBtn('offline');
                     return;
@@ -1873,7 +1890,7 @@
                 accessToken = token;
                 $('patInput').value = token;
                 fetchAccountsREST(token).then(accounts => {
-                    if (accounts.length > 0) {
+                    if (Array.isArray(accounts) && accounts.length > 0) {
                         populateAccountSelect(accounts);
                         const sel = $('accountSelect');
                         if (sel.value) selectedAccountId = sel.value;
