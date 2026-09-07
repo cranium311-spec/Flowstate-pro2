@@ -1198,8 +1198,8 @@
 
         <!-- ─── TOKEN SECTION ─── -->
         <div class="token-section">
-            <input type="text" id="patInput" placeholder="Paste your PAT token here (starts with pat_...)" style="flex:1;min-width:200px;" />
-            <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect PAT</button>
+            <input type="text" id="patInput" placeholder="Paste your access token (PAT or OAuth2)" style="flex:1;min-width:200px;" />
+            <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect</button>
             <select class="account-select" id="accountSelect" style="min-width:120px;">
                 <option value="">Select account</option>
             </select>
@@ -1368,12 +1368,10 @@
         // ============================================================
         //  FLOWSTATE PRO + AUTO BULK TRADER  +  ABILITY GUIDE
         //  Updated for Deriv Options API (REST + OTP WebSocket)
+        //  Uses Bearer token only (no Deriv-App-ID)
         // ============================================================
 
-        // ─── API CONFIGURATION ───
         const REST_BASE_URL = 'https://api.derivws.com';
-        // For PAT auth: set your Deriv App ID here (required header)
-        const DERIV_APP_ID_HEADER = 'YOUR_APP_ID'; // Replace with your actual App ID if using PAT
 
         // ─── PYTHON MATCHES ENGINE CONSTANTS ───
         const PYTHON_WINDOW_SIZE = 100;
@@ -1631,7 +1629,7 @@
         let wsReqId = 1;
         let manualDisconnect = false;
         let pingInterval = null;
-        let MODE = 'DEMO'; // 'DEMO' or 'REAL'
+        let MODE = 'DEMO';
         let selectedAccountId = null;
         let isConnected = false;
         let engineRunning = false;
@@ -1658,7 +1656,7 @@
         let executionStartTime = 0;
         let pendingProposals = new Map();
         let retrySignal = null;
-        let apiParam = 'underlying'; // might change to 'symbol' depending on API
+        let apiParam = 'underlying';
 
         // ─── DOM refs ───
         function $(id) { return document.getElementById(id); }
@@ -1735,35 +1733,36 @@
                 b.className = 'btn-engine start'; }
         }
 
-        // ─── REST API FUNCTIONS (NEW) ───
+        // ─── REST API FUNCTIONS ───
+        async function handleApiResponse(response) {
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                throw new Error(`API error (${response.status}): ${text}`);
+            }
+            if (!response.ok) {
+                throw new Error(data.message || data.errors?.[0]?.message || `API error (${response.status})`);
+            }
+            return data;
+        }
+
         async function fetchAccountsREST(token) {
             const headers = { 'Authorization': `Bearer ${token}` };
-            if (token.startsWith('pat_')) {
-                headers['Deriv-App-ID'] = DERIV_APP_ID_HEADER;
-            }
             const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts`, { headers });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || data.errors?.[0]?.message || 'Failed to fetch accounts');
-            }
-            // The actual response may be under data.accounts or data.accounts (depending on API version)
+            const data = await handleApiResponse(response);
             return data.accounts || data.data?.accounts || [];
         }
 
         async function requestOtp(token, accountId) {
             const headers = { 'Authorization': `Bearer ${token}` };
-            if (token.startsWith('pat_')) {
-                headers['Deriv-App-ID'] = DERIV_APP_ID_HEADER;
-            }
             const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts/${accountId}/otp`, {
                 method: 'POST',
                 headers
             });
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.message || data.errors?.[0]?.message || 'Failed to get OTP');
-            }
-            return data.data?.url; // e.g., wss://api.derivws.com/trading/v1/options/ws/demo?otp=...
+            const data = await handleApiResponse(response);
+            return data.data?.url;
         }
 
         // ─── POPULATE ACCOUNT SELECT ───
@@ -1792,8 +1791,7 @@
         // ─── CONNECTION FLOW ───
         async function connectWithPAT() {
             const token = $('patInput').value.trim();
-            if (!token) { showError('Please paste a PAT token'); return; }
-            if (!token.startsWith('pat_')) { showError('Token should start with "pat_"'); return; }
+            if (!token) { showError('Please paste an access token'); return; }
             accessToken = token;
             localStorage.setItem('flowstate_token', token);
             hideError();
@@ -1808,7 +1806,6 @@
                     return;
                 }
                 populateAccountSelect(accounts);
-                // Use selected account (or first)
                 const accountId = selectedAccountId || accounts[0].account_id || accounts[0].accountId || accounts[0].loginid || accounts[0].account;
                 if (!accountId) {
                     showError('Could not determine account ID.');
@@ -1825,7 +1822,6 @@
                     updateConnectBtn('offline');
                     return;
                 }
-                // Connect to the new WebSocket
                 connectWebSocket(wsUrl);
             } catch (err) {
                 console.error(err);
@@ -1840,9 +1836,8 @@
             $('modeLabel').textContent = MODE;
             if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
             else hideError();
-            // Reconnect with current token and account
             if (accessToken && selectedAccountId) {
-                disconnect(false); // close but keep token
+                disconnect(false);
                 setTimeout(async () => {
                     try {
                         const wsUrl = await requestOtp(accessToken, selectedAccountId);
@@ -1859,7 +1854,6 @@
             if (token) {
                 accessToken = token;
                 $('patInput').value = token;
-                // Just fetch accounts to populate select, but do not auto-connect
                 fetchAccountsREST(token).then(accounts => {
                     if (accounts.length > 0) {
                         populateAccountSelect(accounts);
@@ -1909,7 +1903,7 @@
                 console.log('🔗 WebSocket connected');
                 wsConnected = true;
                 isConnected = true;
-                isAuthorized = true; // OTP already authenticated
+                isAuthorized = true;
                 updateStatus('connected', 'SYNCED');
                 updateConnectBtn('connected');
                 if (!engineRunning) { engineRunning = true;
@@ -1942,7 +1936,6 @@
                             const errorMsg = data.error.message || 'Unknown';
                             addBotLog(`❌ Trade ${pending.count}/${bulkCount} error: ${errorMsg}`, 'error');
 
-                            // Auto-retry logic for API param mismatch
                             if (errorMsg.includes("Properties not allowed") || errorMsg.includes("barrier")) {
                                 if (apiParam === 'symbol') {
                                     apiParam = 'underlying';
@@ -1999,7 +1992,6 @@
                 updateStatus('error', 'RECONNECTING...');
                 updateConnectBtn('connecting');
                 if (accessToken && !manualDisconnect) {
-                    // Re‑authenticate by re‑requesting OTP and reconnecting
                     setTimeout(async () => {
                         try {
                             const wsUrl = await requestOtp(accessToken, selectedAccountId);
@@ -2029,7 +2021,7 @@
             }));
         }
 
-        // ─── BOT FUNCTIONS (unchanged, but may need API adjustments) ───
+        // ─── BOT FUNCTIONS ───
         function setBotMode(mode) {
             botMode = mode;
             document.getElementById('bot-mode-evenodd').classList.toggle('active-bot', mode === 'evenodd');
@@ -2555,7 +2547,7 @@
 
         function toggleConnection() { if (isConnected) disconnect();
             else { const t = $('patInput').value.trim(); if (t) connectWithPAT();
-                else showError('Paste a PAT token first'); } }
+                else showError('Paste an access token first'); } }
 
         // ─── INIT ───
         function initBot() {
@@ -2578,7 +2570,7 @@
             initBot();
             renderAbilityGuide();
             if (!loaded) {
-                showError('No token found. Please paste a PAT token to connect.');
+                showError('No token found. Please paste an access token to connect.');
             }
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.getVoices();
@@ -2586,7 +2578,7 @@
             }
         }
         init();
-        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready (Options API + OTP)');
+        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready (Bearer only)');
     </script>
 </body>
 </html>
