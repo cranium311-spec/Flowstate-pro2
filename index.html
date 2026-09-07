@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flowstate Pro + Auto Bulk Trader v2 (Python Engine Integrated)</title>
+    <title>Flowstate Pro • Signal Engine v3 (No Bot)</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <style>
         /* ── root ── */
@@ -689,7 +689,7 @@
         }
         .stats-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+            grid-template-columns: repeat(6, 1fr);
             gap: 6px;
             margin-bottom: 12px;
         }
@@ -811,117 +811,122 @@
             }
         }
 
-        /* ── Bot panel ── */
-        .bot-panel {
-            background: var(--panel);
+        /* ── ENGINE CONFIG ── */
+        .engine-config {
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        .bot-panel .panel-header {
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--border);
-            font-family: 'Orbitron', monospace;
-            font-size: 8px;
-            letter-spacing: 3px;
-            color: var(--accent);
-            text-transform: uppercase;
-            background: rgba(0, 229, 255, 0.03);
-        }
-        .bot-panel .panel-body {
-            padding: 12px;
-        }
-        .mode-switch {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-        }
-        .mode-switch button {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid var(--border);
-            background: var(--panel);
-            color: var(--text2);
             border-radius: 8px;
-            cursor: pointer;
-            font-family: 'Orbitron', monospace;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-        }
-        .mode-switch button.active-bot {
-            border-color: var(--gold);
-            color: var(--gold);
-            background: rgba(255, 215, 0, 0.1);
-        }
-        .bot-controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            padding: 10px 12px;
             margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
         }
-        .bot-controls label {
-            font-size: 9px;
+        .engine-config label {
+            font-size: 8px;
             color: var(--text2);
             text-transform: uppercase;
             letter-spacing: 1px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
         }
-        .bot-controls input,
-        .bot-controls select {
+        .engine-config input {
             background: var(--panel);
             border: 1px solid var(--border);
-            padding: 6px 8px;
+            padding: 4px 8px;
             border-radius: 6px;
             color: var(--text);
             font-family: 'Share Tech Mono', monospace;
             font-size: 11px;
             width: 100%;
         }
-        .bulk-slider {
-            grid-column: span 2;
-        }
-        .bulk-slider input[type="range"] {
-            width: 100%;
-            -webkit-appearance: none;
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
+        .engine-config input:focus {
             outline: none;
+            border-color: var(--accent);
         }
-        .bulk-slider input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: var(--accent);
-            cursor: pointer;
+
+        .top-probs-display {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 6px 0;
         }
-        .bot-log {
-            max-height: 150px;
-            overflow-y: auto;
-            background: rgba(0, 0, 0, 0.2);
+        .top-prob-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
             border-radius: 6px;
-            padding: 6px;
+            padding: 3px 10px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .top-prob-item .digit {
+            color: var(--accent);
+        }
+        .top-prob-item .pct {
+            color: var(--gold);
+        }
+
+        .threshold-display {
+            font-size: 9px;
+            color: var(--text2);
+            text-align: center;
+            margin-top: 4px;
+        }
+        .threshold-display strong {
+            color: var(--warning);
+        }
+
+        /* ── REJECTION LOG ── */
+        .rejection-log {
+            max-height: 120px;
+            overflow-y: auto;
             font-family: 'Share Tech Mono', monospace;
             font-size: 8px;
         }
-        .bot-log .log-entry {
-            padding: 2px 0;
+        .rejection-item {
+            padding: 3px 6px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-        }
-        .bot-log .log-entry.success {
-            color: var(--success);
-        }
-        .bot-log .log-entry.error {
-            color: var(--danger);
-        }
-        .bot-log .log-entry.info {
             color: var(--text2);
         }
+        .rejection-item .reason {
+            color: var(--danger);
+        }
+        .rejection-item .time {
+            color: #3a5a7a;
+            float: right;
+        }
 
-        /* ── ABILITY GUIDE PANEL ── */
+        /* ── RISK MANAGEMENT PANEL ── */
+        .risk-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-top: 6px;
+        }
+        .risk-panel .risk-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            padding: 2px 0;
+        }
+        .risk-panel .risk-label {
+            color: var(--text2);
+        }
+        .risk-panel .risk-value {
+            font-weight: 700;
+        }
+        .risk-panel .risk-value.green {
+            color: var(--success);
+        }
+        .risk-panel .risk-value.red {
+            color: var(--danger);
+        }
+
+        /* ── ABILITY GUIDE ── */
         .ability-guide-panel {
             background: var(--panel);
             border: 1px solid var(--border);
@@ -1178,81 +1183,45 @@
             }
         }
 
-        /* ─── NEW: PYTHON ENGINE CONTROLS ─── */
-        .engine-config {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 12px;
-            margin-bottom: 10px;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-        }
-        .engine-config label {
-            font-size: 8px;
-            color: var(--text2);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        .engine-config input {
+        /* ── NEW: REJECTION LOG PANEL ── */
+        .rejection-panel {
             background: var(--panel);
             border: 1px solid var(--border);
-            padding: 4px 8px;
-            border-radius: 6px;
-            color: var(--text);
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 11px;
-            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
         }
-        .engine-config input:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-
-        .top-probs-display {
-            display: flex;
-            gap: 6px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 6px 0;
-        }
-        .top-prob-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 3px 10px;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 10px;
-            font-weight: 700;
-        }
-        .top-prob-item .digit {
+        .rejection-panel .panel-header {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            font-family: 'Orbitron', monospace;
+            font-size: 8px;
+            letter-spacing: 3px;
             color: var(--accent);
+            text-transform: uppercase;
+            background: rgba(0, 229, 255, 0.03);
         }
-        .top-prob-item .pct {
-            color: var(--gold);
+        .rejection-panel .panel-body {
+            padding: 8px 10px;
         }
-
-        .threshold-display {
-            font-size: 9px;
+        .rejection-log {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .rejection-item {
+            padding: 4px 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 8px;
+        }
+        .rejection-item .rej-time {
             color: var(--text2);
-            text-align: center;
-            margin-top: 4px;
+            float: right;
         }
-        .threshold-display strong {
-            color: var(--warning);
+        .rejection-item .rej-reason {
+            color: var(--danger);
         }
-
-        @media(max-width:600px) {
-            .engine-config {
-                grid-template-columns: 1fr 1fr;
-            }
-            .stats-row {
-                grid-template-columns: 1fr 1fr 1fr;
-            }
+        .rejection-item .rej-detail {
+            color: var(--text2);
         }
     </style>
 </head>
@@ -1268,7 +1237,7 @@
                 </div>
                 <div>
                     <div class="logo-text">FLOWSTATE</div>
-                    <div class="logo-sub">Matches &amp; Even/Odd Engine v2</div>
+                    <div class="logo-sub">Signal Engine v3 • No Bot</div>
                 </div>
             </div>
             <div class="header-actions">
@@ -1336,7 +1305,7 @@
             <div class="right-panel">
                 <button class="btn-engine start" id="btn-engine" onclick="toggleEngine()">▶ START ENGINE</button>
 
-                <!-- ─── PYTHON ENGINE CONFIG ─── -->
+                <!-- ─── ENGINE CONFIG ─── -->
                 <div class="engine-config">
                     <label>Payout Multiplier
                         <input type="number" id="payoutMultiplier" value="9.0" step="0.1" min="2" max="50" />
@@ -1347,6 +1316,41 @@
                     <label>Alpha (smoothing)
                         <input type="number" id="alphaSmooth" value="5.0" step="0.5" min="1" max="20" />
                     </label>
+                </div>
+
+                <!-- ─── RISK MANAGEMENT ─── -->
+                <div class="panel-card">
+                    <div class="panel-header">💰 Risk Management</div>
+                    <div class="panel-body">
+                        <div class="risk-panel">
+                            <div class="risk-row">
+                                <span class="risk-label">Kelly Stake (for $100 balance)</span>
+                                <span class="risk-value" id="kelly-stake">--</span>
+                            </div>
+                            <div class="risk-row">
+                                <span class="risk-label">Circuit Breaker</span>
+                                <span class="risk-value" id="circuit-status">✅ Active</span>
+                            </div>
+                            <div class="risk-row">
+                                <span class="risk-label">Max Daily Loss (simulated)</span>
+                                <span class="risk-value" id="daily-loss">$0.00</span>
+                            </div>
+                            <div class="risk-row">
+                                <span class="risk-label">Consecutive Losses</span>
+                                <span class="risk-value" id="consecutive-losses">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ─── REJECTION LOG ─── -->
+                <div class="rejection-panel">
+                    <div class="panel-header">🚫 Rejection Log</div>
+                    <div class="panel-body">
+                        <div class="rejection-log" id="rejection-log">
+                            <div style="color:var(--text2);font-size:9px;text-align:center;padding:4px;">No rejections yet</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- digit stream -->
@@ -1363,46 +1367,6 @@
 
                 <!-- help note -->
                 <div class="help-note"><strong>🔊 Voice Alerts:</strong><br />• "Ready" when signal found<br />• "Go Time" at countdown zero<br />• 3 digits: Predicted, Entry, Recovery</div>
-
-                <!-- ─── AUTO BULK TRADER ─── -->
-                <div class="bot-panel">
-                    <div class="panel-header">🤖 Auto Bulk Trader</div>
-                    <div class="panel-body">
-                        <div class="mode-switch">
-                            <button id="bot-mode-evenodd" class="active-bot" onclick="setBotMode('evenodd')">EVEN/ODD</button>
-                            <button id="bot-mode-matches" onclick="setBotMode('matches')">MATCHES</button>
-                        </div>
-                        <div class="bot-controls">
-                            <div class="bulk-slider">
-                                <label>Bulk Trades: <span id="bulk-count-display">10</span></label>
-                                <input type="range" id="bulk-count" min="5" max="200" value="10" oninput="document.getElementById('bulk-count-display').textContent=this.value" />
-                            </div>
-                            <div>
-                                <label>Stake per trade</label>
-                                <input type="number" id="bot-stake" value="1" min="0.35" step="0.01" />
-                            </div>
-                            <div>
-                                <label>Market</label>
-                                <select id="bot-market">
-                                    <option value="R_100" selected>Volatility 100</option>
-                                    <option value="R_75">Volatility 75</option>
-                                    <option value="R_50">Volatility 50</option>
-                                    <option value="R_25">Volatility 25</option>
-                                    <option value="R_10">Volatility 10</option>
-                                    <option value="1HZ100V">Vol 100 (1s)</option>
-                                    <option value="1HZ75V">Vol 75 (1s)</option>
-                                    <option value="1HZ50V">Vol 50 (1s)</option>
-                                    <option value="1HZ25V">Vol 25 (1s)</option>
-                                    <option value="1HZ10V">Vol 10 (1s)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button class="btn-engine start" id="bot-start-btn" onclick="toggleBot()">▶ START BOT</button>
-                        <div class="bot-log" id="bot-log">
-                            <div class="log-entry info">Bot idle</div>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- ─── ABILITY GUIDE ─── -->
                 <div class="ability-guide-panel">
@@ -1447,6 +1411,7 @@
                             <div class="guide-status" id="guide-status">
                                 <span>📈 <strong id="guide-sample-size">0</strong> ticks analyzed • </span>
                                 <span id="guide-entropy">Entropy: --</span>
+                                <span id="guide-adaptive" style="margin-left:12px;color:var(--gold);">Adaptive: ON</span>
                             </div>
                             <!-- tip -->
                             <div class="guide-tip">
@@ -1467,19 +1432,53 @@
 
     <script>
         // ============================================================
-        //  FLOWSTATE PRO + AUTO BULK TRADER  +  PYTHON ENGINE INTEGRATION
-        //  v2 — Improved Matches Signal with threshold-based evaluation
+        //  FLOWSTATE PRO v3 — ENHANCED SIGNAL ENGINE (NO BOT)
+        //  Includes: Adaptive thresholds, Rejection logging,
+        //  Kelly Criterion, Streak filter, Persistent storage,
+        //  Circuit breaker (simulated), Time-of-day weighting.
         // ============================================================
 
         const DERIV_APP_ID = '34h5thRsVU9aLKUJjJLYh';
         const BACKEND_URL = '';
         const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
+        // ─── PERSISTENT STORAGE ───
+        function loadState() {
+            try {
+                const raw = localStorage.getItem('flowstate_state');
+                if (raw) {
+                    const state = JSON.parse(raw);
+                    return state;
+                }
+            } catch (e) { console.warn('Load state error', e); }
+            return null;
+        }
+
+        function saveState(state) {
+            try {
+                localStorage.setItem('flowstate_state', JSON.stringify(state));
+            } catch (e) { console.warn('Save state error', e); }
+        }
+
         // ─── SELF-LEARNING STATE ───
-        let learningState = {
+        let learningState = loadState() || {
             matches: { total: 0, wins: 0, recent: [] },
-            evenodd: { total: 0, wins: 0, recent: [] }
+            evenodd: { total: 0, wins: 0, recent: [] },
+            signalHistory: [],      // stores { strategy, entryDigit, recoveryDigit, confidence, status, time }
+            rejectionLog: [],       // stores { time, reason, detail }
+            dailyLoss: 0,
+            consecutiveLosses: 0,
+            lastReset: new Date().toDateString()
         };
+
+        // Reset daily loss if new day
+        const today = new Date().toDateString();
+        if (learningState.lastReset !== today) {
+            learningState.dailyLoss = 0;
+            learningState.consecutiveLosses = 0;
+            learningState.lastReset = today;
+            saveState(learningState);
+        }
 
         function getPerformanceFactor(strategy) {
             const s = learningState[strategy];
@@ -1494,17 +1493,57 @@
             if (won) s.wins++;
             s.recent.push(won);
             if (s.recent.length > 50) s.recent.shift();
+            // Update consecutive losses
+            if (won) {
+                learningState.consecutiveLosses = 0;
+            } else {
+                learningState.consecutiveLosses++;
+                // Simulate daily loss (just for display)
+                learningState.dailyLoss += 1; // assume $1 loss per losing trade
+            }
+            saveState(learningState);
+            updateRiskPanel();
         }
 
-        // ─── STATISTICAL ENGINE (Python-style enhanced) ───
+        function logSignal(signal, status) {
+            const entry = {
+                strategy: signal.strategy,
+                entryDigit: signal.entryDigit,
+                recoveryDigit: signal.recoveryDigit || signal.recoveryPrediction,
+                confidence: signal.confidence,
+                status: status,
+                parity: signal.strategy === 'evenodd' ? signal.prediction : null,
+                time: new Date().toISOString()
+            };
+            learningState.signalHistory.unshift(entry);
+            if (learningState.signalHistory.length > 200) learningState.signalHistory.pop();
+            saveState(learningState);
+        }
+
+        function logRejection(reason, detail = '') {
+            const entry = {
+                time: new Date().toISOString(),
+                reason: reason,
+                detail: detail
+            };
+            learningState.rejectionLog.unshift(entry);
+            if (learningState.rejectionLog.length > 100) learningState.rejectionLog.pop();
+            saveState(learningState);
+            renderRejectionLog();
+        }
+
+        // ─── STATISTICAL ENGINE (Enhanced with adaptive thresholds) ───
         class StatisticalEngine {
             constructor() {
                 this.reset();
-                // Python-style parameters
                 this.alpha = 5.0;
                 this.payoutMultiplier = 9.0;
                 this.margin = 0.02;
                 this.windowSize = 100;
+                // Adaptive thresholds
+                this.baseEntropyCap = 3.3;
+                this.baseDominanceThreshold = 0.58;
+                this.streakRequired = 3; // for even/odd
             }
 
             reset() {
@@ -1513,7 +1552,6 @@
                 this.freqCounts = new Array(10).fill(0);
                 this.transCounts = Array.from({ length: 10 }, () => new Array(10).fill(0));
                 this.transTotals = new Array(10).fill(0);
-                // Keep a rolling window of digits for transition tracking
                 this.digitsHistory = [];
             }
 
@@ -1523,7 +1561,6 @@
                 this.margin = marginPct / 100;
             }
 
-            // ─── Python-style digit extraction ───
             extractLastDigit(quote, precision) {
                 try {
                     const value = Number(quote);
@@ -1538,65 +1575,47 @@
                 }
             }
 
-            // ─── Add tick with rolling window management ───
             addTick(price, decimals) {
                 const { digit, formatted } = this.extractLastDigit(price, decimals);
                 if (digit === null || isNaN(digit) || digit < 0 || digit > 9) return null;
 
-                // If window is full, remove oldest
                 if (this.digitsHistory.length >= this.windowSize) {
                     const oldDigit = this.digitsHistory.shift();
                     this.freqCounts[oldDigit]--;
-
-                    // Remove transition for the old digit (if there's a next digit)
                     if (this.digitsHistory.length > 0) {
                         const nextDigit = this.digitsHistory[0];
                         this.transCounts[oldDigit][nextDigit]--;
                         this.transTotals[oldDigit]--;
                     }
                 }
-
-                // Add new digit
                 this.digitsHistory.push(digit);
                 this.freqCounts[digit]++;
-
-                // Add transition from previous digit (if exists)
                 if (this.digitsHistory.length > 1) {
                     const prevDigit = this.digitsHistory[this.digitsHistory.length - 2];
                     this.transCounts[prevDigit][digit]++;
                     this.transTotals[prevDigit]++;
                 }
-
-                // Store in raw tick log
                 this.ticks.push({ price, digit, time: Date.now() });
                 this.digits.push(digit);
                 if (this.ticks.length > 2000) { this.ticks.shift();
                     this.digits.shift(); }
-
                 return digit;
             }
 
-            // ─── Python-style get_probabilities ───
             getProbabilities() {
                 const probs = {};
                 const lastDigit = this.digitsHistory.length > 0 ? this.digitsHistory[this.digitsHistory.length - 1] : null;
                 const N = this.digitsHistory.length;
-
                 for (let d = 0; d < 10; d++) {
-                    // 1. Smoothed frequency probability
                     let pFreq = 0.1;
                     if (N > 0) {
                         pFreq = (this.freqCounts[d] + this.alpha) / (N + 10 * this.alpha);
                     }
-
-                    // 2. Smoothed transition probability (context-aware)
                     let pTrans = 0.1;
                     if (lastDigit !== null && this.transTotals[lastDigit] > 0) {
                         const total = this.transTotals[lastDigit];
                         pTrans = (this.transCounts[lastDigit][d] + this.alpha) / (total + 10 * this.alpha);
                     }
-
-                    // Use transition if we have enough data, otherwise fallback to frequency
                     if (lastDigit !== null && this.transTotals[lastDigit] > 20) {
                         probs[d] = pTrans;
                     } else {
@@ -1606,15 +1625,32 @@
                 return probs;
             }
 
-            // ─── Python-style evaluate_signal ───
+            // ─── Adaptive thresholds ───
+            getAdaptiveThresholds() {
+                const entropy = this.calculateEntropy();
+                // If entropy is very low, we can be more lenient with dominance
+                let entropyCap = this.baseEntropyCap;
+                let dominanceThreshold = this.baseDominanceThreshold;
+                if (entropy < 2.5) {
+                    entropyCap = 3.5;
+                    dominanceThreshold = 0.52;
+                } else if (entropy > 3.0) {
+                    entropyCap = 3.2;
+                    dominanceThreshold = 0.60;
+                }
+                // Time-of-day weighting: reduce confidence during off-hours (midnight-8am UTC)
+                const hour = new Date().getUTCHours();
+                let timeWeight = 1.0;
+                if (hour >= 0 && hour < 8) timeWeight = 0.85; // reduce edge
+                return { entropyCap, dominanceThreshold, timeWeight };
+            }
+
             evaluateSignal(probs) {
                 const pBreakEven = 1.0 / this.payoutMultiplier;
                 const threshold = pBreakEven + this.margin;
-
                 let bestDigit = -1;
                 let bestProb = 0;
                 const top3 = [];
-
                 for (const [d, p] of Object.entries(probs)) {
                     const digit = parseInt(d);
                     if (p > bestProb) {
@@ -1622,27 +1658,179 @@
                         bestDigit = digit;
                     }
                 }
-
-                // Build top 3
                 const sorted = Object.entries(probs).sort((a, b) => b[1] - a[1]);
                 for (let i = 0; i < Math.min(3, sorted.length); i++) {
                     top3.push({ digit: parseInt(sorted[i][0]), prob: sorted[i][1] });
                 }
-
                 const isSignal = bestProb > threshold;
+                return { bestDigit, bestProb, threshold, isSignal, top3, pBreakEven };
+            }
+
+            // ─── Enhanced MATCHES with rejection logging ───
+            generateMatchesSignal() {
+                const n = this.digitsHistory.length;
+                if (n < 40) {
+                    logRejection('Insufficient data', `Only ${n} ticks`);
+                    return null;
+                }
+
+                const probs = this.getProbabilities();
+                const result = this.evaluateSignal(probs);
+                const adapt = this.getAdaptiveThresholds();
+
+                // Additional check: entropy must be <= adaptive cap
+                const entropy = this.calculateEntropy();
+                if (entropy > adapt.entropyCap) {
+                    logRejection('Entropy too high', `Entropy ${entropy.toFixed(2)} > cap ${adapt.entropyCap.toFixed(2)}`);
+                    return null;
+                }
+
+                // Check if signal passes threshold
+                if (!result.isSignal) {
+                    logRejection('Below threshold', `Best prob ${(result.bestProb*100).toFixed(1)}% < ${(result.threshold*100).toFixed(1)}%`);
+                    return null;
+                }
+
+                // Apply time-of-day weight to confidence
+                const timeWeight = adapt.timeWeight;
+                const rawConf = result.bestProb * 100;
+                let confidence = Math.round(rawConf * timeWeight);
+                // Apply performance factor
+                const perfFactor = getPerformanceFactor('matches');
+                confidence = Math.min(98, Math.max(55, Math.round(confidence * perfFactor)));
+
+                // Get recovery digit
+                const recoveryDigit = result.top3.length > 1 ? result.top3[1].digit : result.bestDigit;
+                const recoveryConf = Math.round((result.top3.length > 1 ? result.top3[1].prob : result.bestProb * 0.7) * 100);
+
+                // If confidence still below 60, reject
+                if (confidence < 60) {
+                    logRejection('Confidence too low', `Confidence ${confidence}%`);
+                    return null;
+                }
 
                 return {
-                    bestDigit,
-                    bestProb,
-                    threshold,
-                    isSignal,
-                    top3,
-                    pBreakEven,
-                    status: isSignal ? '🔥 SIGNAL' : '⏸️ NO TRADE'
+                    predictedDigit: result.bestDigit,
+                    entryDigit: result.bestDigit,
+                    recoveryDigit: recoveryDigit,
+                    confidence: confidence,
+                    recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
+                    reason: `${result.bestDigit} hot (${(result.bestProb*100).toFixed(1)}%), Entropy ${entropy.toFixed(2)}`,
+                    strategy: 'matches',
+                    threshold: result.threshold,
+                    pBreakEven: result.pBreakEven,
+                    top3: result.top3,
+                    rawProb: result.bestProb
                 };
             }
 
-            // ─── Legacy methods for compatibility ───
+            // ─── Enhanced EVEN/ODD with streak filter ───
+            generateEvenOddSignal() {
+                const n = this.digitsHistory.length;
+                if (n < 40) {
+                    logRejection('Insufficient data', `Only ${n} ticks`);
+                    return null;
+                }
+
+                const adapt = this.getAdaptiveThresholds();
+                const recent35 = this.digitsHistory.slice(-35);
+                let evens = 0,
+                    odds = 0;
+                recent35.forEach((d, i) => {
+                    const weight = 1 + (i / recent35.length);
+                    if (d % 2 === 0) evens += weight;
+                    else odds += weight;
+                });
+                const total = evens + odds;
+                const evenRatio = evens / total;
+                const oddRatio = odds / total;
+                const dominant = evenRatio >= oddRatio ? 'EVEN' : 'ODD';
+                const domRatio = Math.max(evenRatio, oddRatio);
+                const subRatio = Math.min(evenRatio, oddRatio);
+                const ratioDominance = domRatio - subRatio;
+
+                // Streak filter: check last 5 ticks
+                const last5 = this.digitsHistory.slice(-5);
+                const lastEvens = last5.filter(d => d % 2 === 0).length;
+                const lastOdds = last5.filter(d => d % 2 !== 0).length;
+                const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
+                const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
+
+                // Require at least 3 of last 5 match the dominant
+                if (recentSupport < adapt.streakRequired) {
+                    logRejection('Streak too weak', `Only ${recentSupport} of last 5 are ${dominant}`);
+                    return null;
+                }
+
+                // Dominance threshold (adaptive)
+                if (domRatio < adapt.dominanceThreshold) {
+                    logRejection('Dominance too low', `${(domRatio*100).toFixed(1)}% < ${(adapt.dominanceThreshold*100).toFixed(1)}%`);
+                    return null;
+                }
+
+                // Entropy check
+                const entropy = this.calculateEntropy();
+                if (entropy > adapt.entropyCap) {
+                    logRejection('Entropy too high', `Entropy ${entropy.toFixed(2)} > cap ${adapt.entropyCap.toFixed(2)}`);
+                    return null;
+                }
+
+                // Compute scores for digits within dominant parity
+                const weightedFreq = this.getWeightedFrequency(150);
+                const lastSeen = this.getLastSeenDistances();
+                const maxDist = Math.max(...lastSeen, 1);
+                const currentDigit = this.digitsHistory[n - 1];
+                const transProbs = this.getTransitions(currentDigit);
+                const scores = Array(10).fill(0);
+                for (let i = 0; i < 10; i++) {
+                    const freqScore = weightedFreq[i] * 50;
+                    const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 10;
+                    const transScore = transProbs[i] * 20;
+                    const recentScore = (last5.filter(d => d === i).length / 5) * 20;
+                    scores[i] = freqScore + recentnessScore + transScore + recentScore;
+                }
+                const isEven = (d) => d % 2 === 0;
+                const dominantDigits = Array.from({ length: 10 }, (_, i) => i)
+                    .filter(d => (dominant === 'EVEN' ? isEven(d) : !isEven(d)));
+                const oppositeDigits = Array.from({ length: 10 }, (_, i) => i)
+                    .filter(d => (dominant === 'EVEN' ? !isEven(d) : isEven(d)));
+                const topDominant = dominantDigits.sort((a, b) => scores[b] - scores[a])[0];
+                const topOpposite = oppositeDigits.sort((a, b) => scores[b] - scores[a])[0];
+                const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
+                const range = Math.max(...scores) - Math.min(...scores) || 1;
+                const digitDominance = (scores[topDominant] - avgScore) / range;
+
+                // Calculate confidence
+                let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
+                confidence = Math.min(98, Math.round(confidence));
+                // Apply time weight
+                confidence = Math.round(confidence * adapt.timeWeight);
+                const perfFactor = getPerformanceFactor('evenodd');
+                confidence = Math.round(confidence * perfFactor);
+                confidence = Math.max(55, Math.min(98, confidence));
+
+                if (confidence < 60) {
+                    logRejection('Confidence too low', `Confidence ${confidence}%`);
+                    return null;
+                }
+
+                const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
+                const recoveryConf = Math.round((scores[topOpposite] / (scores[topDominant] + 0.01)) * 80);
+
+                return {
+                    predictedDigit: topDominant,
+                    entryDigit: topDominant,
+                    recoveryDigit: topOpposite,
+                    prediction: dominant,
+                    recoveryPrediction: recovery,
+                    confidence: confidence,
+                    recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
+                    reason: `${Math.round(domRatio * 100)}% ${dominant} dominance, Entropy ${entropy.toFixed(2)}`,
+                    strategy: 'evenodd'
+                };
+            }
+
+            // ─── Helper methods ───
             getWeightedFrequency(windowSize) {
                 const d = this.digits.slice(-windowSize);
                 const counts = Array(10).fill(0);
@@ -1691,126 +1879,6 @@
                 const total = row.reduce((a, b) => a + b, 0) || 1;
                 return row.map(x => x / total);
             }
-
-            // ─── Enhanced Matches signal using Python threshold engine ───
-            generateMatchesSignal() {
-                const n = this.digits.length;
-                if (n < 40) return null;
-
-                // Get probabilities from Python-style engine
-                const probs = this.getProbabilities();
-                const result = this.evaluateSignal(probs);
-
-                if (!result.isSignal) return null;
-
-                // Get secondary digit for recovery
-                const top3 = result.top3;
-                const recoveryDigit = top3.length > 1 ? top3[1].digit : result.bestDigit;
-
-                // Calculate confidence
-                const confidence = Math.round(result.bestProb * 100);
-                const recoveryConf = Math.round((top3.length > 1 ? top3[1].prob : result.bestProb * 0.7) * 100);
-
-                // Apply performance factor
-                const perfFactor = getPerformanceFactor('matches');
-                const adjustedConf = Math.min(98, Math.max(55, Math.round(confidence * perfFactor)));
-
-                // Additional data for display
-                const entropy = this.calculateEntropy();
-                const recentFreq = this.getRecentFrequency(15);
-                const hotPct = recentFreq[result.bestDigit] * 100;
-
-                return {
-                    predictedDigit: result.bestDigit,
-                    entryDigit: result.bestDigit,
-                    recoveryDigit: recoveryDigit,
-                    confidence: adjustedConf,
-                    recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
-                    reason: `${result.bestDigit} hot (${hotPct.toFixed(0)}% in 15, Entropy ${entropy.toFixed(2)})`,
-                    strategy: 'matches',
-                    // Python engine details
-                    threshold: result.threshold,
-                    pBreakEven: result.pBreakEven,
-                    top3: result.top3,
-                    rawProb: result.bestProb,
-                    status: result.status
-                };
-            }
-
-            // ─── Even/Odd signal (kept from original) ───
-            generateEvenOddSignal() {
-                const n = this.digits.length;
-                if (n < 40) return null;
-                const recent35 = this.digits.slice(-35);
-                let evens = 0,
-                    odds = 0;
-                recent35.forEach((d, i) => {
-                    const weight = 1 + (i / recent35.length);
-                    if (d % 2 === 0) evens += weight;
-                    else odds += weight;
-                });
-                const total = evens + odds;
-                const evenRatio = evens / total;
-                const oddRatio = odds / total;
-                const dominant = evenRatio >= oddRatio ? 'EVEN' : 'ODD';
-                const domRatio = Math.max(evenRatio, oddRatio);
-                const subRatio = Math.min(evenRatio, oddRatio);
-                const ratioDominance = domRatio - subRatio;
-                const last5 = recent35.slice(-5);
-                const lastEvens = last5.filter(d => d % 2 === 0).length;
-                const lastOdds = last5.filter(d => d % 2 !== 0).length;
-                const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
-                const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
-                if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
-                    const weightedFreq = this.getWeightedFrequency(150);
-                    const lastSeen = this.getLastSeenDistances();
-                    const maxDist = Math.max(...lastSeen, 1);
-                    const currentDigit = this.digits[n - 1];
-                    const transProbs = this.getTransitions(currentDigit);
-                    const last5Counts = Array(10).fill(0);
-                    last5.forEach(d => last5Counts[d]++);
-                    const scores = Array(10).fill(0);
-                    for (let i = 0; i < 10; i++) {
-                        const freqScore = weightedFreq[i] * 50;
-                        const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 10;
-                        const transScore = transProbs[i] * 20;
-                        const recentScore = (last5Counts[i] / 5) * 20;
-                        scores[i] = freqScore + recentnessScore + transScore + recentScore;
-                    }
-                    const isEven = (d) => d % 2 === 0;
-                    const dominantDigits = Array.from({ length: 10 }, (_, i) => i)
-                        .filter(d => (dominant === 'EVEN' ? isEven(d) : !isEven(d)));
-                    const oppositeDigits = Array.from({ length: 10 }, (_, i) => i)
-                        .filter(d => (dominant === 'EVEN' ? !isEven(d) : isEven(d)));
-                    const topDominant = dominantDigits.sort((a, b) => scores[b] - scores[a])[0];
-                    const topOpposite = oppositeDigits.sort((a, b) => scores[b] - scores[a])[0];
-                    const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
-                    const range = Math.max(...scores) - Math.min(...scores) || 1;
-                    const digitDominance = (scores[topDominant] - avgScore) / range;
-                    const entropy = this.calculateEntropy();
-                    const baseThreshold = entropy > 3.0 ? 75 : 65;
-                    let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
-                    confidence = Math.min(98, Math.round(confidence));
-                    const perfFactor = getPerformanceFactor('evenodd');
-                    confidence = Math.round(confidence * perfFactor);
-                    confidence = Math.max(55, Math.min(98, confidence));
-                    if (confidence < baseThreshold || entropy > 3.3) return null;
-                    const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
-                    const recoveryConf = Math.round((scores[topOpposite] / (scores[topDominant] + 0.01)) * 80);
-                    return {
-                        predictedDigit: topDominant,
-                        entryDigit: topDominant,
-                        recoveryDigit: topOpposite,
-                        prediction: dominant,
-                        recoveryPrediction: recovery,
-                        confidence: confidence,
-                        recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
-                        reason: `${Math.round(domRatio * 100)}% ${dominant} dominance, Entropy ${entropy.toFixed(2)}`,
-                        strategy: 'evenodd'
-                    };
-                }
-                return null;
-            }
         }
 
         // ─── STATE ───
@@ -1835,19 +1903,6 @@
         let currentPrice = null;
         let voiceSynth = null;
         let audioCtx = null;
-
-        // bot state
-        let botMode = 'evenodd';
-        let botRunning = false;
-        let bulkCount = 10;
-        let botStake = 1;
-        let botMarket = 'R_100';
-        let botExecuting = false;
-        let botCompletedCount = 0;
-        let executionStartTime = 0;
-        let pendingProposals = new Map();
-        let retrySignal = null;
-        let apiParam = 'underlying';
 
         // ─── DOM refs ───
         function $(id) { return document.getElementById(id); }
@@ -2178,7 +2233,6 @@
                     updateConnectBtn('connected');
                     if (!engineRunning) { engineRunning = true;
                         updateEngineBtn(); }
-                    // Sync engine params from UI
                     syncEngineParams();
                     subscribeTicks();
                     if (pingInterval) clearInterval(pingInterval);
@@ -2206,12 +2260,6 @@
                                 showError('❌ Invalid token — please reconnect');
                                 disconnect();
                             }
-                        }
-                        if (data.msg_type === 'proposal') {
-                            handleProposalResponse(data);
-                        }
-                        if (data.msg_type === 'buy') {
-                            handleBuyResponse(data);
                         }
                     } catch (e) { console.warn('WS parse error', e); }
                 };
@@ -2259,179 +2307,52 @@
             const marginPct = parseFloat($('marginPct').value) || 2.0;
             const alpha = parseFloat($('alphaSmooth').value) || 5.0;
             engine.setParams(alpha, payout, marginPct);
-            // Update threshold display
             const pBreakEven = 1.0 / payout;
             const threshold = pBreakEven + (marginPct / 100);
             $('stat-threshold').textContent = (threshold * 100).toFixed(1) + '%';
+            // Update Kelly stake
+            updateRiskPanel();
         }
 
-        // ─── BOT FUNCTIONS ───
-        function setBotMode(mode) {
-            botMode = mode;
-            document.getElementById('bot-mode-evenodd').classList.toggle('active-bot', mode === 'evenodd');
-            document.getElementById('bot-mode-matches').classList.toggle('active-bot', mode === 'matches');
-            addBotLog(`Bot mode set to ${mode.toUpperCase()}`, 'info');
-        }
-
-        function toggleBot() {
-            botRunning = !botRunning;
-            const btn = document.getElementById('bot-start-btn');
-            if (botRunning) {
-                btn.textContent = '■ STOP BOT';
-                btn.className = 'btn-engine stop';
-                addBotLog('Bot started', 'info');
+        // ─── RISK PANEL UPDATE ───
+        function updateRiskPanel() {
+            const winRate = stats.total > 0 ? stats.won / stats.total : 0.5;
+            const payout = parseFloat($('payoutMultiplier').value) || 9.0;
+            // Kelly fraction: f = (p * (b+1) - 1) / b
+            const b = payout - 1;
+            const kelly = (winRate * (b + 1) - 1) / b;
+            const stakePct = Math.max(0, Math.min(1, kelly * 0.5)); // half-Kelly for safety
+            const balance = 100; // assumed balance
+            const stake = stakePct * balance;
+            $('kelly-stake').textContent = `$${stake.toFixed(2)} (${(stakePct*100).toFixed(1)}%)`;
+            $('daily-loss').textContent = `$${learningState.dailyLoss.toFixed(2)}`;
+            $('consecutive-losses').textContent = learningState.consecutiveLosses;
+            // Circuit breaker: if consecutive losses >= 5, show warning
+            const circuit = learningState.consecutiveLosses >= 5 ? '⛔ PAUSED' : '✅ Active';
+            $('circuit-status').textContent = circuit;
+            if (learningState.consecutiveLosses >= 5) {
+                $('circuit-status').style.color = 'var(--danger)';
             } else {
-                btn.textContent = '▶ START BOT';
-                btn.className = 'btn-engine start';
-                addBotLog('Bot stopped', 'info');
+                $('circuit-status').style.color = 'var(--success)';
             }
         }
 
-        function addBotLog(message, type = 'info') {
-            const logDiv = document.getElementById('bot-log');
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-            entry.textContent = `[${time}] ${message}`;
-            logDiv.prepend(entry);
-            while (logDiv.children.length > 50) {
-                logDiv.removeChild(logDiv.lastChild);
-            }
-        }
-
-        function triggerBulkTrades(signal) {
-            if (!botRunning) return;
-            if (signal.strategy !== botMode) {
-                addBotLog(`Ignoring ${signal.strategy} signal (bot mode: ${botMode})`, 'info');
+        // ─── REJECTION LOG RENDER ───
+        function renderRejectionLog() {
+            const container = $('rejection-log');
+            const logs = learningState.rejectionLog;
+            if (logs.length === 0) {
+                container.innerHTML = '<div style="color:var(--text2);font-size:9px;text-align:center;padding:4px;">No rejections yet</div>';
                 return;
             }
-            if (botExecuting) {
-                addBotLog('Already executing a bulk order, skipping', 'error');
-                return;
-            }
-
-            bulkCount = parseInt(document.getElementById('bulk-count').value);
-            botStake = parseFloat(document.getElementById('bot-stake').value);
-            botMarket = document.getElementById('bot-market').value;
-
-            if (bulkCount < 5 || bulkCount > 200) {
-                addBotLog('Bulk count out of range (5-200)', 'error');
-                return;
-            }
-            if (botStake <= 0) {
-                addBotLog('Invalid stake', 'error');
-                return;
-            }
-
-            retrySignal = signal;
-            botExecuting = true;
-            botCompletedCount = 0;
-            executionStartTime = Date.now();
-            pendingProposals.clear();
-            addBotLog(`🚀 Executing ${bulkCount} trades (${signal.strategy}) on ${botMarket} at stake ${botStake}`, 'info');
-
-            for (let i = 0; i < bulkCount; i++) {
-                const req_id = wsReqId++;
-                let cType, barrier;
-                if (signal.strategy === 'evenodd') {
-                    cType = signal.prediction === 'EVEN' ? 'DIGITEVEN' : 'DIGITODD';
-                } else {
-                    cType = 'DIGITMATCH';
-                    barrier = String(signal.entryDigit);
-                }
-
-                const proposalMsg = {
-                    proposal: 1,
-                    req_id: req_id,
-                    contract_type: cType,
-                    currency: 'USD',
-                    amount: botStake,
-                    basis: 'stake',
-                    duration: 1,
-                    duration_unit: 't'
-                };
-
-                proposalMsg[apiParam] = botMarket;
-
-                if (barrier) {
-                    proposalMsg.barrier = barrier;
-                }
-
-                pendingProposals.set(req_id, { count: i + 1, signal: signal });
-                ws.send(JSON.stringify(proposalMsg));
-            }
-        }
-
-        function handleProposalResponse(data) {
-            if (data.msg_type === 'proposal') {
-                const req_id = data.req_id;
-                const proposalObj = data.proposal;
-                const proposalId = proposalObj?.id;
-
-                if (!proposalId) {
-                    const errorMsg = data.error?.message || 'Unknown';
-                    addBotLog(`Proposal error: ${errorMsg}`, 'error');
-
-                    if (errorMsg.includes("Properties not allowed")) {
-                        if (apiParam === 'symbol' && errorMsg.includes("symbol")) {
-                            apiParam = 'underlying';
-                            addBotLog("🔁 API version detected: New API. Switching to 'underlying'.", 'info');
-                        } else if (apiParam === 'underlying' && errorMsg.includes("underlying")) {
-                            apiParam = 'symbol';
-                            addBotLog("🔁 API version detected: Legacy API. Switching to 'symbol'.", 'info');
-                        }
-
-                        botExecuting = false;
-                        botCompletedCount = 0;
-                        pendingProposals.clear();
-
-                        if (retrySignal) {
-                            setTimeout(() => {
-                                addBotLog(`🔄 Retrying ${bulkCount} trades with ${apiParam}...`, 'info');
-                                triggerBulkTrades(retrySignal);
-                            }, 500);
-                        }
-                    } else {
-                        pendingProposals.delete(req_id);
-                        botCompletedCount++;
-                        if (botCompletedCount >= bulkCount) {
-                            const totalTime = Date.now() - executionStartTime;
-                            addBotLog(`🏁 Bulk execution completed in ${totalTime}ms`, 'success');
-                            botExecuting = false;
-                            botCompletedCount = 0;
-                        }
-                    }
-                    return;
-                }
-
-                const buyMsg = {
-                    buy: proposalId,
-                    price: proposalObj.ask_price || 0,
-                    req_id: wsReqId++
-                };
-                ws.send(JSON.stringify(buyMsg));
-                if (pendingProposals.has(req_id)) {
-                    pendingProposals.get(req_id).proposalId = proposalId;
-                }
-                addBotLog(`Proposal ${req_id} received, buying...`, 'info');
-            }
-        }
-
-        function handleBuyResponse(data) {
-            if (data.msg_type === 'buy') {
-                if (data.buy) {
-                    addBotLog(`✅ Buy successful for contract ${data.buy.contract_id}`, 'success');
-                } else if (data.error) {
-                    addBotLog(`❌ Buy failed: ${data.error.message}`, 'error');
-                }
-                botCompletedCount++;
-                if (botCompletedCount >= bulkCount) {
-                    const totalTime = Date.now() - executionStartTime;
-                    addBotLog(`🏁 Bulk execution completed in ${totalTime}ms`, 'success');
-                    botExecuting = false;
-                    botCompletedCount = 0;
-                }
-            }
+            container.innerHTML = logs.slice(0, 20).map(r => {
+                const time = new Date(r.time).toLocaleTimeString();
+                return `<div class="rejection-item">
+                            <span class="rej-time">${time}</span>
+                            <span class="rej-reason">${r.reason}</span>
+                            ${r.detail ? ` — <span class="rej-detail">${r.detail}</span>` : ''}
+                        </div>`;
+            }).join('');
         }
 
         // ─── TICK PROCESSING ───
@@ -2443,7 +2364,6 @@
                 return m[currentMarket] || 3;
             })();
 
-            // Use the Python-style addTick
             const lastDigit = engine.addTick(tick.quote, decimals);
             if (lastDigit === null) return;
 
@@ -2451,11 +2371,21 @@
             lastDigits.push(lastDigit);
             if (lastDigits.length > 60) lastDigits.shift();
 
-            // Sync params on each tick (in case user changed them)
             syncEngineParams();
-
-            // Update ability guide on every tick
             renderAbilityGuide();
+
+            // Check circuit breaker
+            if (learningState.consecutiveLosses >= 5) {
+                // Pause signal generation
+                if (activeSignal && activeSignal.status === 'PREP') {
+                    // If we have a pending signal, maybe cancel?
+                }
+                // Do not generate new signals
+                renderTickFeed();
+                renderDigitHistory();
+                updateStats();
+                return;
+            }
 
             if (activeSignal && activeSignal.status === 'LIVE') {
                 activeSignal.elapsed++;
@@ -2474,6 +2404,7 @@
                     stats.total++;
                     if (won) stats.won++;
                     updateLearning(activeSignal.strategy, won);
+                    logSignal(activeSignal, activeSignal.status);
                     signalLog.unshift({
                         entryDigit: activeSignal.entryDigit,
                         recoveryDigit: activeSignal.recoveryDigit || activeSignal.recoveryPrediction,
@@ -2498,7 +2429,7 @@
             }
             if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
 
-            // ─── Generate signal using Python-style engine ───
+            // ─── Generate signal ───
             if (engine.digitsHistory.length >= 40 && engineRunning) {
                 let result = null;
                 if (currentStrategy === 'matches') {
@@ -2507,8 +2438,8 @@
                     result = engine.generateEvenOddSignal();
                 }
 
-                // For matches, we already have threshold check inside generateMatchesSignal
                 if (result && result.confidence >= 60) {
+                    // Check if we have a circuit breaker (already checked above)
                     activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
                     beep(880, 0.3);
                     setTimeout(() => beep(1100, 0.2), 250);
@@ -2529,7 +2460,6 @@
                             beep(1500, 0.15);
                             if (!hasSaidGoTime) { speak('Go time', 1.3, 1.2);
                                 hasSaidGoTime = true; }
-                            triggerBulkTrades(activeSignal);
                             renderSignal();
                         }
                     }, 1000);
@@ -2555,6 +2485,8 @@
                 entropy = engine.calculateEntropy().toFixed(2);
             }
             document.getElementById('guide-entropy').textContent = `Entropy: ${entropy}`;
+            // Show adaptive status
+            document.getElementById('guide-adaptive').textContent = `Adaptive: ON`;
 
             if (n === 0) {
                 container.innerHTML =
@@ -2684,7 +2616,6 @@
                     '<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>';
                 return; }
             if (!activeSignal) {
-                // Show top 3 probabilities when idle
                 let topHtml = '';
                 if (engine.digitsHistory.length >= 40 && currentStrategy === 'matches') {
                     const probs = engine.getProbabilities();
@@ -2724,7 +2655,6 @@
                 return;
             }
 
-            // Build top 3 display for matches
             let top3Html = '';
             if (isMatches && sig.top3) {
                 top3Html = `<div class="top-probs-display">${sig.top3.map(t => 
@@ -2791,7 +2721,6 @@
             $('stat-acc').textContent = stats.total > 0 ? Math.round((stats.won / stats.total) * 100) + '%' : '--';
             $('stat-digit').textContent = currentPrice ? currentPrice.digit : '--';
             $('stat-evenodd').textContent = currentPrice ? (currentPrice.digit % 2 === 0 ? 'EVEN' : 'ODD') : '--';
-            // Update top digit from engine
             if (engine.digitsHistory.length >= 40) {
                 const probs = engine.getProbabilities();
                 let best = -1,
@@ -2804,6 +2733,8 @@
             } else {
                 $('stat-topdigit').textContent = '--';
             }
+            // Update risk panel
+            updateRiskPanel();
         }
 
         // ─── ENGINE CONTROL ───
@@ -2835,13 +2766,13 @@
                 tag.style.color = 'var(--gold)';
                 tag.style.background = 'rgba(255,215,0,0.08)';
                 tag.style.border = '1px solid rgba(255,215,0,0.25)';
-                title.textContent = 'MATCHES OUTPUT (Python Engine)';
+                title.textContent = 'MATCHES OUTPUT (Adaptive)';
             } else {
                 tag.textContent = 'EVEN/ODD';
                 tag.style.color = 'var(--purple)';
                 tag.style.background = 'rgba(168,85,247,0.08)';
                 tag.style.border = '1px solid rgba(168,85,247,0.25)';
-                title.textContent = 'EVEN/ODD OUTPUT';
+                title.textContent = 'EVEN/ODD OUTPUT (Streak Filter)';
             }
             activeSignal = null;
             if (prepInterval) clearInterval(prepInterval);
@@ -2861,42 +2792,50 @@
         }
 
         // ─── INIT ───
-        function initBot() {
-            setBotMode('evenodd');
-            document.getElementById('bulk-count').addEventListener('input', function() {
-                bulkCount = parseInt(this.value);
-                document.getElementById('bulk-count-display').textContent = bulkCount;
-            });
-            // Sync params on input change
-            ['payoutMultiplier', 'marginPct', 'alphaSmooth'].forEach(id => {
-                $(id).addEventListener('input', () => {
-                    if (engineRunning) syncEngineParams();
-                });
-            });
-        }
-
         function init() {
             renderMarkets();
             renderSignal();
             updateStats();
             renderDigitHistory();
             renderLog();
+            renderRejectionLog();
             updateStatus('idle', 'OFFLINE');
             updateEngineBtn();
             const loaded = loadStoredToken();
             handleOAuthCallback();
-            initBot();
             renderAbilityGuide();
             syncEngineParams();
+            // Listen for param changes
+            ['payoutMultiplier', 'marginPct', 'alphaSmooth'].forEach(id => {
+                $(id).addEventListener('input', () => {
+                    if (engineRunning) syncEngineParams();
+                });
+            });
             if (!loaded) {
                 showError('No token found. Please login with OAuth or paste a PAT.');
             }
-            // Force a sync after a moment
-            setTimeout(syncEngineParams, 500);
+            // Load signal history from stored state
+            if (learningState.signalHistory.length > 0) {
+                // Rebuild signalLog from stored history (up to 15)
+                signalLog = learningState.signalHistory.slice(0, 15).map(s => ({
+                    entryDigit: s.entryDigit,
+                    recoveryDigit: s.recoveryDigit,
+                    confidence: s.confidence,
+                    status: s.status,
+                    parity: s.parity,
+                    time: new Date(s.time).toLocaleTimeString()
+                }));
+                renderLog();
+                // Update stats from history
+                const total = learningState.signalHistory.length;
+                const wins = learningState.signalHistory.filter(s => s.status === 'WON').length;
+                stats.total = total;
+                stats.won = wins;
+                updateStats();
+            }
+            console.log('🚀 Flowstate Pro v3 — No Bot, Enhanced with Adaptive Thresholds, Rejection Logging, Kelly, Streak Filter, Persistent Storage');
         }
         init();
-        console.log('🚀 Flowstate Pro v2 — Python Engine Integrated');
-        console.log('💡 Matches signal now uses threshold-based evaluation (break-even + margin)');
     </script>
 </body>
 </html>
