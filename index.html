@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flowstate Pro + Auto Bulk Trader</title>
+    <title>Flowstate Pro + Auto Bulk Trader v2 (Python Engine Integrated)</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <style>
         /* ── root ── */
@@ -183,6 +183,13 @@
         }
         .btn-connect.connected {
             background: linear-gradient(135deg, #16a34a, #15803d);
+        }
+        .btn-oauth {
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            color: var(--gold);
+            background: rgba(255, 215, 0, 0.05);
+            font-size: 8px;
+            padding: 6px 12px;
         }
         .btn-engine {
             width: 100%;
@@ -682,7 +689,7 @@
         }
         .stats-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
             gap: 6px;
             margin-bottom: 12px;
         }
@@ -737,7 +744,7 @@
             color: var(--text);
             font-family: 'Share Tech Mono', monospace;
             font-size: 11px;
-            min-width: 200px;
+            min-width: 260px;
             flex: 1;
         }
         .token-section input:focus {
@@ -766,7 +773,7 @@
         }
         @media(max-width:600px) {
             .stats-row {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1fr 1fr 1fr;
             }
             .signal-meta {
                 grid-template-columns: 1fr 1fr;
@@ -1170,6 +1177,83 @@
                 width: 60px;
             }
         }
+
+        /* ─── NEW: PYTHON ENGINE CONTROLS ─── */
+        .engine-config {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+        .engine-config label {
+            font-size: 8px;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .engine-config input {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            width: 100%;
+        }
+        .engine-config input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .top-probs-display {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 6px 0;
+        }
+        .top-prob-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 3px 10px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .top-prob-item .digit {
+            color: var(--accent);
+        }
+        .top-prob-item .pct {
+            color: var(--gold);
+        }
+
+        .threshold-display {
+            font-size: 9px;
+            color: var(--text2);
+            text-align: center;
+            margin-top: 4px;
+        }
+        .threshold-display strong {
+            color: var(--warning);
+        }
+
+        @media(max-width:600px) {
+            .engine-config {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stats-row {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1184,7 +1268,7 @@
                 </div>
                 <div>
                     <div class="logo-text">FLOWSTATE</div>
-                    <div class="logo-sub">Matches &amp; Even/Odd Engine</div>
+                    <div class="logo-sub">Matches &amp; Even/Odd Engine v2</div>
                 </div>
             </div>
             <div class="header-actions">
@@ -1193,20 +1277,20 @@
                     <span id="status-text">OFFLINE</span>
                 </div>
                 <button class="btn btn-connect" id="btn-connect" onclick="toggleConnection()">⚡ CONNECT</button>
+                <button class="btn btn-oauth" onclick="startOAuth('login')">🔑 LOGIN</button>
+                <button class="btn btn-oauth" onclick="startOAuth('signup')">📝 SIGN UP</button>
             </div>
         </div>
 
         <!-- ─── TOKEN SECTION ─── -->
         <div class="token-section">
-            <input type="text" id="patInput" placeholder="Access token (PAT or OAuth2)" style="flex:2;min-width:200px;" />
-            <input type="text" id="appIdInput" placeholder="Deriv App ID (for PAT only)" style="flex:1;min-width:120px;" />
-            <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect</button>
+            <input type="text" id="patInput" placeholder="Paste your PAT token here (starts with pat_...)" style="flex:1;min-width:200px;" />
+            <button class="btn btn-connect" id="patConnectBtn" onclick="connectWithPAT()">🔐 Connect PAT</button>
             <select class="account-select" id="accountSelect" style="min-width:120px;">
                 <option value="">Select account</option>
             </select>
             <button class="btn mode-toggle" id="modeToggleBtn" onclick="toggleMode()">MODE: <strong id="modeLabel">DEMO</strong></button>
             <button class="btn" onclick="disconnect()" style="color:var(--danger);border-color:var(--danger);font-size:9px;padding:4px 12px;">🚫 Disconnect</button>
-            <button class="btn" onclick="clearCredentials()" style="color:var(--warning);border-color:var(--warning);font-size:9px;padding:4px 12px;">🗑 Clear</button>
         </div>
 
         <!-- ─── STRATEGY TABS ─── -->
@@ -1221,6 +1305,8 @@
             <div class="stat-box"><div class="stat-val" style="color:var(--gold)" id="stat-acc">--</div><div class="stat-lbl">Win Rate</div></div>
             <div class="stat-box"><div class="stat-val" style="color:var(--accent)" id="stat-digit">--</div><div class="stat-lbl">Last Digit</div></div>
             <div class="stat-box"><div class="stat-val" style="color:var(--purple)" id="stat-evenodd">--</div><div class="stat-lbl">Even/Odd</div></div>
+            <div class="stat-box"><div class="stat-val" style="color:var(--warning)" id="stat-threshold">--</div><div class="stat-lbl">Threshold</div></div>
+            <div class="stat-box"><div class="stat-val" style="color:var(--accent3)" id="stat-topdigit">--</div><div class="stat-lbl">Top Digit</div></div>
         </div>
 
         <div class="error-msg" id="error-msg"></div>
@@ -1249,6 +1335,19 @@
             <!-- right panel -->
             <div class="right-panel">
                 <button class="btn-engine start" id="btn-engine" onclick="toggleEngine()">▶ START ENGINE</button>
+
+                <!-- ─── PYTHON ENGINE CONFIG ─── -->
+                <div class="engine-config">
+                    <label>Payout Multiplier
+                        <input type="number" id="payoutMultiplier" value="9.0" step="0.1" min="2" max="50" />
+                    </label>
+                    <label>Margin (%)
+                        <input type="number" id="marginPct" value="2.0" step="0.1" min="0" max="10" />
+                    </label>
+                    <label>Alpha (smoothing)
+                        <input type="number" id="alphaSmooth" value="5.0" step="0.5" min="1" max="20" />
+                    </label>
+                </div>
 
                 <!-- digit stream -->
                 <div class="panel-card">
@@ -1368,18 +1467,13 @@
 
     <script>
         // ============================================================
-        //  FLOWSTATE PRO + AUTO BULK TRADER  +  ABILITY GUIDE
-        //  Updated for Deriv Options API (REST + OTP WebSocket)
-        //  Includes Deriv-App-ID header for PAT tokens
+        //  FLOWSTATE PRO + AUTO BULK TRADER  +  PYTHON ENGINE INTEGRATION
+        //  v2 — Improved Matches Signal with threshold-based evaluation
         // ============================================================
 
-        const REST_BASE_URL = 'https://api.derivws.com';
-
-        // ─── PYTHON MATCHES ENGINE CONSTANTS ───
-        const PYTHON_WINDOW_SIZE = 100;
-        const PYTHON_ALPHA = 5.0;
-        const PYTHON_PAYOUT_MULTIPLIER = 9.0;
-        const PYTHON_MARGIN = 0.02;
+        const DERIV_APP_ID = '34h5thRsVU9aLKUJjJLYh';
+        const BACKEND_URL = '';
+        const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
         // ─── SELF-LEARNING STATE ───
         let learningState = {
@@ -1402,34 +1496,155 @@
             if (s.recent.length > 50) s.recent.shift();
         }
 
-        // ─── STATISTICAL ENGINE ───
+        // ─── STATISTICAL ENGINE (Python-style enhanced) ───
         class StatisticalEngine {
             constructor() {
                 this.reset();
-                this.windowSize = PYTHON_WINDOW_SIZE;
-                this.alpha = PYTHON_ALPHA;
-                this.payoutMultiplier = PYTHON_PAYOUT_MULTIPLIER;
-                this.margin = PYTHON_MARGIN;
+                // Python-style parameters
+                this.alpha = 5.0;
+                this.payoutMultiplier = 9.0;
+                this.margin = 0.02;
+                this.windowSize = 100;
             }
+
             reset() {
                 this.ticks = [];
                 this.digits = [];
-                this.transitionMatrix = Array.from({ length: 10 }, () => Array(10).fill(0));
+                this.freqCounts = new Array(10).fill(0);
+                this.transCounts = Array.from({ length: 10 }, () => new Array(10).fill(0));
+                this.transTotals = new Array(10).fill(0);
+                // Keep a rolling window of digits for transition tracking
+                this.digitsHistory = [];
             }
-            addTick(price, decimals) {
-                const priceStr = price.toFixed(decimals);
-                const lastDigit = parseInt(priceStr.slice(-1));
-                if (this.digits.length > 0) this.transitionMatrix[this.digits[this.digits.length - 1]][lastDigit]++;
-                this.ticks.push({ price, digit: lastDigit, time: Date.now() });
-                this.digits.push(lastDigit);
-                if (this.ticks.length > 2000) {
-                    this.ticks.shift();
-                    this.digits.shift();
+
+            setParams(alpha, payoutMultiplier, marginPct) {
+                this.alpha = alpha;
+                this.payoutMultiplier = payoutMultiplier;
+                this.margin = marginPct / 100;
+            }
+
+            // ─── Python-style digit extraction ───
+            extractLastDigit(quote, precision) {
+                try {
+                    const value = Number(quote);
+                    const factor = Math.pow(10, precision);
+                    const rounded = Math.round(value * factor) / factor;
+                    const formatted = rounded.toFixed(precision);
+                    const lastChar = formatted[formatted.length - 1];
+                    const digit = parseInt(lastChar);
+                    return { digit, formatted };
+                } catch (e) {
+                    return { digit: null, formatted: String(quote) };
                 }
-                return lastDigit;
             }
-            getWeightedFrequency(window = 150) {
-                const d = this.digits.slice(-window);
+
+            // ─── Add tick with rolling window management ───
+            addTick(price, decimals) {
+                const { digit, formatted } = this.extractLastDigit(price, decimals);
+                if (digit === null || isNaN(digit) || digit < 0 || digit > 9) return null;
+
+                // If window is full, remove oldest
+                if (this.digitsHistory.length >= this.windowSize) {
+                    const oldDigit = this.digitsHistory.shift();
+                    this.freqCounts[oldDigit]--;
+
+                    // Remove transition for the old digit (if there's a next digit)
+                    if (this.digitsHistory.length > 0) {
+                        const nextDigit = this.digitsHistory[0];
+                        this.transCounts[oldDigit][nextDigit]--;
+                        this.transTotals[oldDigit]--;
+                    }
+                }
+
+                // Add new digit
+                this.digitsHistory.push(digit);
+                this.freqCounts[digit]++;
+
+                // Add transition from previous digit (if exists)
+                if (this.digitsHistory.length > 1) {
+                    const prevDigit = this.digitsHistory[this.digitsHistory.length - 2];
+                    this.transCounts[prevDigit][digit]++;
+                    this.transTotals[prevDigit]++;
+                }
+
+                // Store in raw tick log
+                this.ticks.push({ price, digit, time: Date.now() });
+                this.digits.push(digit);
+                if (this.ticks.length > 2000) { this.ticks.shift();
+                    this.digits.shift(); }
+
+                return digit;
+            }
+
+            // ─── Python-style get_probabilities ───
+            getProbabilities() {
+                const probs = {};
+                const lastDigit = this.digitsHistory.length > 0 ? this.digitsHistory[this.digitsHistory.length - 1] : null;
+                const N = this.digitsHistory.length;
+
+                for (let d = 0; d < 10; d++) {
+                    // 1. Smoothed frequency probability
+                    let pFreq = 0.1;
+                    if (N > 0) {
+                        pFreq = (this.freqCounts[d] + this.alpha) / (N + 10 * this.alpha);
+                    }
+
+                    // 2. Smoothed transition probability (context-aware)
+                    let pTrans = 0.1;
+                    if (lastDigit !== null && this.transTotals[lastDigit] > 0) {
+                        const total = this.transTotals[lastDigit];
+                        pTrans = (this.transCounts[lastDigit][d] + this.alpha) / (total + 10 * this.alpha);
+                    }
+
+                    // Use transition if we have enough data, otherwise fallback to frequency
+                    if (lastDigit !== null && this.transTotals[lastDigit] > 20) {
+                        probs[d] = pTrans;
+                    } else {
+                        probs[d] = pFreq;
+                    }
+                }
+                return probs;
+            }
+
+            // ─── Python-style evaluate_signal ───
+            evaluateSignal(probs) {
+                const pBreakEven = 1.0 / this.payoutMultiplier;
+                const threshold = pBreakEven + this.margin;
+
+                let bestDigit = -1;
+                let bestProb = 0;
+                const top3 = [];
+
+                for (const [d, p] of Object.entries(probs)) {
+                    const digit = parseInt(d);
+                    if (p > bestProb) {
+                        bestProb = p;
+                        bestDigit = digit;
+                    }
+                }
+
+                // Build top 3
+                const sorted = Object.entries(probs).sort((a, b) => b[1] - a[1]);
+                for (let i = 0; i < Math.min(3, sorted.length); i++) {
+                    top3.push({ digit: parseInt(sorted[i][0]), prob: sorted[i][1] });
+                }
+
+                const isSignal = bestProb > threshold;
+
+                return {
+                    bestDigit,
+                    bestProb,
+                    threshold,
+                    isSignal,
+                    top3,
+                    pBreakEven,
+                    status: isSignal ? '🔥 SIGNAL' : '⏸️ NO TRADE'
+                };
+            }
+
+            // ─── Legacy methods for compatibility ───
+            getWeightedFrequency(windowSize) {
+                const d = this.digits.slice(-windowSize);
                 const counts = Array(10).fill(0);
                 d.forEach((digit, i) => {
                     const alpha = 0.05;
@@ -1439,13 +1654,15 @@
                 const total = counts.reduce((a, b) => a + b, 0) || 1;
                 return counts.map(c => c / total);
             }
-            getRecentFrequency(window = 15) {
-                const d = this.digits.slice(-window);
+
+            getRecentFrequency(windowSize) {
+                const d = this.digits.slice(-windowSize);
                 const counts = Array(10).fill(0);
                 d.forEach(digit => counts[digit]++);
                 const total = d.length || 1;
                 return counts.map(c => c / total);
             }
+
             getLastSeenDistances() {
                 const distances = new Array(10).fill(this.digits.length);
                 for (let i = this.digits.length - 1; i >= 0; i--) {
@@ -1456,8 +1673,9 @@
                 }
                 return distances;
             }
+
             calculateEntropy() {
-                if (this.digits.length < 100) return 3.32;
+                if (this.digits.length < 40) return 3.32;
                 const probs = this.getWeightedFrequency(100);
                 let entropy = 0;
                 for (let i = 0; i < 10; i++) {
@@ -1467,84 +1685,59 @@
                 }
                 return entropy;
             }
+
             getTransitions(from) {
-                const row = this.transitionMatrix[from] || Array(10).fill(0);
+                const row = this.transCounts[from] || Array(10).fill(0);
                 const total = row.reduce((a, b) => a + b, 0) || 1;
                 return row.map(x => x / total);
             }
 
-            // ─── Python-inspired Matches Signal Generator ───
-            generateMatchesSignalPython() {
+            // ─── Enhanced Matches signal using Python threshold engine ───
+            generateMatchesSignal() {
                 const n = this.digits.length;
-                if (n < 20) return null;
+                if (n < 40) return null;
 
-                const windowDigits = this.digits.slice(-this.windowSize);
-                const totalWindow = windowDigits.length;
-                if (totalWindow === 0) return null;
+                // Get probabilities from Python-style engine
+                const probs = this.getProbabilities();
+                const result = this.evaluateSignal(probs);
 
-                const freqCounts = Array(10).fill(0);
-                windowDigits.forEach(d => freqCounts[d]++);
+                if (!result.isSignal) return null;
 
-                const transCounts = Array.from({ length: 10 }, () => Array(10).fill(0));
-                const transTotals = Array(10).fill(0);
-                for (let i = 1; i < windowDigits.length; i++) {
-                    const prev = windowDigits[i - 1];
-                    const curr = windowDigits[i];
-                    transCounts[prev][curr]++;
-                    transTotals[prev]++;
-                }
+                // Get secondary digit for recovery
+                const top3 = result.top3;
+                const recoveryDigit = top3.length > 1 ? top3[1].digit : result.bestDigit;
 
-                const lastDigit = windowDigits[windowDigits.length - 1];
-                const threshold = 1.0 / this.payoutMultiplier + this.margin;
+                // Calculate confidence
+                const confidence = Math.round(result.bestProb * 100);
+                const recoveryConf = Math.round((top3.length > 1 ? top3[1].prob : result.bestProb * 0.7) * 100);
 
-                const probs = new Array(10);
-                for (let d = 0; d < 10; d++) {
-                    const p_freq = (freqCounts[d] + this.alpha) / (totalWindow + 10 * this.alpha);
-                    let p = p_freq;
-                    if (transTotals[lastDigit] > 20) {
-                        const p_trans = (transCounts[lastDigit][d] + this.alpha) / (transTotals[lastDigit] + 10 * this.alpha);
-                        p = p_trans;
-                    }
-                    probs[d] = p;
-                }
-
-                let bestDigit = 0, secondDigit = 1;
-                if (probs[0] < probs[1]) { bestDigit = 1; secondDigit = 0; }
-                for (let d = 2; d < 10; d++) {
-                    if (probs[d] > probs[bestDigit]) {
-                        secondDigit = bestDigit;
-                        bestDigit = d;
-                    } else if (probs[d] > probs[secondDigit]) {
-                        secondDigit = d;
-                    }
-                }
-
-                const bestProb = probs[bestDigit];
-                if (bestProb <= threshold) return null;
-
-                let confidence = Math.round(((bestProb - threshold) / (1 - threshold)) * 43 + 55);
-                confidence = Math.max(55, Math.min(98, confidence));
+                // Apply performance factor
                 const perfFactor = getPerformanceFactor('matches');
-                confidence = Math.round(confidence * perfFactor);
-                confidence = Math.max(55, Math.min(98, confidence));
+                const adjustedConf = Math.min(98, Math.max(55, Math.round(confidence * perfFactor)));
 
-                const secondProb = probs[secondDigit];
-                let recoveryConf = Math.min(85, Math.round(secondProb * 100));
-                recoveryConf = Math.max(40, recoveryConf);
-
+                // Additional data for display
                 const entropy = this.calculateEntropy();
+                const recentFreq = this.getRecentFrequency(15);
+                const hotPct = recentFreq[result.bestDigit] * 100;
 
                 return {
-                    predictedDigit: bestDigit,
-                    entryDigit: bestDigit,
-                    recoveryDigit: secondDigit,
-                    confidence: confidence,
-                    recoveryConfidence: recoveryConf,
-                    reason: `Prob ${(bestProb*100).toFixed(1)}% vs threshold ${(threshold*100).toFixed(1)}% (Entropy ${entropy.toFixed(2)})`,
-                    strategy: 'matches'
+                    predictedDigit: result.bestDigit,
+                    entryDigit: result.bestDigit,
+                    recoveryDigit: recoveryDigit,
+                    confidence: adjustedConf,
+                    recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
+                    reason: `${result.bestDigit} hot (${hotPct.toFixed(0)}% in 15, Entropy ${entropy.toFixed(2)})`,
+                    strategy: 'matches',
+                    // Python engine details
+                    threshold: result.threshold,
+                    pBreakEven: result.pBreakEven,
+                    top3: result.top3,
+                    rawProb: result.bestProb,
+                    status: result.status
                 };
             }
 
+            // ─── Even/Odd signal (kept from original) ───
             generateEvenOddSignal() {
                 const n = this.digits.length;
                 if (n < 40) return null;
@@ -1594,17 +1787,14 @@
                     const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
                     const range = Math.max(...scores) - Math.min(...scores) || 1;
                     const digitDominance = (scores[topDominant] - avgScore) / range;
-
                     const entropy = this.calculateEntropy();
                     const baseThreshold = entropy > 3.0 ? 75 : 65;
-
                     let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
                     confidence = Math.min(98, Math.round(confidence));
                     const perfFactor = getPerformanceFactor('evenodd');
                     confidence = Math.round(confidence * perfFactor);
                     confidence = Math.max(55, Math.min(98, confidence));
                     if (confidence < baseThreshold || entropy > 3.3) return null;
-
                     const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
                     const recoveryConf = Math.round((scores[topOpposite] / (scores[topDominant] + 0.01)) * 80);
                     return {
@@ -1626,7 +1816,6 @@
         // ─── STATE ───
         let engine = new StatisticalEngine();
         let accessToken = null;
-        let derivAppId = localStorage.getItem('flowstate_app_id') || '';
         let ws = null;
         let wsConnected = false;
         let wsReqId = 1;
@@ -1646,7 +1835,6 @@
         let currentPrice = null;
         let voiceSynth = null;
         let audioCtx = null;
-        let isAuthorized = false;
 
         // bot state
         let botMode = 'evenodd';
@@ -1671,21 +1859,11 @@
 
         function hideError() { $('error-msg').style.display = 'none'; }
 
-        function clearCredentials() {
-            localStorage.removeItem('flowstate_token');
-            localStorage.removeItem('flowstate_app_id');
-            accessToken = null;
-            derivAppId = '';
-            $('patInput').value = '';
-            $('appIdInput').value = '';
-            $('accountSelect').innerHTML = '<option value="">Select account</option>';
-            disconnect();
-            showError('Credentials cleared');
-        }
-
         // ─── AUDIO / VOICE ───
         function initAudio() { if (!audioCtx) audioCtx = new(window.AudioContext || window.webkitAudioContext)(); }
+
         function initVoice() { if (!voiceSynth) voiceSynth = window.speechSynthesis; }
+
         function speak(text, rate = 1.0, pitch = 1.0) {
             if (!voiceSynth) initVoice();
             if (!voiceSynth) return;
@@ -1748,304 +1926,323 @@
                 b.className = 'btn-engine start'; }
         }
 
-        // ─── REST API FUNCTIONS ───
-        async function handleApiResponse(response) {
-            const text = await response.text();
-            let data;
+        // ─── ACCOUNT FETCHING ───
+        async function fetchAccounts(token) {
             try {
-                data = JSON.parse(text);
-            } catch {
-                throw new Error(`API error (${response.status}): ${text}`);
+                const resp = await fetch(`${BACKEND_URL}/api/accounts?token=${encodeURIComponent(token)}&appId=${DERIV_APP_ID}`);
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    throw new Error(`HTTP ${resp.status}: ${text.substring(0,100)}`);
+                }
+                const data = await resp.json();
+                const accountsArray = data.accounts?.data || data.accounts || data.data || data;
+                return Array.isArray(accountsArray) ? accountsArray : [];
+            } catch (e) {
+                console.error('Fetch accounts error:', e);
+                showError('Accounts fetch: ' + e.message);
+                return [];
             }
-            if (!response.ok) {
-                throw new Error(data.message || data.errors?.[0]?.message || `API error (${response.status})`);
-            }
-            return data;
         }
 
-        async function fetchAccountsREST(token) {
-            const headers = { 'Authorization': `Bearer ${token}` };
-            if (token.startsWith('pat_')) {
-                if (!derivAppId) throw new Error('Deriv App ID is required for PAT tokens. Please enter it.');
-                headers['Deriv-App-ID'] = derivAppId;
-            }
-            console.log('Fetching accounts with headers:', headers);
-            const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts`, { headers });
-            const data = await handleApiResponse(response);
-            // Ensure we always return an array
-            const accounts = data.accounts || data.data?.accounts || [];
-            return Array.isArray(accounts) ? accounts : [];
-        }
-
-        async function requestOtp(token, accountId) {
-            const headers = { 'Authorization': `Bearer ${token}` };
-            if (token.startsWith('pat_')) {
-                if (!derivAppId) throw new Error('Deriv App ID is required for PAT tokens. Please enter it.');
-                headers['Deriv-App-ID'] = derivAppId;
-            }
-            const response = await fetch(`${REST_BASE_URL}/trading/v1/options/accounts/${accountId}/otp`, {
-                method: 'POST',
-                headers
-            });
-            const data = await handleApiResponse(response);
-            return data.data?.url;
-        }
-
-        // ─── POPULATE ACCOUNT SELECT ───
         function populateAccountSelect(accounts) {
             const sel = $('accountSelect');
             sel.innerHTML = '<option value="">Select account</option>';
             accounts.forEach(acc => {
                 const opt = document.createElement('option');
-                opt.value = acc.account_id || acc.accountId || acc.loginid || acc.account;
-                const label = `${acc.account_id || acc.accountId || acc.loginid || acc.account} (${acc.currency || 'USD'}) - ${acc.balance || 0}`;
+                opt.value = acc.account_id || acc.accountId;
+                const label = `${acc.account_id || acc.accountId} (${acc.currency || 'USD'}) - ${acc.balance || 0}`;
                 opt.textContent = label;
                 sel.appendChild(opt);
             });
             if (accounts.length > 0) {
-                const demo = accounts.find(a => {
-                    const id = a.account_id || a.accountId || a.loginid || a.account || '';
-                    return id.startsWith('DOT') || id.startsWith('VRTC');
-                });
+                const demo = accounts.find(a => (a.account_id || a.accountId || '').startsWith('DOT'));
                 const selected = demo || accounts[0];
-                const id = selected.account_id || selected.accountId || selected.loginid || selected.account;
-                if (id) { sel.value = id;
-                    selectedAccountId = id; }
+                const id = selected.account_id || selected.accountId;
+                sel.value = id;
+                selectedAccountId = id;
+            } else {
+                showError('No accounts found – please check your token scopes.');
             }
         }
 
-        // ─── CONNECTION FLOW ───
-        async function connectWithPAT() {
-            const token = $('patInput').value.trim();
-            derivAppId = $('appIdInput').value.trim();
-            if (token.startsWith('pat_') && !derivAppId) {
-                showError('Deriv App ID is required for PAT tokens. Please enter it.');
-                return;
-            }
-            if (!token) { showError('Please paste an access token'); return; }
-            accessToken = token;
-            localStorage.setItem('flowstate_token', token);
-            if (derivAppId) localStorage.setItem('flowstate_app_id', derivAppId);
-            hideError();
-            updateStatus('connecting', 'FETCHING ACCOUNTS...');
-            updateConnectBtn('connecting');
-            try {
-                const accounts = await fetchAccountsREST(token);
-                if (!Array.isArray(accounts) || accounts.length === 0) {
-                    showError('No valid accounts found. Check token scopes.');
-                    updateStatus('error', 'NO ACCOUNTS');
-                    updateConnectBtn('offline');
-                    return;
-                }
-                populateAccountSelect(accounts);
-                const accountId = selectedAccountId || accounts[0].account_id || accounts[0].accountId || accounts[0].loginid || accounts[0].account;
-                if (!accountId) {
-                    showError('Could not determine account ID.');
-                    updateStatus('error', 'ACCOUNT ERROR');
-                    updateConnectBtn('offline');
-                    return;
-                }
-                selectedAccountId = accountId;
-                updateStatus('connecting', 'REQUESTING OTP...');
-                const wsUrl = await requestOtp(token, accountId);
-                if (!wsUrl) {
-                    showError('Failed to obtain WebSocket URL (no OTP).');
-                    updateStatus('error', 'OTP FAILED');
-                    updateConnectBtn('offline');
-                    return;
-                }
-                connectWebSocket(wsUrl);
-            } catch (err) {
-                console.error(err);
-                showError('Connection failed: ' + err.message);
-                updateStatus('error', 'AUTH FAILED');
-                updateConnectBtn('offline');
-            }
-        }
-
+        // ─── TOKEN & AUTH ───
         function toggleMode() {
             MODE = (MODE === 'DEMO') ? 'REAL' : 'DEMO';
             $('modeLabel').textContent = MODE;
             if (MODE === 'REAL') showError('⚠️ REAL MONEY MODE — use with caution');
             else hideError();
-            if (accessToken && selectedAccountId) {
-                disconnect(false);
-                setTimeout(async () => {
-                    try {
-                        const wsUrl = await requestOtp(accessToken, selectedAccountId);
-                        connectWebSocket(wsUrl);
-                    } catch (e) {
-                        showError('Reconnection failed: ' + e.message);
-                    }
-                }, 500);
+            if (accessToken && ws) {
+                if (ws) { ws.onclose = null;
+                    ws.close(); }
+                wsConnected = false;
+                setTimeout(() => connectWebSocket(accessToken), 500);
             }
+        }
+
+        function connectWithPAT() {
+            const token = $('patInput').value.trim();
+            if (!token) { showError('Please paste a PAT token'); return; }
+            if (!token.startsWith('pat_')) { showError('Token should start with "pat_"'); return; }
+            accessToken = token;
+            localStorage.setItem('flowstate_token', token);
+            hideError();
+            fetchAndConnect(token);
+        }
+
+        async function fetchAndConnect(token) {
+            const accounts = await fetchAccounts(token);
+            if (accounts.length === 0) {
+                showError('No accounts found. Ensure token has proper scopes.');
+                return;
+            }
+            populateAccountSelect(accounts);
+            const sel = $('accountSelect');
+            if (sel.value) {
+                selectedAccountId = sel.value;
+            } else {
+                selectedAccountId = accounts[0].account_id || accounts[0].accountId;
+                sel.value = selectedAccountId;
+            }
+            connectWebSocket(token);
         }
 
         function loadStoredToken() {
             const token = localStorage.getItem('flowstate_token');
-            const appId = localStorage.getItem('flowstate_app_id');
-            if (appId) { derivAppId = appId;
-                $('appIdInput').value = appId; }
             if (token) {
                 accessToken = token;
                 $('patInput').value = token;
-                fetchAccountsREST(token).then(accounts => {
-                    if (Array.isArray(accounts) && accounts.length > 0) {
+                fetchAccounts(token).then(accounts => {
+                    if (accounts.length > 0) {
                         populateAccountSelect(accounts);
                         const sel = $('accountSelect');
                         if (sel.value) selectedAccountId = sel.value;
                     }
-                }).catch(() => {});
+                });
                 return true;
             }
             return false;
         }
 
-        function disconnect(clearToken = true) {
+        function disconnect() {
             manualDisconnect = true;
             if (pingInterval) clearInterval(pingInterval);
             if (ws) { try { ws.close(); } catch (e) {} }
             ws = null;
             wsConnected = false;
             isConnected = false;
-            isAuthorized = false;
-            if (clearToken) {
-                accessToken = null;
-                localStorage.removeItem('flowstate_token');
-                $('patInput').value = '';
-                // Don't clear app ID from input, but keep in localStorage
-            }
+            accessToken = null;
+            localStorage.removeItem('flowstate_token');
             updateStatus('idle', 'OFFLINE');
             updateConnectBtn('offline');
             renderSignal();
             renderAbilityGuide();
         }
 
+        // ─── OAUTH 2.0 with PKCE ───
+        function generatePKCE() {
+            const array = new Uint8Array(64);
+            crypto.getRandomValues(array);
+            const codeVerifier = Array.from(array)
+                .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
+                .join('');
+            return crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier))
+                .then(hash => {
+                    const challenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_')
+                        .replace(/=+$/, '');
+                    return { codeVerifier, codeChallenge: challenge };
+                });
+        }
+
+        function startOAuth(action) {
+            generatePKCE().then(({ codeVerifier, codeChallenge }) => {
+                const state = crypto.getRandomValues(new Uint8Array(16))
+                    .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+                sessionStorage.setItem('pkce_code_verifier', codeVerifier);
+                sessionStorage.setItem('oauth_state', state);
+                const params = new URLSearchParams({
+                    response_type: 'code',
+                    client_id: DERIV_APP_ID,
+                    redirect_uri: REDIRECT_URI,
+                    scope: 'trade account_manage application_read payment',
+                    state: state,
+                    code_challenge: codeChallenge,
+                    code_challenge_method: 'S256'
+                });
+                if (action === 'signup') {
+                    params.append('prompt', 'registration');
+                }
+                window.location.href = `https://auth.deriv.com/oauth2/auth?${params.toString()}`;
+            });
+        }
+
+        function handleOAuthCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const state = params.get('state');
+            const error = params.get('error');
+            if (error) {
+                showError('OAuth error: ' + error);
+                return;
+            }
+            if (code && state) {
+                const storedState = sessionStorage.getItem('oauth_state');
+                if (state !== storedState) {
+                    showError('State mismatch – possible CSRF attack');
+                    return;
+                }
+                const codeVerifier = sessionStorage.getItem('pkce_code_verifier');
+                if (!codeVerifier) {
+                    showError('Missing code verifier');
+                    return;
+                }
+                fetch(`${BACKEND_URL}/api/exchange-oauth-code`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code: code,
+                            code_verifier: codeVerifier,
+                            redirect_uri: REDIRECT_URI
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.error) {
+                            showError('Token exchange failed: ' + data.error);
+                            return;
+                        }
+                        if (data.access_token) {
+                            accessToken = data.access_token;
+                            localStorage.setItem('flowstate_token', accessToken);
+                            sessionStorage.removeItem('pkce_code_verifier');
+                            sessionStorage.removeItem('oauth_state');
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            fetchAndConnect(accessToken);
+                        }
+                    })
+                    .catch(err => {
+                        showError('Backend exchange error: ' + err.message);
+                    });
+            }
+        }
+
         // ─── WEBSOCKET CONNECTION ───
-        function connectWebSocket(wsUrl) {
+        async function connectWebSocket(token) {
             manualDisconnect = false;
+            if (!selectedAccountId) {
+                showError('Please select an account first');
+                return;
+            }
             updateStatus('connecting', 'CONNECTING...');
             updateConnectBtn('connecting');
             hideError();
 
-            if (ws) {
-                try { ws.close(); } catch (e) {}
-                ws = null;
-            }
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/get-otp`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: token,
+                        accountId: selectedAccountId,
+                        appId: DERIV_APP_ID
+                    })
+                });
 
-            ws = new WebSocket(wsUrl);
-
-            ws.onopen = function() {
-                console.log('🔗 WebSocket connected');
-                wsConnected = true;
-                isConnected = true;
-                isAuthorized = true;
-                updateStatus('connected', 'SYNCED');
-                updateConnectBtn('connected');
-                if (!engineRunning) { engineRunning = true;
-                    updateEngineBtn(); }
-                subscribeTicks();
-                if (pingInterval) clearInterval(pingInterval);
-                pingInterval = setInterval(() => {
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ ping: 1 }));
-                    }
-                }, 30000);
-                renderSignal();
-                renderAbilityGuide();
-                console.log('✅ Connected and subscribed');
-            };
-
-            ws.onmessage = function(event) {
+                const rawText = await response.text();
+                let data;
                 try {
-                    const data = JSON.parse(event.data);
-                    if (data.ping) { ws.send(JSON.stringify({ pong: 1 })); return; }
-                    if (data.msg_type === 'tick') {
-                        if (data.tick && data.tick.symbol === currentMarket) {
-                            processTick(data.tick);
-                        }
-                    }
-                    if (data.error) {
-                        // Check if it's a proposal/buy error
-                        if (data.req_id && pendingProposals.has(data.req_id)) {
-                            const pending = pendingProposals.get(data.req_id);
-                            const errorMsg = data.error.message || 'Unknown';
-                            addBotLog(`❌ Trade ${pending.count}/${bulkCount} error: ${errorMsg}`, 'error');
-
-                            if (errorMsg.includes("Properties not allowed") || errorMsg.includes("barrier")) {
-                                if (apiParam === 'symbol') {
-                                    apiParam = 'underlying';
-                                    addBotLog("🔁 Switching API param to 'underlying'", 'info');
-                                } else if (apiParam === 'underlying') {
-                                    apiParam = 'symbol';
-                                    addBotLog("🔁 Switching API param to 'symbol'", 'info');
-                                }
-                                botExecuting = false;
-                                botCompletedCount = 0;
-                                pendingProposals.clear();
-                                if (retrySignal) {
-                                    setTimeout(() => {
-                                        addBotLog(`🔄 Retrying ${bulkCount} trades with ${apiParam}...`, 'info');
-                                        triggerBulkTrades(retrySignal);
-                                    }, 600);
-                                }
-                            } else {
-                                pendingProposals.delete(data.req_id);
-                                botCompletedCount++;
-                                if (botCompletedCount >= bulkCount) {
-                                    const totalTime = Date.now() - executionStartTime;
-                                    addBotLog(`🏁 Bulk execution completed in ${totalTime}ms`, 'success');
-                                    botExecuting = false;
-                                    botCompletedCount = 0;
-                                }
-                            }
-                            return;
-                        }
-                        showError('API Error: ' + data.error.message);
-                    }
-                    if (data.msg_type === 'proposal') {
-                        handleProposalResponse(data);
-                    }
-                    if (data.msg_type === 'buy') {
-                        handleBuyResponse(data);
-                    }
-                } catch (e) { console.warn('WS parse error', e); }
-            };
-
-            ws.onerror = function(err) {
-                console.error('WS error:', err);
-                if (!wsConnected) {
-                    updateStatus('error', 'CONN ERROR');
-                    showError('WebSocket connection error. Check your network and token.');
+                    data = JSON.parse(rawText);
+                } catch (e) {
+                    throw new Error(`Server returned non‑JSON: ${rawText.substring(0, 200)}`);
                 }
-            };
 
-            ws.onclose = function() {
-                if (pingInterval) clearInterval(pingInterval);
-                wsConnected = false;
-                isConnected = false;
-                isAuthorized = false;
-                updateStatus('error', 'RECONNECTING...');
-                updateConnectBtn('connecting');
-                if (accessToken && !manualDisconnect) {
-                    setTimeout(async () => {
-                        try {
-                            const wsUrl = await requestOtp(accessToken, selectedAccountId);
-                            connectWebSocket(wsUrl);
-                        } catch (e) {
-                            updateStatus('idle', 'OFFLINE');
-                            updateConnectBtn('offline');
-                            renderSignal();
-                            renderAbilityGuide();
+                if (!response.ok) {
+                    const errorMsg = data.error || data.raw || rawText.substring(0, 200);
+                    throw new Error(errorMsg);
+                }
+
+                if (!data.url) {
+                    throw new Error(`No WebSocket URL returned. Response: ${rawText.substring(0, 200)}`);
+                }
+
+                console.log('🔗 Connecting via OTP URL:', data.url);
+
+                ws = new WebSocket(data.url);
+
+                ws.onopen = function() {
+                    console.log('✅ WebSocket open');
+                    wsConnected = true;
+                    isConnected = true;
+                    updateStatus('connected', 'SYNCED');
+                    updateConnectBtn('connected');
+                    if (!engineRunning) { engineRunning = true;
+                        updateEngineBtn(); }
+                    // Sync engine params from UI
+                    syncEngineParams();
+                    subscribeTicks();
+                    if (pingInterval) clearInterval(pingInterval);
+                    pingInterval = setInterval(() => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ ping: 1 }));
                         }
-                    }, 3000);
-                } else {
-                    updateStatus('idle', 'OFFLINE');
-                    updateConnectBtn('offline');
+                    }, 30000);
                     renderSignal();
                     renderAbilityGuide();
-                }
-            };
+                };
+
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.ping) { ws.send(JSON.stringify({ pong: 1 })); return; }
+                        if (data.msg_type === 'tick') {
+                            if (data.tick && data.tick.symbol === currentMarket) {
+                                processTick(data.tick);
+                            }
+                        }
+                        if (data.error) {
+                            showError('API Error: ' + data.error.message);
+                            if (data.error.code === 'InvalidToken' || data.error.code === 'AuthorizationFailed') {
+                                showError('❌ Invalid token — please reconnect');
+                                disconnect();
+                            }
+                        }
+                        if (data.msg_type === 'proposal') {
+                            handleProposalResponse(data);
+                        }
+                        if (data.msg_type === 'buy') {
+                            handleBuyResponse(data);
+                        }
+                    } catch (e) { console.warn('WS parse error', e); }
+                };
+
+                ws.onerror = function(err) {
+                    console.error('WS error:', err);
+                    updateStatus('error', 'ERROR');
+                    showError('WebSocket error – check console');
+                };
+
+                ws.onclose = function() {
+                    if (pingInterval) clearInterval(pingInterval);
+                    wsConnected = false;
+                    isConnected = false;
+                    updateStatus('error', 'RECONNECTING...');
+                    updateConnectBtn('connecting');
+                    if (accessToken && !manualDisconnect) {
+                        setTimeout(() => connectWebSocket(accessToken), 3000);
+                    } else {
+                        updateStatus('idle', 'OFFLINE');
+                        updateConnectBtn('offline');
+                        renderSignal();
+                        renderAbilityGuide();
+                    }
+                };
+            } catch (err) {
+                console.error('Connection error:', err);
+                showError('WebSocket connection failed: ' + err.message);
+                updateStatus('error', 'FAILED');
+                updateConnectBtn('offline');
+            }
         }
 
         function subscribeTicks() {
@@ -2055,6 +2252,17 @@
                 subscribe: 1,
                 req_id: wsReqId++
             }));
+        }
+
+        function syncEngineParams() {
+            const payout = parseFloat($('payoutMultiplier').value) || 9.0;
+            const marginPct = parseFloat($('marginPct').value) || 2.0;
+            const alpha = parseFloat($('alphaSmooth').value) || 5.0;
+            engine.setParams(alpha, payout, marginPct);
+            // Update threshold display
+            const pBreakEven = 1.0 / payout;
+            const threshold = pBreakEven + (marginPct / 100);
+            $('stat-threshold').textContent = (threshold * 100).toFixed(1) + '%';
         }
 
         // ─── BOT FUNCTIONS ───
@@ -2076,9 +2284,6 @@
                 btn.textContent = '▶ START BOT';
                 btn.className = 'btn-engine start';
                 addBotLog('Bot stopped', 'info');
-                botExecuting = false;
-                botCompletedCount = 0;
-                pendingProposals.clear();
             }
         }
 
@@ -2102,10 +2307,6 @@
             }
             if (botExecuting) {
                 addBotLog('Already executing a bulk order, skipping', 'error');
-                return;
-            }
-            if (!isAuthorized || !ws || ws.readyState !== WebSocket.OPEN) {
-                addBotLog('Not connected — cannot trade', 'error');
                 return;
             }
 
@@ -2171,11 +2372,11 @@
                     const errorMsg = data.error?.message || 'Unknown';
                     addBotLog(`Proposal error: ${errorMsg}`, 'error');
 
-                    if (errorMsg.includes("Properties not allowed") || errorMsg.includes("barrier")) {
-                        if (apiParam === 'symbol') {
+                    if (errorMsg.includes("Properties not allowed")) {
+                        if (apiParam === 'symbol' && errorMsg.includes("symbol")) {
                             apiParam = 'underlying';
                             addBotLog("🔁 API version detected: New API. Switching to 'underlying'.", 'info');
-                        } else if (apiParam === 'underlying') {
+                        } else if (apiParam === 'underlying' && errorMsg.includes("underlying")) {
                             apiParam = 'symbol';
                             addBotLog("🔁 API version detected: Legacy API. Switching to 'symbol'.", 'info');
                         }
@@ -2241,11 +2442,19 @@
                     '1HZ75V': 2, '1HZ100V': 2 };
                 return m[currentMarket] || 3;
             })();
+
+            // Use the Python-style addTick
             const lastDigit = engine.addTick(tick.quote, decimals);
+            if (lastDigit === null) return;
+
             currentPrice = { digit: lastDigit };
             lastDigits.push(lastDigit);
             if (lastDigits.length > 60) lastDigits.shift();
 
+            // Sync params on each tick (in case user changed them)
+            syncEngineParams();
+
+            // Update ability guide on every tick
             renderAbilityGuide();
 
             if (activeSignal && activeSignal.status === 'LIVE') {
@@ -2289,8 +2498,16 @@
             }
             if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
 
-            if (engine.digits.length >= 40 && engineRunning) {
-                let result = currentStrategy === 'matches' ? engine.generateMatchesSignalPython() : engine.generateEvenOddSignal();
+            // ─── Generate signal using Python-style engine ───
+            if (engine.digitsHistory.length >= 40 && engineRunning) {
+                let result = null;
+                if (currentStrategy === 'matches') {
+                    result = engine.generateMatchesSignal();
+                } else {
+                    result = engine.generateEvenOddSignal();
+                }
+
+                // For matches, we already have threshold check inside generateMatchesSignal
                 if (result && result.confidence >= 60) {
                     activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
                     beep(880, 0.3);
@@ -2327,7 +2544,7 @@
         // ─── ABILITY GUIDE RENDER ───
         function renderAbilityGuide() {
             const container = document.getElementById('digit-distribution');
-            const digits = engine.digits;
+            const digits = engine.digitsHistory;
             const n = digits.length;
 
             document.getElementById('guide-sample-size').textContent = n;
@@ -2467,8 +2684,22 @@
                     '<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>';
                 return; }
             if (!activeSignal) {
+                // Show top 3 probabilities when idle
+                let topHtml = '';
+                if (engine.digitsHistory.length >= 40 && currentStrategy === 'matches') {
+                    const probs = engine.getProbabilities();
+                    const sorted = Object.entries(probs).sort((a, b) => b[1] - a[1]);
+                    const top3 = sorted.slice(0, 3);
+                    const pBreakEven = 1.0 / (parseFloat($('payoutMultiplier').value) || 9.0);
+                    const marginPct = parseFloat($('marginPct').value) || 2.0;
+                    const threshold = pBreakEven + (marginPct / 100);
+                    topHtml = `<div class="top-probs-display">${top3.map(([d,p]) => 
+                            `<span class="top-prob-item"><span class="digit">${d}</span> <span class="pct">${(p*100).toFixed(1)}%</span></span>`
+                        ).join('')}</div>
+                            <div class="threshold-display">Break-even: <strong>${(pBreakEven*100).toFixed(2)}%</strong> • Threshold: <strong>${(threshold*100).toFixed(2)}%</strong></div>`;
+                }
                 body.innerHTML =
-                    `<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}</div>`;
+                    `<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}${topHtml}</div>`;
                 return;
             }
             const sig = activeSignal,
@@ -2492,9 +2723,19 @@
                         </div>`;
                 return;
             }
+
+            // Build top 3 display for matches
+            let top3Html = '';
+            if (isMatches && sig.top3) {
+                top3Html = `<div class="top-probs-display">${sig.top3.map(t => 
+                        `<span class="top-prob-item"><span class="digit">${t.digit}</span> <span class="pct">${(t.prob*100).toFixed(1)}%</span></span>`
+                    ).join('')}</div>`;
+            }
+
             body.innerHTML = `<div class="signal-display signal-active">
                         <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${MARKET_NAMES[currentMarket]||''}</div>
                         <div class="strategy-badge ${badgeClass}">${badgeText}</div>
+                        ${top3Html}
                         <div class="big-signal-display">
                             <div class="big-signal-label">${isPrep?'🔊 SIGNAL FOUND - READY':'🔵 TRADE WINDOW ACTIVE'}</div>
                             <div class="three-digits-row">
@@ -2515,6 +2756,7 @@
                             </div>
                             ${isPrep?`<div class="big-countdown${sig.prepTime<=5?' urgent':''}">⏱ 00:${String(sig.prepTime).padStart(2,'0')}</div><div class="voice-alert${sig.prepTime<=5?' go':' ready'}">${sig.prepTime<=5?'⚡ GO TIME! ⚡':'🔊 READY'}</div>`:''}
                             ${isLive?`<div class="tick-progress" style="margin-top:14px;">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:8px;">Trade <strong>${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> NOW</div>`:''}
+                            ${isMatches && sig.threshold ? `<div class="threshold-display" style="margin-top:8px;">Break-even: <strong>${(sig.pBreakEven*100).toFixed(2)}%</strong> • Threshold: <strong>${(sig.threshold*100).toFixed(2)}%</strong> • Signal: <strong style="color:var(--accent3)">${(sig.rawProb*100).toFixed(1)}%</strong></div>` : ''}
                         </div>
                         <div class="signal-meta"><div class="meta-box"><div class="meta-val" style="color:var(--gold)">${sig.confidence}%</div><div class="meta-key">Confidence</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent)">${sig.reason}</div><div class="meta-key">Pattern</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent2)">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Timer':'Ticks'}</div></div></div>
                         <div class="confidence-bar-wrap"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:var(--text2);">Signal Strength</span><span style="color:var(--gold);font-weight:700;">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill${isMatches?'':' evenodd'}" style="width:${sig.confidence}%;"></div></div></div>
@@ -2549,14 +2791,38 @@
             $('stat-acc').textContent = stats.total > 0 ? Math.round((stats.won / stats.total) * 100) + '%' : '--';
             $('stat-digit').textContent = currentPrice ? currentPrice.digit : '--';
             $('stat-evenodd').textContent = currentPrice ? (currentPrice.digit % 2 === 0 ? 'EVEN' : 'ODD') : '--';
+            // Update top digit from engine
+            if (engine.digitsHistory.length >= 40) {
+                const probs = engine.getProbabilities();
+                let best = -1,
+                    bestP = 0;
+                for (const [d, p] of Object.entries(probs)) {
+                    if (p > bestP) { bestP = p;
+                        best = parseInt(d); }
+                }
+                $('stat-topdigit').textContent = best !== -1 ? best : '--';
+            } else {
+                $('stat-topdigit').textContent = '--';
+            }
         }
 
         // ─── ENGINE CONTROL ───
-        function toggleEngine() { engineRunning = !engineRunning;
-            updateEngineBtn(); if (engineRunning) { if (!isConnected) showError('Connect first');
-                else renderSignal(); } else { activeSignal = null; if (prepInterval) clearInterval(prepInterval);
+        function toggleEngine() {
+            engineRunning = !engineRunning;
+            updateEngineBtn();
+            if (engineRunning) {
+                if (!isConnected) showError('Connect first');
+                else {
+                    syncEngineParams();
+                    renderSignal();
+                }
+            } else {
+                activeSignal = null;
+                if (prepInterval) clearInterval(prepInterval);
                 prepInterval = null;
-                renderSignal(); } }
+                renderSignal();
+            }
+        }
 
         function switchStrategy(s) {
             currentStrategy = s;
@@ -2564,15 +2830,19 @@
             $('tab-evenodd').className = 'strategy-tab' + (s === 'evenodd' ? ' active-evenodd' : '');
             const tag = $('strategy-tag'),
                 title = $('signal-card-title');
-            if (s === 'matches') { tag.textContent = 'MATCHES';
+            if (s === 'matches') {
+                tag.textContent = 'MATCHES';
                 tag.style.color = 'var(--gold)';
                 tag.style.background = 'rgba(255,215,0,0.08)';
                 tag.style.border = '1px solid rgba(255,215,0,0.25)';
-                title.textContent = 'MATCHES OUTPUT'; } else { tag.textContent = 'EVEN/ODD';
+                title.textContent = 'MATCHES OUTPUT (Python Engine)';
+            } else {
+                tag.textContent = 'EVEN/ODD';
                 tag.style.color = 'var(--purple)';
                 tag.style.background = 'rgba(168,85,247,0.08)';
                 tag.style.border = '1px solid rgba(168,85,247,0.25)';
-                title.textContent = 'EVEN/ODD OUTPUT'; }
+                title.textContent = 'EVEN/ODD OUTPUT';
+            }
             activeSignal = null;
             if (prepInterval) clearInterval(prepInterval);
             prepInterval = null;
@@ -2581,9 +2851,14 @@
             renderAbilityGuide();
         }
 
-        function toggleConnection() { if (isConnected) disconnect();
-            else { const t = $('patInput').value.trim(); if (t) connectWithPAT();
-                else showError('Paste an access token first'); } }
+        function toggleConnection() {
+            if (isConnected) disconnect();
+            else {
+                const t = $('patInput').value.trim();
+                if (t) connectWithPAT();
+                else showError('Paste a PAT token first or use OAuth Login');
+            }
+        }
 
         // ─── INIT ───
         function initBot() {
@@ -2591,6 +2866,12 @@
             document.getElementById('bulk-count').addEventListener('input', function() {
                 bulkCount = parseInt(this.value);
                 document.getElementById('bulk-count-display').textContent = bulkCount;
+            });
+            // Sync params on input change
+            ['payoutMultiplier', 'marginPct', 'alphaSmooth'].forEach(id => {
+                $(id).addEventListener('input', () => {
+                    if (engineRunning) syncEngineParams();
+                });
             });
         }
 
@@ -2603,18 +2884,19 @@
             updateStatus('idle', 'OFFLINE');
             updateEngineBtn();
             const loaded = loadStoredToken();
+            handleOAuthCallback();
             initBot();
             renderAbilityGuide();
+            syncEngineParams();
             if (!loaded) {
-                showError('No token found. Please paste an access token to connect.');
+                showError('No token found. Please login with OAuth or paste a PAT.');
             }
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.getVoices();
-                window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
-            }
+            // Force a sync after a moment
+            setTimeout(syncEngineParams, 500);
         }
         init();
-        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready (Bearer + App ID)');
+        console.log('🚀 Flowstate Pro v2 — Python Engine Integrated');
+        console.log('💡 Matches signal now uses threshold-based evaluation (break-even + margin)');
     </script>
 </body>
 </html>
