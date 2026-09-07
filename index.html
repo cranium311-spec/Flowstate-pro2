@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Flowstate Pro + Auto Bulk Trader</title>
+    <title>Flowstate Pro + Auto Bulk Trader (v2 Ensemble)</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <style>
         /* ── root ── */
@@ -1177,6 +1177,58 @@
                 width: 60px;
             }
         }
+
+        /* ── NEW: Signal Score Panel (replaces old confidence) ── */
+        .signal-score-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+        }
+        .score-label {
+            font-family: 'Orbitron', monospace;
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: var(--text2);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .score-value {
+            font-family: 'Orbitron', monospace;
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--gold);
+        }
+        .score-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 6px 0;
+            font-size: 9px;
+            color: var(--text2);
+        }
+        .score-details span {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .classification {
+            font-family: 'Orbitron', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .classification.high-quality {
+            color: var(--success);
+        }
+        .classification.watch {
+            color: var(--warning);
+        }
+        .classification.no-trade {
+            color: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -1191,7 +1243,7 @@
                 </div>
                 <div>
                     <div class="logo-text">FLOWSTATE</div>
-                    <div class="logo-sub">Matches &amp; Even/Odd Engine</div>
+                    <div class="logo-sub">Ensemble Engine + Auto Bulk Trader</div>
                 </div>
             </div>
             <div class="header-actions">
@@ -1270,7 +1322,7 @@
                 </div>
 
                 <!-- help note -->
-                <div class="help-note"><strong>🔊 Voice Alerts:</strong><br />• "Ready" when signal found<br />• "Go Time" at countdown zero<br />• 3 digits: Predicted, Entry, Recovery</div>
+                <div class="help-note"><strong>🔊 Voice Alerts:</strong><br />• "Signal found" when candidate appears<br />• "Ready" after confirmation<br />• "Go Time" at countdown zero<br />• 3 digits: Predicted, Entry, Recovery</div>
 
                 <!-- ─── AUTO BULK TRADER ─── -->
                 <div class="bot-panel">
@@ -1375,18 +1427,24 @@
 
     <script>
         // ============================================================
-        //  FLOWSTATE PRO + AUTO BULK TRADER  +  ABILITY GUIDE
+        //  FLOWSTATE PRO + AUTO BULK TRADER + ENSEMBLE ENGINE v2
         // ============================================================
 
         const DERIV_APP_ID = '34h5thRsVU9aLKUJjJLYh';
         const BACKEND_URL = '';
         const REDIRECT_URI = 'https://flowstate-pro2-flowstate-s-projects2.vercel.app';
 
-        // ─── SELF-LEARNING STATE ───
+        // ─── SELF-LEARNING STATE (enhanced) ───
         let learningState = {
             matches: { total: 0, wins: 0, recent: [] },
             evenodd: { total: 0, wins: 0, recent: [] }
         };
+
+        // New: per-digit performance
+        let digitPerformance = {};
+
+        // New: learning database for context-aware learning
+        let learningDatabase = [];
 
         function getPerformanceFactor(strategy) {
             const s = learningState[strategy];
@@ -1403,12 +1461,74 @@
             if (s.recent.length > 50) s.recent.shift();
         }
 
-        // ─── STATISTICAL ENGINE ───
+        // Enhanced: store detailed signal result
+        function storeSignalResult(signal, result) {
+            const context = {
+                market: currentMarket,
+                strategy: signal.strategy,
+                predictedDigit: signal.predictedDigit,
+                entryDigit: signal.entryDigit,
+                recoveryDigit: signal.recoveryDigit,
+                prevDigit: engine.digits.length > 1 ? engine.digits[engine.digits.length - 2] : null,
+                prev3: engine.digits.slice(-4, -1),
+                prev5: engine.digits.slice(-6, -1),
+                signalScore: signal.signalScore || signal.confidence,
+                entropy: engine.calculateEntropy(),
+                regime: signal.regime || detectRegime(),
+                transitionProb: signal.transitionProb || null,
+                recentFreq: signal.recentFreq || null,
+                weightedFreq: signal.weightedFreq || null,
+                parity: signal.strategy === 'evenodd' ? signal.prediction : (signal.entryDigit % 2 === 0 ? 'EVEN' : 'ODD'),
+                streakLength: getCurrentStreakLength(),
+                timestamp: Date.now(),
+                result: result
+            };
+            learningDatabase.push(context);
+            if (learningDatabase.length > 10000) learningDatabase.shift();
+
+            // update per-digit performance
+            const key = `${context.strategy}_${context.entryDigit}_${context.prevDigit || 'none'}`;
+            if (!digitPerformance[key]) {
+                digitPerformance[key] = { wins: 0, total: 0 };
+            }
+            digitPerformance[key].total++;
+            if (result === 'WIN') digitPerformance[key].wins++;
+        }
+
+        function getRollingPerformance(strategy) {
+            const recent = learningDatabase.filter(d => d.strategy === strategy);
+            const windows = {
+                last20: recent.slice(-20),
+                last50: recent.slice(-50),
+                last100: recent.slice(-100),
+                last250: recent.slice(-250),
+                lifetime: recent
+            };
+            const getWinRate = arr => arr.length ? arr.filter(d => d.result === 'WIN').length / arr.length : 0.5;
+            const weighted =
+                (getWinRate(windows.last20) * 0.40) +
+                (getWinRate(windows.last50) * 0.25) +
+                (getWinRate(windows.last100) * 0.20) +
+                (getWinRate(windows.last250) * 0.10) +
+                (getWinRate(windows.lifetime) * 0.05);
+            return weighted;
+        }
+
+        function getDigitPerformance(strategy, digit, prevDigit) {
+            const key = `${strategy}_${digit}_${prevDigit || 'none'}`;
+            const perf = digitPerformance[key];
+            if (!perf || perf.total < 5) return null;
+            return perf.wins / perf.total;
+        }
+
+        // ─── STATISTICAL ENGINE (extended) ───
         class StatisticalEngine {
             constructor() { this.reset(); }
-            reset() { this.ticks = [];
+            reset() {
+                this.ticks = [];
                 this.digits = [];
-                this.transitionMatrix = Array.from({ length: 10 }, () => Array(10).fill(0)); }
+                this.transitionMatrix = Array.from({ length: 10 }, () => Array(10).fill(0));
+            }
             addTick(price, decimals) {
                 const priceStr = price.toFixed(decimals);
                 const lastDigit = parseInt(priceStr.slice(-1));
@@ -1463,74 +1583,117 @@
                 const total = row.reduce((a, b) => a + b, 0) || 1;
                 return row.map(x => x / total);
             }
+
+            // New: Generate ensemble signal for matches
             generateMatchesSignal() {
                 const n = this.digits.length;
-                if (n < 40) return null;
+                if (n < 100) return null; // minimum sample requirement
+
                 const currentDigit = this.digits[n - 1];
-                const last5 = this.digits.slice(-5);
-                const last5Counts = Array(10).fill(0);
-                last5.forEach(d => last5Counts[d]++);
+                const prevDigit = n > 1 ? this.digits[n - 2] : null;
+                const prev2Digit = n > 2 ? this.digits[n - 3] : null;
 
-                const weightedFreq = this.getWeightedFrequency(150);
-                const recentFreq = this.getRecentFrequency(15);
-                const mediumFreq = this.getRecentFrequency(50);
-                const lastSeen = this.getLastSeenDistances();
-                const maxDist = Math.max(...lastSeen, 1);
-                const transProbs = this.getTransitions(currentDigit);
+                // Multi-model ensemble
+                const models = {
+                    transition: this.getTransitions(currentDigit),
+                    markov2: getMarkovOrder2.call(this, currentDigit, prevDigit),
+                    markov3: getMarkovOrder3.call(this, currentDigit, prevDigit, prev2Digit),
+                    weightedFreq: this.getWeightedFrequency(150),
+                    recentFreq: this.getRecentFrequency(15),
+                    mediumFreq: this.getRecentFrequency(50),
+                    lastSeen: this.getLastSeenDistances(),
+                    entropy: this.calculateEntropy(),
+                    multiEntropy: getMultiWindowEntropy.call(this),
+                    regime: detectRegime.call(this)
+                };
 
-                let scores = Array(10).fill(0);
-                for (let i = 0; i < 10; i++) {
-                    const longTermScore = weightedFreq[i] * 30;
-                    const mediumScore = mediumFreq[i] * 25;
-                    const hotScore = recentFreq[i] * 25;
-                    const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 15;
-                    const transScore = transProbs[i] * 10;
-                    const last5Score = (last5Counts[i] / 5) * 10;
-                    scores[i] = longTermScore + mediumScore + hotScore + recentnessScore + transScore + last5Score;
+                // No trade for high entropy regimes or extreme uncertainty
+                if (models.regime === 'HIGH_ENTROPY' || models.multiEntropy.e20 > 3.3) {
+                    return { status: 'NO_TRADE', reason: 'High entropy regime', regime: models.regime, multiEntropy: models.multiEntropy };
                 }
 
-                const sorted = scores.map((s, i) => ({ digit: i, score: s })).sort((a, b) => b.score - a.score);
+                // Combine models with regime-specific weights
+                const weights = getRegimeWeights(models.regime);
+                const combinedScores = Array(10).fill(0);
+
+                // Transition model
+                models.transition.forEach((p, i) => combinedScores[i] += p * weights.transition * 100);
+
+                // Markov order 2
+                if (models.markov2) {
+                    models.markov2.forEach((p, i) => combinedScores[i] += p * weights.markov2 * 100);
+                }
+
+                // Markov order 3
+                if (models.markov3) {
+                    models.markov3.forEach((p, i) => combinedScores[i] += p * weights.markov3 * 100);
+                }
+
+                // Weighted frequency
+                models.weightedFreq.forEach((p, i) => combinedScores[i] += p * weights.weightedFreq * 100);
+
+                // Recent frequency
+                models.recentFreq.forEach((p, i) => combinedScores[i] += p * weights.recentFreq * 100);
+
+                // Last seen distance
+                const maxDist = Math.max(...models.lastSeen, 1);
+                models.lastSeen.forEach((d, i) => combinedScores[i] += (1 - d / maxDist) * weights.distance * 100);
+
+                // Probability gap check
+                const sorted = combinedScores.map((s, i) => ({ digit: i, score: s })).sort((a, b) => b.score - a.score);
                 const primary = sorted[0];
                 const secondary = sorted[1];
+                const gapRatio = (primary.score - secondary.score) / primary.score;
 
-                if ((primary.score - secondary.score) / primary.score < 0.15) return null;
+                if (gapRatio < 0.3) {
+                    return { status: 'NO_TRADE', reason: 'Insufficient probability gap', regime: models.regime, multiEntropy: models.multiEntropy };
+                }
 
-                const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
-                const range = Math.max(...scores) - Math.min(...scores) || 1;
-                const dominance = (primary.score - avgScore) / range;
-                const dominanceFactor = Math.min(1, dominance * 3);
+                // Signal score (replaces confidence)
+                const signalScore = calculateSignalScore({
+                    models,
+                    primary,
+                    secondary,
+                    gapRatio,
+                    strategy: 'matches',
+                    currentDigit,
+                    prevDigit
+                });
 
-                let confidence = Math.round(dominance * 50 + (recentFreq[primary.digit] * 30) + (mediumFreq[primary
-                    .digit] * 10) + (last5Counts[primary.digit] >= 2 ? 10 : 0));
-                confidence = Math.max(55, Math.min(98, confidence));
-                const perfFactor = getPerformanceFactor('matches');
-                confidence = Math.round(confidence * perfFactor);
-                confidence = Math.max(55, Math.min(98, confidence));
+                // Classification
+                const classification = classifySignal(signalScore, {
+                    agreement: calculateAgreement(models, primary.digit),
+                    entropy: models.entropy,
+                    regime: models.regime
+                }, n);
 
-                const entropy = this.calculateEntropy();
-                const hotDigitFrequency = recentFreq[primary.digit];
-                const isExtremeHot = hotDigitFrequency > 0.4;
-                let entropyLimit = 3.2;
-                if (dominance > 0.5 && isExtremeHot) entropyLimit = 3.5;
-
-                if (confidence < 60 || entropy > entropyLimit) return null;
-
-                let recoveryConf = Math.round(secondary.score / (primary.score + 0.01) * 80);
-                recoveryConf = Math.min(85, Math.max(40, recoveryConf));
+                if (classification === 'NO_TRADE') {
+                    return { status: 'NO_TRADE', reason: 'Weak signal', signalScore, regime: models.regime, multiEntropy: models.multiEntropy };
+                }
 
                 return {
                     predictedDigit: primary.digit,
                     entryDigit: primary.digit,
                     recoveryDigit: secondary.digit,
-                    confidence: confidence,
-                    recoveryConfidence: recoveryConf,
-                    reason: `${primary.digit} hot (${(hotDigitFrequency*100).toFixed(0)}% in 15, Entropy ${entropy.toFixed(2)})`,
-                    strategy: 'matches'
+                    signalScore: signalScore,
+                    classification: classification,
+                    gapRatio: gapRatio,
+                    regime: models.regime,
+                    entropy: models.entropy,
+                    multiEntropy: models.multiEntropy,
+                    reason: `${primary.digit} via ${models.regime} regime, gap ${(gapRatio*100).toFixed(0)}%`,
+                    strategy: 'matches',
+                    transitionProb: models.transition[primary.digit],
+                    recentFreq: models.recentFreq[primary.digit],
+                    weightedFreq: models.weightedFreq[primary.digit]
                 };
             }
+
+            // New: Generate ensemble signal for even/odd
             generateEvenOddSignal() {
                 const n = this.digits.length;
-                if (n < 40) return null;
+                if (n < 100) return null;
+
                 const recent35 = this.digits.slice(-35);
                 let evens = 0,
                     odds = 0;
@@ -1546,64 +1709,382 @@
                 const domRatio = Math.max(evenRatio, oddRatio);
                 const subRatio = Math.min(evenRatio, oddRatio);
                 const ratioDominance = domRatio - subRatio;
+
                 const last5 = recent35.slice(-5);
                 const lastEvens = last5.filter(d => d % 2 === 0).length;
                 const lastOdds = last5.filter(d => d % 2 !== 0).length;
                 const recentDominant = lastEvens > lastOdds ? 'EVEN' : 'ODD';
                 const recentSupport = dominant === 'EVEN' ? lastEvens : lastOdds;
-                if (domRatio > 0.58 && dominant === recentDominant && recentSupport >= 3) {
-                    const weightedFreq = this.getWeightedFrequency(150);
-                    const lastSeen = this.getLastSeenDistances();
-                    const maxDist = Math.max(...lastSeen, 1);
-                    const currentDigit = this.digits[n - 1];
-                    const transProbs = this.getTransitions(currentDigit);
-                    const last5Counts = Array(10).fill(0);
-                    last5.forEach(d => last5Counts[d]++);
-                    const scores = Array(10).fill(0);
-                    for (let i = 0; i < 10; i++) {
-                        const freqScore = weightedFreq[i] * 50;
-                        const recentnessScore = (1 - (lastSeen[i] / maxDist)) * 10;
-                        const transScore = transProbs[i] * 20;
-                        const recentScore = (last5Counts[i] / 5) * 20;
-                        scores[i] = freqScore + recentnessScore + transScore + recentScore;
+
+                // Requires dominance and agreement
+                if (domRatio > 0.55 && dominant === recentDominant && recentSupport >= 3) {
+                    const models = {
+                        weightedFreq: this.getWeightedFrequency(150),
+                        recentFreq: this.getRecentFrequency(15),
+                        lastSeen: this.getLastSeenDistances(),
+                        transition: this.getTransitions(this.digits[n - 1]),
+                        entropy: this.calculateEntropy(),
+                        multiEntropy: getMultiWindowEntropy.call(this),
+                        regime: detectRegime.call(this)
+                    };
+
+                    if (models.regime === 'HIGH_ENTROPY' || models.multiEntropy.e20 > 3.3) {
+                        return { status: 'NO_TRADE', reason: 'High entropy regime' };
                     }
+
+                    // Combine models for digit selection
+                    const weights = getRegimeWeights(models.regime);
+                    const combinedScores = Array(10).fill(0);
+                    models.weightedFreq.forEach((p, i) => combinedScores[i] += p * weights.weightedFreq * 100);
+                    models.recentFreq.forEach((p, i) => combinedScores[i] += p * weights.recentFreq * 100);
+                    const maxDist = Math.max(...models.lastSeen, 1);
+                    models.lastSeen.forEach((d, i) => combinedScores[i] += (1 - d / maxDist) * weights.distance * 100);
+                    models.transition.forEach((p, i) => combinedScores[i] += p * weights.transition * 100);
+
                     const isEven = (d) => d % 2 === 0;
                     const dominantDigits = Array.from({ length: 10 }, (_, i) => i)
                         .filter(d => (dominant === 'EVEN' ? isEven(d) : !isEven(d)));
                     const oppositeDigits = Array.from({ length: 10 }, (_, i) => i)
                         .filter(d => (dominant === 'EVEN' ? !isEven(d) : isEven(d)));
-                    const topDominant = dominantDigits.sort((a, b) => scores[b] - scores[a])[0];
-                    const topOpposite = oppositeDigits.sort((a, b) => scores[b] - scores[a])[0];
-                    const avgScore = scores.reduce((a, b) => a + b, 0) / 10;
-                    const range = Math.max(...scores) - Math.min(...scores) || 1;
-                    const digitDominance = (scores[topDominant] - avgScore) / range;
+                    const topDominant = dominantDigits.sort((a, b) => combinedScores[b] - combinedScores[a])[0];
+                    const topOpposite = oppositeDigits.sort((a, b) => combinedScores[b] - combinedScores[a])[0];
 
-                    const entropy = this.calculateEntropy();
-                    const baseThreshold = entropy > 3.0 ? 75 : 65;
+                    const gapRatio = (combinedScores[topDominant] - combinedScores[topOpposite]) / combinedScores[topDominant];
+                    if (gapRatio < 0.3) {
+                        return { status: 'NO_TRADE', reason: 'Insufficient probability gap' };
+                    }
 
-                    let confidence = 70 + (ratioDominance * 55) + (recentSupport * 4) + (digitDominance * 20);
-                    confidence = Math.min(98, Math.round(confidence));
-                    const perfFactor = getPerformanceFactor('evenodd');
-                    confidence = Math.round(confidence * perfFactor);
-                    confidence = Math.max(55, Math.min(98, confidence));
-                    if (confidence < baseThreshold || entropy > 3.3) return null;
+                    const signalScore = calculateSignalScore({
+                        models,
+                        primary: { digit: topDominant, score: combinedScores[topDominant] },
+                        secondary: { digit: topOpposite, score: combinedScores[topOpposite] },
+                        gapRatio,
+                        strategy: 'evenodd',
+                        currentDigit: this.digits[n - 1],
+                        prevDigit: n > 1 ? this.digits[n - 2] : null
+                    });
+
+                    const classification = classifySignal(signalScore, {
+                        agreement: calculateAgreement(models, topDominant),
+                        entropy: models.entropy,
+                        regime: models.regime
+                    }, n);
+
+                    if (classification === 'NO_TRADE') {
+                        return { status: 'NO_TRADE', reason: 'Weak signal', signalScore, regime: models.regime, multiEntropy: models.multiEntropy };
+                    }
 
                     const recovery = dominant === 'EVEN' ? 'ODD' : 'EVEN';
-                    const recoveryConf = Math.round((scores[topOpposite] / (scores[topDominant] + 0.01)) * 80);
                     return {
                         predictedDigit: topDominant,
                         entryDigit: topDominant,
                         recoveryDigit: topOpposite,
                         prediction: dominant,
                         recoveryPrediction: recovery,
-                        confidence: confidence,
-                        recoveryConfidence: Math.min(85, Math.max(40, recoveryConf)),
-                        reason: `${Math.round(domRatio * 100)}% ${dominant} dominance, Entropy ${entropy.toFixed(2)}`,
-                        strategy: 'evenodd'
+                        signalScore: signalScore,
+                        classification: classification,
+                        gapRatio: gapRatio,
+                        regime: models.regime,
+                        entropy: models.entropy,
+                        multiEntropy: models.multiEntropy,
+                        reason: `${Math.round(domRatio * 100)}% ${dominant} dominance`,
+                        strategy: 'evenodd',
+                        transitionProb: models.transition[topDominant],
+                        recentFreq: models.recentFreq[topDominant],
+                        weightedFreq: models.weightedFreq[topDominant]
                     };
                 }
                 return null;
             }
+        }
+
+        // ─── Additional helper functions (outside class) ───
+        function getMarkovOrder2(currentDigit, prevDigit) {
+            if (!prevDigit || this.digits.length < 3) return null;
+            const sequence = [prevDigit, currentDigit];
+            const occurrences = [];
+            for (let i = 0; i < this.digits.length - 1; i++) {
+                if (this.digits[i] === sequence[0] && this.digits[i + 1] === sequence[1]) {
+                    if (i + 2 < this.digits.length) occurrences.push(this.digits[i + 2]);
+                }
+            }
+            if (occurrences.length < 3) return null;
+            const counts = Array(10).fill(0);
+            occurrences.forEach(d => counts[d]++);
+            return counts.map(c => c / occurrences.length);
+        }
+
+        function getMarkovOrder3(currentDigit, prevDigit, prev2Digit) {
+            if (!prevDigit || !prev2Digit || this.digits.length < 4) return null;
+            const sequence = [prev2Digit, prevDigit, currentDigit];
+            const occurrences = [];
+            for (let i = 0; i < this.digits.length - 2; i++) {
+                if (this.digits[i] === sequence[0] &&
+                    this.digits[i + 1] === sequence[1] &&
+                    this.digits[i + 2] === sequence[2]) {
+                    if (i + 3 < this.digits.length) occurrences.push(this.digits[i + 3]);
+                }
+            }
+            if (occurrences.length < 3) return null;
+            const counts = Array(10).fill(0);
+            occurrences.forEach(d => counts[d]++);
+            return counts.map(c => c / occurrences.length);
+        }
+
+        function getMultiWindowEntropy() {
+            const windows = [20, 50, 100, 250];
+            const entropies = {};
+            windows.forEach(w => {
+                const slice = this.digits.slice(-w);
+                entropies[`e${w}`] = calculateEntropyFor(slice);
+            });
+            return {
+                e20: entropies.e20,
+                e50: entropies.e50,
+                e100: entropies.e100,
+                e250: entropies.e250,
+                trend: entropies.e20 - entropies.e100,
+                structure: entropies.e20 < entropies.e100 ? 'STRUCTURED' : 'RANDOMIZING'
+            };
+        }
+
+        function calculateEntropyFor(digits) {
+            if (digits.length < 10) return 3.32;
+            const counts = Array(10).fill(0);
+            digits.forEach(d => counts[d]++);
+            const total = digits.length;
+            let entropy = 0;
+            for (let i = 0; i < 10; i++) {
+                const p = counts[i] / total;
+                if (p > 0) entropy -= p * Math.log2(p);
+            }
+            return entropy;
+        }
+
+        function detectRegime() {
+            const digits = this.digits;
+            if (digits.length < 100) return 'INSUFFICIENT_DATA';
+            const recent20 = digits.slice(-20);
+            const recent50 = digits.slice(-50);
+            const entropy20 = calculateEntropyFor(recent20);
+            const entropy50 = calculateEntropyFor(recent50);
+            const alternationRate = calculateAlternationRate(recent20);
+            const streakRate = calculateStreakRate(recent20);
+            const clusteringRate = calculateClusteringRate(recent20);
+            const parityDominance = calculateParityDominance(recent50);
+            if (entropy20 > 3.2 && entropy50 > 3.2) return 'HIGH_ENTROPY';
+            if (alternationRate > 0.7) return 'ALTERNATING';
+            if (streakRate > 0.4) return 'STREAKING';
+            if (clusteringRate > 0.5) return 'CLUSTERING';
+            if (parityDominance > 0.65) return 'PARITY_DOMINANT';
+            if (entropy20 < 2.5 && entropy50 < 2.8) return 'STABLE';
+            return 'MIXED';
+        }
+
+        function calculateAlternationRate(digits) {
+            if (digits.length < 2) return 0;
+            let alternations = 0;
+            for (let i = 1; i < digits.length; i++) {
+                if (digits[i] !== digits[i - 1]) alternations++;
+            }
+            return alternations / (digits.length - 1);
+        }
+
+        function calculateStreakRate(digits) {
+            if (digits.length < 2) return 0;
+            let streakLengths = [];
+            let currentStreak = 1;
+            for (let i = 1; i < digits.length; i++) {
+                if (digits[i] === digits[i - 1]) currentStreak++;
+                else {
+                    streakLengths.push(currentStreak);
+                    currentStreak = 1;
+                }
+            }
+            streakLengths.push(currentStreak);
+            const maxStreak = Math.max(...streakLengths);
+            return maxStreak / digits.length;
+        }
+
+        function calculateClusteringRate(digits) {
+            if (digits.length < 3) return 0;
+            let clusters = 0;
+            for (let i = 0; i < digits.length - 2; i++) {
+                if (digits[i] === digits[i + 1] && digits[i + 1] === digits[i + 2]) clusters++;
+            }
+            return clusters / digits.length;
+        }
+
+        function calculateParityDominance(digits) {
+            let evens = 0;
+            digits.forEach(d => { if (d % 2 === 0) evens++; });
+            return Math.max(evens / digits.length, (digits.length - evens) / digits.length);
+        }
+
+        function getRegimeWeights(regime) {
+            switch (regime) {
+                case 'STABLE':
+                    return { transition: 0.30, markov2: 0.20, markov3: 0.15, weightedFreq: 0.15, recentFreq: 0.10, streak: 0.05, distance: 0.05 };
+                case 'CLUSTERING':
+                    return { transition: 0.15, markov2: 0.15, markov3: 0.15, weightedFreq: 0.25, recentFreq: 0.20, streak: 0.05, distance: 0.05 };
+                case 'ALTERNATING':
+                    return { transition: 0.30, markov2: 0.25, markov3: 0.20, weightedFreq: 0.10, recentFreq: 0.05, streak: 0.05, distance: 0.05 };
+                case 'STREAKING':
+                    return { transition: 0.20, markov2: 0.20, markov3: 0.15, weightedFreq: 0.15, recentFreq: 0.10, streak: 0.15, distance: 0.05 };
+                case 'PARITY_DOMINANT':
+                    return { transition: 0.15, markov2: 0.15, markov3: 0.10, weightedFreq: 0.20, recentFreq: 0.15, streak: 0.10, distance: 0.15 };
+                case 'HIGH_ENTROPY':
+                    return { transition: 0.10, markov2: 0.10, markov3: 0.10, weightedFreq: 0.15, recentFreq: 0.15, streak: 0.10, distance: 0.30 };
+                default:
+                    return { transition: 0.20, markov2: 0.15, markov3: 0.15, weightedFreq: 0.20, recentFreq: 0.15, streak: 0.05, distance: 0.10 };
+            }
+        }
+
+        function calculateAgreement(models, primaryDigit) {
+            // Simple agreement: fraction of models that rank primaryDigit in top-2
+            let count = 0;
+            let total = 0;
+            if (models.transition) {
+                total++;
+                const sorted = models.transition.map((p, i) => ({ digit: i, p })).sort((a, b) => b.p - a.p);
+                if (sorted.slice(0, 2).some(x => x.digit === primaryDigit)) count++;
+            }
+            if (models.weightedFreq) {
+                total++;
+                const sorted = models.weightedFreq.map((p, i) => ({ digit: i, p })).sort((a, b) => b.p - a.p);
+                if (sorted.slice(0, 2).some(x => x.digit === primaryDigit)) count++;
+            }
+            if (models.recentFreq) {
+                total++;
+                const sorted = models.recentFreq.map((p, i) => ({ digit: i, p })).sort((a, b) => b.p - a.p);
+                if (sorted.slice(0, 2).some(x => x.digit === primaryDigit)) count++;
+            }
+            if (models.markov2) {
+                total++;
+                const sorted = models.markov2.map((p, i) => ({ digit: i, p })).sort((a, b) => b.p - a.p);
+                if (sorted.slice(0, 2).some(x => x.digit === primaryDigit)) count++;
+            }
+            if (models.markov3) {
+                total++;
+                const sorted = models.markov3.map((p, i) => ({ digit: i, p })).sort((a, b) => b.p - a.p);
+                if (sorted.slice(0, 2).some(x => x.digit === primaryDigit)) count++;
+            }
+            return total ? count / total : 0;
+        }
+
+        function calculateSignalScore({ models, primary, secondary, gapRatio, strategy, currentDigit, prevDigit }) {
+            const w = {
+                transition: 0.20,
+                regime: 0.20,
+                weightedFreq: 0.15,
+                shortLongAgreement: 0.15,
+                streakStructure: 0.10,
+                entropyQuality: 0.10,
+                historicalPerformance: 0.10
+            };
+
+            let score = 0;
+
+            // Transition probability score
+            const transProb = models.transition ? models.transition[primary.digit] : 0;
+            const transScore = Math.min(1, transProb * 3); // scale to 0-1
+            score += w.transition * transScore;
+
+            // Regime favorability
+            const regimeFavorability = getRegimeFavorability(models.regime);
+            score += w.regime * regimeFavorability;
+
+            // Weighted frequency score
+            const weightedFreq = models.weightedFreq ? models.weightedFreq[primary.digit] : 0;
+            const wfScore = Math.min(1, weightedFreq * 3);
+            score += w.weightedFreq * wfScore;
+
+            // Short/long agreement
+            const shortLongAgreement = calculateShortLongAgreement(models, primary.digit);
+            score += w.shortLongAgreement * shortLongAgreement;
+
+            // Streak structure
+            const streakScore = calculateStreakStructureScore(models, primary.digit, currentDigit);
+            score += w.streakStructure * streakScore;
+
+            // Entropy quality
+            const entropyScore = models.entropy < 2.5 ? 1 : (models.entropy < 3.0 ? 0.7 : 0.3);
+            score += w.entropyQuality * entropyScore;
+
+            // Historical performance for this context
+            const histPerf = getContextPerformance(models, strategy, currentDigit, prevDigit, primary.digit);
+            score += w.historicalPerformance * histPerf;
+
+            return Math.round(score * 100); // 0-100
+        }
+
+        function getRegimeFavorability(regime) {
+            switch (regime) {
+                case 'STABLE': return 0.9;
+                case 'CLUSTERING': return 0.8;
+                case 'ALTERNATING': return 0.7;
+                case 'STREAKING': return 0.6;
+                case 'PARITY_DOMINANT': return 0.7;
+                case 'MIXED': return 0.5;
+                case 'HIGH_ENTROPY': return 0.1;
+                default: return 0.5;
+            }
+        }
+
+        function calculateShortLongAgreement(models, primaryDigit) {
+            if (!models.recentFreq || !models.weightedFreq) return 0.5;
+            const recentRank = models.recentFreq.map((p, i) => ({ digit: i, p })).sort((a, b) => b.p - a.p).findIndex(x => x.digit === primaryDigit);
+            const weightedRank = models.weightedFreq.map((p, i) => ({ digit: i, p })).sort((a, b) => b.p - a.p).findIndex(x => x.digit === primaryDigit);
+            // Both rank highly -> agreement
+            if (recentRank <= 1 && weightedRank <= 1) return 1;
+            if (recentRank <= 3 && weightedRank <= 3) return 0.7;
+            return 0.3;
+        }
+
+        function calculateStreakStructureScore(models, primaryDigit, currentDigit) {
+            // Simple: if primaryDigit equals currentDigit (potential streak continuation) or opposite
+            if (primaryDigit === currentDigit) return 0.6;
+            // Check if primaryDigit is "overdue" based on distance
+            if (models.lastSeen) {
+                const maxDist = Math.max(...models.lastSeen, 1);
+                const dist = models.lastSeen[primaryDigit];
+                return Math.min(1, (dist / maxDist) * 0.8);
+            }
+            return 0.5;
+        }
+
+        function getContextPerformance(models, strategy, currentDigit, prevDigit, primaryDigit) {
+            const matches = learningDatabase.filter(d =>
+                d.strategy === strategy &&
+                d.market === currentMarket &&
+                d.prevDigit === prevDigit &&
+                d.entryDigit === primaryDigit
+            );
+            if (matches.length < 10) {
+                // fallback to rolling performance
+                return getRollingPerformance(strategy);
+            }
+            const wins = matches.filter(m => m.result === 'WIN').length;
+            return wins / matches.length;
+        }
+
+        function classifySignal(score, { agreement, entropy, regime }, sampleSize) {
+            if (sampleSize < 100) return 'NO_TRADE'; // insufficient data
+            if (score >= 75 && agreement >= 0.7 && entropy < 3.0) return 'HIGH_QUALITY';
+            if (score >= 60 && agreement >= 0.5) return 'WATCH';
+            return 'NO_TRADE';
+        }
+
+        function getCurrentStreakLength() {
+            const digits = engine.digits;
+            if (digits.length < 2) return 0;
+            let streak = 1;
+            const lastDigit = digits[digits.length - 1];
+            for (let i = digits.length - 2; i >= 0; i--) {
+                if (digits[i] === lastDigit) streak++;
+                else break;
+            }
+            return streak;
         }
 
         // ─── STATE ───
@@ -1628,6 +2109,12 @@
         let currentPrice = null;
         let voiceSynth = null;
         let audioCtx = null;
+        let confirmationState = {
+            candidate: null,
+            ticksRemaining: 0,
+            originalPrediction: null,
+            stability: []
+        };
 
         // bot state
         let botMode = 'evenodd';
@@ -1645,10 +2132,12 @@
         // ─── DOM refs ───
         function $(id) { return document.getElementById(id); }
 
-        function showError(m) { const e = $('error-msg');
+        function showError(m) {
+            const e = $('error-msg');
             e.textContent = '❌ ' + m;
             e.style.display = 'block';
-            setTimeout(() => { e.style.display = 'none'; }, 6000); }
+            setTimeout(() => { e.style.display = 'none'; }, 6000);
+        }
 
         function hideError() { $('error-msg').style.display = 'none'; }
 
@@ -2230,6 +2719,14 @@
             // update ability guide on every tick
             renderAbilityGuide();
 
+            // Process confirmation window if active
+            if (confirmationState.candidate) {
+                processConfirmationTick(lastDigit);
+                renderSignal();
+                return;
+            }
+
+            // If active signal is LIVE, process result
             if (activeSignal && activeSignal.status === 'LIVE') {
                 activeSignal.elapsed++;
                 if (activeSignal.elapsed >= 5) {
@@ -2247,10 +2744,11 @@
                     stats.total++;
                     if (won) stats.won++;
                     updateLearning(activeSignal.strategy, won);
+                    storeSignalResult(activeSignal, won ? 'WIN' : 'LOSS');
                     signalLog.unshift({
                         entryDigit: activeSignal.entryDigit,
                         recoveryDigit: activeSignal.recoveryDigit || activeSignal.recoveryPrediction,
-                        confidence: activeSignal.confidence,
+                        signalScore: activeSignal.signalScore || activeSignal.confidence,
                         status: activeSignal.status,
                         parity: activeSignal.strategy === 'evenodd' ? activeSignal.prediction : null,
                         time: new Date().toLocaleTimeString()
@@ -2269,15 +2767,54 @@
                 renderSignal();
                 return;
             }
-            if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
 
-            if (engine.digits.length >= 40 && engineRunning) {
+            // If no active signal or in prep/result phase, generate new candidate
+            if (engineRunning && engine.digits.length >= 100) {
+                // If currently in PREP or waiting, skip generating new candidate
+                if (activeSignal && ['PREP', 'WON', 'LOST'].includes(activeSignal.status)) return;
+
                 let result = currentStrategy === 'matches' ? engine.generateMatchesSignal() : engine.generateEvenOddSignal();
-                if (result && result.confidence >= 60) {
-                    activeSignal = { ...result, status: 'PREP', prepTime: 15, elapsed: 0 };
+                if (result && result.status !== 'NO_TRADE' && result.classification !== 'NO_TRADE') {
+                    // Start confirmation window
+                    confirmationState = {
+                        candidate: result,
+                        ticksRemaining: 3,
+                        originalPrediction: result.entryDigit,
+                        stability: []
+                    };
+                    result.status = 'CONFIRMING';
+                    speak('Signal found', 1.1, 1.0);
                     beep(880, 0.3);
-                    setTimeout(() => beep(1100, 0.2), 250);
+                    renderSignal();
+                }
+            }
+
+            renderTickFeed();
+            renderDigitHistory();
+            updateStats();
+        }
+
+        function processConfirmationTick(newDigit) {
+            if (!confirmationState.candidate) return;
+            confirmationState.ticksRemaining--;
+            // Re-evaluate prediction with latest data
+            const newSignal = currentStrategy === 'matches' ? engine.generateMatchesSignal() : engine.generateEvenOddSignal();
+            if (newSignal && newSignal.entryDigit === confirmationState.originalPrediction) {
+                confirmationState.stability.push(true);
+            } else {
+                confirmationState.stability.push(false);
+            }
+            if (confirmationState.ticksRemaining <= 0) {
+                const stabilityScore = confirmationState.stability.filter(s => s).length / confirmationState.stability.length;
+                if (stabilityScore >= 0.67) {
+                    // Signal confirmed
+                    const signal = confirmationState.candidate;
+                    signal.status = 'PREP';
+                    signal.prepTime = 15;
+                    activeSignal = signal;
+                    confirmationState = { candidate: null, ticksRemaining: 0, originalPrediction: null, stability: [] };
                     speak('Ready', 1.1, 1.0);
+                    beep(1100, 0.25);
                     let hasSaidGoTime = false;
                     if (prepInterval) clearInterval(prepInterval);
                     prepInterval = setInterval(() => {
@@ -2298,12 +2835,13 @@
                             renderSignal();
                         }
                     }, 1000);
-                    renderSignal();
+                } else {
+                    confirmationState = { candidate: null, ticksRemaining: 0, originalPrediction: null, stability: [] };
+                    addBotLog('Signal cancelled - insufficient stability', 'error');
+                    speak('Signal cancelled', 1.0, 0.9);
                 }
+                renderSignal();
             }
-            renderTickFeed();
-            renderDigitHistory();
-            updateStats();
         }
 
         // ─── ABILITY GUIDE RENDER ───
@@ -2312,14 +2850,13 @@
             const digits = engine.digits;
             const n = digits.length;
 
-            // update sample size
             document.getElementById('guide-sample-size').textContent = n;
             document.getElementById('guide-update-time').textContent = new Date().toLocaleTimeString();
 
-            // entropy
             let entropy = '--';
-            if (n >= 40) {
-                entropy = engine.calculateEntropy().toFixed(2);
+            if (n >= 100) {
+                const ent = engine.calculateEntropy();
+                entropy = ent.toFixed(2);
             }
             document.getElementById('guide-entropy').textContent = `Entropy: ${entropy}`;
 
@@ -2333,13 +2870,11 @@
                 return;
             }
 
-            // digit frequency (last 150)
             const freq = Array(10).fill(0);
             const sample = digits.slice(-150);
             sample.forEach(d => freq[d]++);
             const total = sample.length || 1;
 
-            // build digit distribution
             let html = '';
             const maxFreq = Math.max(...freq, 1);
             for (let i = 0; i < 10; i++) {
@@ -2356,7 +2891,6 @@
             }
             container.innerHTML = html;
 
-            // even/odd
             let evens = 0,
                 odds = 0;
             sample.forEach(d => { if (d % 2 === 0) evens++;
@@ -2368,24 +2902,20 @@
             document.getElementById('eo-even-bar').style.width = evenPct + '%';
             document.getElementById('eo-odd-bar').style.width = oddPct + '%';
 
-            // dynamic tip
             const tip = document.getElementById('guide-tip-text');
             const maxDigit = freq.indexOf(Math.max(...freq));
-            const minDigit = freq.indexOf(Math.min(...freq));
-            if (n >= 40) {
-                const entropyVal = engine.calculateEntropy();
-                if (entropyVal < 2.5) {
-                    tip.textContent =
-                        `🔮 Low entropy (${entropyVal.toFixed(2)}) — strong pattern detected. Digit ${maxDigit} is over‑represented at ${(freq[maxDigit]/total*100).toFixed(1)}%.`;
-                } else if (entropyVal > 3.2) {
-                    tip.textContent =
-                        `🌊 High entropy (${entropyVal.toFixed(2)}) — market is chaotic. Wait for signals with confidence > 70%.`;
+            if (n >= 100) {
+                const regime = detectRegime.call(engine);
+                const multiEntropy = getMultiWindowEntropy.call(engine);
+                if (regime === 'HIGH_ENTROPY') {
+                    tip.textContent = `🌊 High entropy regime (e20=${multiEntropy.e20.toFixed(2)}). Market is chaotic. Wait for signals with high agreement.`;
+                } else if (regime === 'STABLE') {
+                    tip.textContent = `🔮 Stable regime. Digit ${maxDigit} is over-represented at ${(freq[maxDigit]/total*100).toFixed(1)}%.`;
                 } else {
-                    tip.textContent =
-                        `📊 Balanced entropy (${entropyVal.toFixed(2)}). Even/Odd split: ${evenPct.toFixed(0)}% / ${oddPct.toFixed(0)}%. Digit ${maxDigit} is the current hotspot.`;
+                    tip.textContent = `📊 Regime: ${regime}. Even/Odd: ${evenPct.toFixed(0)}%/${oddPct.toFixed(0)}%. Digit ${maxDigit} is hotspot.`;
                 }
             } else {
-                tip.textContent = `📈 Collecting data... ${n}/40 ticks needed for reliable analysis.`;
+                tip.textContent = `📈 Collecting data... ${n}/100 ticks needed for ensemble analysis.`;
             }
         }
 
@@ -2413,6 +2943,7 @@
             currentMarket = sym;
             engine.reset();
             activeSignal = null;
+            confirmationState = { candidate: null, ticksRemaining: 0, originalPrediction: null, stability: [] };
             if (prepInterval) clearInterval(prepInterval);
             prepInterval = null;
             renderMarkets();
@@ -2455,6 +2986,51 @@
             if (!engineRunning) { body.innerHTML =
                     '<div style="text-align:center;color:var(--text2);"><div style="font-size:40px;">⏸️</div><div style="font-size:14px;">Engine Stopped</div></div>';
                 return; }
+
+            // Confirmation state
+            if (confirmationState.candidate) {
+                const sig = confirmationState.candidate;
+                const isMatches = sig.strategy === 'matches';
+                body.innerHTML = `<div class="signal-display signal-active">
+                    <div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px;">${MARKET_NAMES[currentMarket]||''}</div>
+                    <div class="strategy-badge ${isMatches?'matches':'evenodd'}">${isMatches?'🎯 MATCHES':'🟣 EVEN/ODD'}</div>
+                    <div class="big-signal-display" style="border-color:var(--warning);box-shadow:0 0 30px rgba(255,186,8,0.2);">
+                        <div class="big-signal-label" style="color:var(--warning);">⏳ CONFIRMING SIGNAL</div>
+                        <div class="three-digits-row">
+                            <div class="digit-group">
+                                <div class="label predicted">Predicted</div>
+                                <div class="big-num predicted-num">${sig.predictedDigit}</div>
+                            </div>
+                            <div class="arrow-divider">→</div>
+                            <div class="digit-group">
+                                <div class="label entry">Entry</div>
+                                <div class="big-num entry-num">${sig.entryDigit}</div>
+                            </div>
+                            <div class="arrow-divider">VS</div>
+                            <div class="digit-group">
+                                <div class="label recovery">Recovery</div>
+                                <div class="big-num recovery-num">${sig.recoveryDigit}</div>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;font-size:12px;color:var(--warning);">${confirmationState.ticksRemaining} ticks remaining to confirm...</div>
+                        <div class="tick-progress" style="margin-top:10px;">
+                            ${[0,1,2].map(i=>`<div class="tick-dot${i >= (3-confirmationState.ticksRemaining)?' filled':''}">${i >= (3-confirmationState.ticksRemaining)?'✓': '•'}</div>`).join('')}
+                        </div>
+                    </div>
+                    <div class="signal-score-panel">
+                        <div class="score-label">Signal Score</div>
+                        <div class="score-value">${sig.signalScore}</div>
+                        <div class="score-details">
+                            <span>Regime: ${sig.regime}</span>
+                            <span>Entropy: ${sig.entropy.toFixed(2)}</span>
+                            <span>Gap: ${(sig.gapRatio*100).toFixed(0)}%</span>
+                        </div>
+                        <div class="classification watch">WATCH</div>
+                    </div>
+                </div>`;
+                return;
+            }
+
             if (!activeSignal) {
                 body.innerHTML =
                     `<div style="text-align:center;"><div style="position:relative;width:60px;height:60px;margin:0 auto 16px;"><div style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite;"></div><div style="position:absolute;inset:12px;border-radius:50%;border:2px solid var(--accent);animation:radarPing 1.5s ease-out infinite 0.5s;"></div><div style="position:absolute;inset:22px;background:var(--accent);border-radius:50%;"></div></div><div style="font-size:11px;color:var(--text2);">${currentStrategy==='matches'?'ANALYZING MATCHES...':'ANALYZING EVEN/ODD...'}</div>${currentPrice?`<div style="font-size:14px;color:var(--accent);margin-top:8px;">Last: <strong style="font-size:20px;">${currentPrice.digit}</strong></div>`:''}</div>`;
@@ -2473,11 +3049,11 @@
                             <div style="font-size:28px;font-weight:900;color:${sig.status==='WON'?'var(--success)':'var(--danger)'};text-transform:uppercase;letter-spacing:2px;">${sig.status==='WON'?'WIN':'LOSS'}</div>
                             <div style="font-size:14px;color:var(--text2);margin-top:10px;">
                                 Strategy: <strong>${isMatches?'MATCHES':'EVEN/ODD'}</strong> | 
-                                Predicted: <strong style="color:var(--accent3);">${isMatches?sig.predictedDigit:sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
-                                Entry: <strong style="color:var(--accent);">${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
-                                Recovery: <strong style="color:var(--accent2);">${isMatches?sig.recoveryDigit:sig.recoveryDigit}${!isMatches ? ' ('+sig.recoveryPrediction+')' : ''}</strong>
+                                Predicted: <strong style="color:var(--accent3);">${sig.predictedDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
+                                Entry: <strong style="color:var(--accent);">${sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> | 
+                                Recovery: <strong style="color:var(--accent2);">${sig.recoveryDigit}${!isMatches ? ' ('+sig.recoveryPrediction+')' : ''}</strong>
                             </div>
-                            <div style="margin-top:12px;color:var(--text2);font-size:12px;">Confidence was ${sig.confidence}%</div>
+                            <div style="margin-top:12px;color:var(--text2);font-size:12px;">Signal Score was ${sig.signalScore}</div>
                         </div>`;
                 return;
             }
@@ -2489,24 +3065,35 @@
                             <div class="three-digits-row">
                                 <div class="digit-group">
                                     <div class="label predicted">🔮 Predicted</div>
-                                    <div class="big-num predicted-num ${isLive?'live-num':''}">${isMatches ? sig.predictedDigit : sig.predictedDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
+                                    <div class="big-num predicted-num ${isLive?'live-num':''}">${sig.predictedDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
                                 </div>
                                 <div class="arrow-divider">→</div>
                                 <div class="digit-group">
                                     <div class="label entry">🎯 Entry</div>
-                                    <div class="big-num entry-num ${isLive?'live-num':''}">${isMatches ? sig.entryDigit : sig.entryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
+                                    <div class="big-num entry-num ${isLive?'live-num':''}">${sig.entryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.prediction+')' : ''}</span></div>
                                 </div>
                                 <div class="arrow-divider">VS</div>
                                 <div class="digit-group">
                                     <div class="label recovery">💡 Recovery</div>
-                                    <div class="big-num recovery-num">${isMatches ? sig.recoveryDigit : sig.recoveryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.recoveryPrediction+')' : ''}</span></div>
+                                    <div class="big-num recovery-num">${sig.recoveryDigit}<span style="font-size:12px; display:block;">${!isMatches ? '('+sig.recoveryPrediction+')' : ''}</span></div>
                                 </div>
                             </div>
                             ${isPrep?`<div class="big-countdown${sig.prepTime<=5?' urgent':''}">⏱ 00:${String(sig.prepTime).padStart(2,'0')}</div><div class="voice-alert${sig.prepTime<=5?' go':' ready'}">${sig.prepTime<=5?'⚡ GO TIME! ⚡':'🔊 READY'}</div>`:''}
                             ${isLive?`<div class="tick-progress" style="margin-top:14px;">${[1,2,3,4,5].map(i=>`<div class="tick-dot${i<=sig.elapsed?' filled':''}">${i<=sig.elapsed?'✓':i}</div>`).join('')}</div><div style="color:var(--accent3);font-weight:700;margin-top:8px;">Trade <strong>${isMatches?sig.entryDigit:sig.entryDigit}${!isMatches ? ' ('+sig.prediction+')' : ''}</strong> NOW</div>`:''}
                         </div>
-                        <div class="signal-meta"><div class="meta-box"><div class="meta-val" style="color:var(--gold)">${sig.confidence}%</div><div class="meta-key">Confidence</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent)">${sig.reason}</div><div class="meta-key">Pattern</div></div><div class="meta-box"><div class="meta-val" style="color:var(--accent2)">${isPrep?sig.prepTime+'s':sig.elapsed+'/5'}</div><div class="meta-key">${isPrep?'Timer':'Ticks'}</div></div></div>
-                        <div class="confidence-bar-wrap"><div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="font-size:9px;color:var(--text2);">Signal Strength</span><span style="color:var(--gold);font-weight:700;">${sig.confidence}%</span></div><div class="conf-track"><div class="conf-fill${isMatches?'':' evenodd'}" style="width:${sig.confidence}%;"></div></div></div>
+                        <div class="signal-score-panel">
+                            <div class="score-label">Signal Quality</div>
+                            <div class="score-value">${sig.signalScore}</div>
+                            <div class="score-details">
+                                <span>Transition: ${sig.transitionProb ? (sig.transitionProb*100).toFixed(1)+'%' : '--'}</span>
+                                <span>Recent Freq: ${sig.recentFreq ? (sig.recentFreq*100).toFixed(1)+'%' : '--'}</span>
+                                <span>Weighted Freq: ${sig.weightedFreq ? (sig.weightedFreq*100).toFixed(1)+'%' : '--'}</span>
+                                <span>Regime: ${sig.regime}</span>
+                                <span>Entropy: ${sig.entropy.toFixed(2)}</span>
+                                <span>Gap: ${(sig.gapRatio*100).toFixed(0)}%</span>
+                            </div>
+                            <div class="classification ${sig.classification.toLowerCase().replace('_','-')}">${sig.classification}</div>
+                        </div>
                     </div>`;
         }
 
@@ -2529,7 +3116,7 @@
             if (signalLog.length === 0) { c.innerHTML =
                     '<div style="text-align:center;color:var(--text2);font-size:9px;padding:8px;">No signals yet</div>'; return; }
             c.innerHTML = signalLog.slice(0, 15).map(s =>
-                `<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.confidence}% ${s.status==='WON'?'✅':'❌'}${s.parity ? ` (${s.parity})` : ''}</div></div><div style="font-size:8px;color:#3a5a7a;">${s.time}</div></div>`
+                `<div class="log-item"><div class="log-badge ${s.status==='WON'?'won':'lost'}">${s.entryDigit}</div><div class="log-info"><div style="color:${s.status==='WON'?'var(--success)':'var(--danger)'};">${s.signalScore} ${s.status==='WON'?'✅':'❌'}${s.parity ? ` (${s.parity})` : ''}</div></div><div style="font-size:8px;color:#3a5a7a;">${s.time}</div></div>`
             ).join('');
         }
 
@@ -2543,7 +3130,9 @@
         // ─── ENGINE CONTROL ───
         function toggleEngine() { engineRunning = !engineRunning;
             updateEngineBtn(); if (engineRunning) { if (!isConnected) showError('Connect first');
-                else renderSignal(); } else { activeSignal = null; if (prepInterval) clearInterval(prepInterval);
+                else renderSignal(); } else { activeSignal = null;
+                confirmationState = { candidate: null, ticksRemaining: 0, originalPrediction: null, stability: [] }; if (prepInterval)
+                    clearInterval(prepInterval);
                 prepInterval = null;
                 renderSignal(); } }
 
@@ -2563,6 +3152,7 @@
                 tag.style.border = '1px solid rgba(168,85,247,0.25)';
                 title.textContent = 'EVEN/ODD OUTPUT'; }
             activeSignal = null;
+            confirmationState = { candidate: null, ticksRemaining: 0, originalPrediction: null, stability: [] };
             if (prepInterval) clearInterval(prepInterval);
             prepInterval = null;
             engine.reset();
@@ -2600,7 +3190,7 @@
             }
         }
         init();
-        console.log('🚀 Flowstate Pro + Auto Bulk Trader + Ability Guide ready');
+        console.log('🚀 Flowstate Pro + Ensemble Engine v2 ready');
     </script>
 </body>
 </html>
